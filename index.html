@@ -2113,156 +2113,135 @@
           ctx.arc(0, 0, viewDist, -fov / 2, fov / 2);
           ctx.fill();
 
-          // Quake-style soldier (top-down sprite)
+          // Quake-style soldier (TRUE top-down view - looking from above)
           ctx.shadowBlur = isTopRound || isTopAlltime ? 20 : 10;
           ctx.shadowColor = isTopAlltime ? '#ff6400' : (isTopRound ? '#ffc800' : agent.color);
 
-          // Team colors - military style
-          const teamDark = agent.team === 0 ? '#5c3a3a' : '#3a3a5c';
-          const teamMid = agent.team === 0 ? '#7a5a4a' : '#4a5a7a';
-          const teamLight = agent.team === 0 ? '#9a7a6a' : '#6a7a9a';
+          // Team colors - military olive/khaki style
+          const teamDark = agent.team === 0 ? '#5c4a3a' : '#3a4a5c';
+          const teamMid = agent.team === 0 ? '#6b5a42' : '#425a6b';
+          const teamLight = agent.team === 0 ? '#8a7a5a' : '#5a7a8a';
           const skinTone = '#d4a574';
           const hairColor = '#4a3020';
 
-          // Back leg
-          ctx.fillStyle = teamDark;
-          ctx.beginPath();
-          ctx.ellipse(-r * 0.3, r * 0.5, r * 0.22, r * 0.4, 0.3, 0, Math.PI * 2);
-          ctx.fill();
-          // Boot
+          // Feet/boots (behind body, slightly visible)
           ctx.fillStyle = '#2a2a2a';
           ctx.beginPath();
-          ctx.ellipse(-r * 0.2, r * 0.85, r * 0.18, r * 0.12, 0.3, 0, Math.PI * 2);
+          ctx.ellipse(-r * 0.5, -r * 0.25, r * 0.18, r * 0.25, -0.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(-r * 0.5, r * 0.25, r * 0.18, r * 0.25, 0.3, 0, Math.PI * 2);
           ctx.fill();
 
-          // Back arm
-          ctx.fillStyle = teamMid;
-          ctx.beginPath();
-          ctx.ellipse(-r * 0.15, -r * 0.5, r * 0.18, r * 0.35, -0.4, 0, Math.PI * 2);
-          ctx.fill();
-          // Back hand on launcher
-          ctx.fillStyle = skinTone;
-          ctx.beginPath();
-          ctx.arc(r * 0.1, -r * 0.6, r * 0.13, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Torso
+          // Body/torso (oval from above)
           ctx.fillStyle = teamDark;
           ctx.beginPath();
-          ctx.moveTo(-r * 0.45, -r * 0.5);
-          ctx.lineTo(r * 0.35, -r * 0.5);
-          ctx.lineTo(r * 0.4, r * 0.5);
-          ctx.lineTo(-r * 0.4, r * 0.55);
+          ctx.ellipse(0, 0, r * 0.65, r * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Backpack/gear on back
+          ctx.fillStyle = '#3a3a2a';
+          ctx.beginPath();
+          ctx.ellipse(-r * 0.4, 0, r * 0.25, r * 0.45, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Vest/armor overlay
+          ctx.fillStyle = teamMid;
+          ctx.beginPath();
+          ctx.ellipse(r * 0.05, 0, r * 0.5, r * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Left shoulder (top of view)
+          ctx.fillStyle = teamDark;
+          ctx.beginPath();
+          ctx.ellipse(r * 0.1, -r * 0.7, r * 0.3, r * 0.25, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Right shoulder (bottom of view)
+          ctx.fillStyle = teamDark;
+          ctx.beginPath();
+          ctx.ellipse(r * 0.1, r * 0.7, r * 0.3, r * 0.25, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Left arm extending to weapon
+          ctx.fillStyle = teamMid;
+          ctx.beginPath();
+          ctx.moveTo(r * 0.1, -r * 0.55);
+          ctx.quadraticCurveTo(r * 0.6, -r * 0.5, r * 0.8, -r * 0.25);
+          ctx.lineTo(r * 0.65, -r * 0.15);
+          ctx.quadraticCurveTo(r * 0.45, -r * 0.35, r * 0.1, -r * 0.4);
           ctx.closePath();
           ctx.fill();
 
-          // Chest/vest
+          // Right arm extending to weapon
           ctx.fillStyle = teamMid;
           ctx.beginPath();
-          ctx.moveTo(-r * 0.3, -r * 0.4);
-          ctx.lineTo(r * 0.25, -r * 0.4);
-          ctx.lineTo(r * 0.3, r * 0.35);
-          ctx.lineTo(-r * 0.25, r * 0.4);
+          ctx.moveTo(r * 0.1, r * 0.55);
+          ctx.quadraticCurveTo(r * 0.5, r * 0.45, r * 0.7, r * 0.2);
+          ctx.lineTo(r * 0.55, r * 0.1);
+          ctx.quadraticCurveTo(r * 0.35, r * 0.3, r * 0.1, r * 0.4);
           ctx.closePath();
           ctx.fill();
 
-          // Belt
-          ctx.fillStyle = '#3d3d3d';
-          ctx.fillRect(-r * 0.42, r * 0.25, r * 0.8, r * 0.15);
-          ctx.fillStyle = '#b8860b';
-          ctx.beginPath();
-          ctx.arc(0, r * 0.32, r * 0.07, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Front leg
-          ctx.fillStyle = teamDark;
-          ctx.beginPath();
-          ctx.ellipse(-r * 0.05, r * 0.6, r * 0.25, r * 0.38, -0.15, 0, Math.PI * 2);
-          ctx.fill();
-          // Boot
-          ctx.fillStyle = '#2a2a2a';
-          ctx.beginPath();
-          ctx.ellipse(r * 0.05, r * 0.92, r * 0.2, r * 0.14, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Front arm
-          ctx.fillStyle = teamMid;
-          ctx.beginPath();
-          ctx.ellipse(r * 0.2, r * 0.35, r * 0.18, r * 0.32, 0.6, 0, Math.PI * 2);
-          ctx.fill();
-          // Hand gripping launcher
+          // Hands
           ctx.fillStyle = skinTone;
           ctx.beginPath();
-          ctx.arc(r * 0.45, r * 0.5, r * 0.14, 0, Math.PI * 2);
+          ctx.arc(r * 0.75, -r * 0.2, r * 0.12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(r * 0.6, r * 0.15, r * 0.12, 0, Math.PI * 2);
           ctx.fill();
 
-          // Rocket launcher
-          ctx.fillStyle = '#4a5040';
-          ctx.save();
-          ctx.translate(r * 0.3, -r * 0.1);
-          ctx.rotate(0.15);
+          // Rocket launcher (pointing forward)
           // Main tube
           ctx.fillStyle = '#4a5040';
           ctx.beginPath();
-          ctx.roundRect(-r * 0.2, -r * 0.15, r * 1.6, r * 0.3, r * 0.08);
+          ctx.roundRect(r * 0.5, -r * 0.18, r * 1.2, r * 0.36, r * 0.1);
           ctx.fill();
-          // Darker top
-          ctx.fillStyle = '#3a4030';
-          ctx.fillRect(-r * 0.2, -r * 0.15, r * 1.6, r * 0.1);
+          // Top highlight
+          ctx.fillStyle = '#5a6050';
+          ctx.fillRect(r * 0.5, -r * 0.18, r * 1.2, r * 0.12);
+          // Muzzle
+          ctx.fillStyle = '#2a2a2a';
+          ctx.beginPath();
+          ctx.arc(r * 1.7, 0, r * 0.16, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#111';
+          ctx.beginPath();
+          ctx.arc(r * 1.7, 0, r * 0.1, 0, Math.PI * 2);
+          ctx.fill();
+          // Red band
+          ctx.fillStyle = '#993333';
+          ctx.fillRect(r * 1.45, -r * 0.18, r * 0.1, r * 0.36);
           // Grip
           ctx.fillStyle = '#2a2a2a';
-          ctx.fillRect(r * 0.0, r * 0.12, r * 0.18, r * 0.28);
-          // Rear sight
-          ctx.fillStyle = '#333';
-          ctx.fillRect(-r * 0.15, -r * 0.22, r * 0.12, r * 0.08);
-          // Muzzle opening
-          ctx.fillStyle = '#1a1a1a';
-          ctx.beginPath();
-          ctx.arc(r * 1.35, 0, r * 0.13, 0, Math.PI * 2);
-          ctx.fill();
-          // Red warning band
-          ctx.fillStyle = '#aa3333';
-          ctx.fillRect(r * 1.15, -r * 0.15, r * 0.1, r * 0.3);
-          ctx.restore();
+          ctx.fillRect(r * 0.55, r * 0.15, r * 0.15, r * 0.2);
 
-          // Head
-          ctx.fillStyle = skinTone;
-          ctx.beginPath();
-          ctx.arc(r * 0.2, -r * 0.25, r * 0.38, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Hair
+          // Head (top of head viewed from above)
           ctx.fillStyle = hairColor;
           ctx.beginPath();
-          ctx.arc(r * 0.2, -r * 0.35, r * 0.33, Math.PI * 0.9, Math.PI * 2.1);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(r * 0.15, -r * 0.55, r * 0.25, r * 0.12, -0.1, 0, Math.PI * 2);
+          ctx.arc(r * 0.35, 0, r * 0.38, 0, Math.PI * 2);
           ctx.fill();
 
-          // Ear
+          // Hair highlight/parting
+          ctx.fillStyle = '#5a4030';
+          ctx.beginPath();
+          ctx.ellipse(r * 0.45, 0, r * 0.15, r * 0.25, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Skin visible at front of head (forehead/face edge)
           ctx.fillStyle = skinTone;
           ctx.beginPath();
-          ctx.ellipse(-r * 0.15, -r * 0.25, r * 0.08, r * 0.12, 0, 0, Math.PI * 2);
+          ctx.arc(r * 0.6, 0, r * 0.18, -Math.PI * 0.4, Math.PI * 0.4);
           ctx.fill();
 
-          // Face shadow
-          ctx.fillStyle = '#c49464';
-          ctx.beginPath();
-          ctx.arc(r * 0.4, -r * 0.2, r * 0.18, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Eye
-          ctx.fillStyle = '#222';
-          ctx.beginPath();
-          ctx.ellipse(r * 0.42, -r * 0.28, r * 0.05, r * 0.07, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Team shoulder patch
+          // Team colored band/bandana
           ctx.fillStyle = agent.team === 0 ? '#cc4444' : '#4444cc';
+          ctx.lineWidth = r * 0.08;
+          ctx.strokeStyle = agent.team === 0 ? '#cc4444' : '#4444cc';
           ctx.beginPath();
-          ctx.ellipse(-r * 0.25, -r * 0.35, r * 0.12, r * 0.08, -0.4, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.arc(r * 0.35, 0, r * 0.32, Math.PI * 0.6, Math.PI * 1.4);
+          ctx.stroke();
 
           ctx.restore();
           ctx.shadowBlur = 0;
