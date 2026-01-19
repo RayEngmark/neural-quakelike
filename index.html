@@ -60,6 +60,64 @@
       height: 100%;
     }
 
+    #headless-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at center, rgba(26, 26, 46, 0.95) 0%, rgba(5, 5, 16, 0.98) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    #headless-overlay.hidden {
+      display: none;
+    }
+
+    .headless-content {
+      text-align: center;
+      color: #888;
+      max-width: 500px;
+      padding: 40px;
+    }
+
+    .headless-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      opacity: 0.7;
+    }
+
+    .headless-content h2 {
+      color: #0f0;
+      font-size: 1.5rem;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    }
+
+    .headless-content p {
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .headless-hint {
+      margin-top: 24px;
+      padding: 16px;
+      background: rgba(0, 255, 0, 0.1);
+      border: 1px solid rgba(0, 255, 0, 0.3);
+      border-radius: 8px;
+      color: #aaa;
+    }
+
+    .headless-hint strong {
+      color: #0f0;
+    }
+
     #sidebar {
       width: 360px;
       background: var(--panel-bg);
@@ -302,6 +360,14 @@
   <div id="container">
     <div id="canvas-container">
       <canvas id="canvas"></canvas>
+      <div id="headless-overlay">
+        <div class="headless-content">
+          <div class="headless-icon">🖥️</div>
+          <h2>Simulation Running in Headless Mode</h2>
+          <p>Rendering is disabled for faster simulation speed.</p>
+          <p class="headless-hint">Toggle <strong>🖥️ HEADLESS MODE</strong> in the Parameters panel to view the battle.</p>
+        </div>
+      </div>
     </div>
 
     <div id="sidebar">
@@ -2259,18 +2325,21 @@
 
     // Headless mode
     let headlessMode = true;
+    const headlessOverlay = document.getElementById('headless-overlay');
+
     // Set initial headless button state
     ui.headlessBtn.textContent = '🖥️ HEADLESS MODE (ON)';
     ui.headlessBtn.style.background = 'rgba(0, 255, 0, 0.3)';
     ui.headlessBtn.style.borderColor = '#0f0';
     ui.headlessBtn.style.color = '#0f0';
-    
+
     ui.headlessBtn.addEventListener('click', () => {
       headlessMode = !headlessMode;
       ui.headlessBtn.textContent = headlessMode ? '🖥️ HEADLESS MODE (ON)' : '🖥️ HEADLESS MODE (OFF)';
       ui.headlessBtn.style.background = headlessMode ? 'rgba(0, 255, 0, 0.3)' : 'rgba(100, 100, 100, 0.1)';
       ui.headlessBtn.style.borderColor = headlessMode ? '#0f0' : '#888';
       ui.headlessBtn.style.color = headlessMode ? '#0f0' : '#888';
+      headlessOverlay.classList.toggle('hidden', !headlessMode);
     });
 
     // Highlight toggles
