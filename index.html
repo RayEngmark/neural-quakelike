@@ -1,0 +1,2549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEURAL TEAM DEATHMATCH // V1.0</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #050510;
+      --panel-bg: rgba(13, 13, 25, 0.85);
+      --neon-blue: #00f3ff;
+      --neon-pink: #ff0055;
+      --neon-green: #00ff9d;
+      --neon-yellow: #ffd700;
+      --text-main: #e0e6ed;
+      --border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      scrollbar-width: thin;
+      scrollbar-color: var(--neon-blue) var(--bg-dark);
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Rajdhani', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #000; }
+    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
+
+    #container {
+      display: flex;
+      height: 100vh;
+      position: relative;
+    }
+
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      background: radial-gradient(circle at center, #1a1a2e 0%, #050510 100%);
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    canvas {
+      display: block;
+      outline: none;
+      width: 100%;
+      height: 100%;
+    }
+
+    #sidebar {
+      width: 360px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      border-left: 1px solid var(--border-color);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+      z-index: 10;
+      box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.2rem;
+      color: var(--neon-blue);
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border-color);
+      text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+    }
+
+    .panel {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .panel::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: -1px;
+      width: 10px; height: 10px;
+      border-top: 2px solid var(--neon-blue);
+      border-left: 2px solid var(--neon-blue);
+    }
+
+    .panel::after {
+      content: '';
+      position: absolute;
+      bottom: -1px; right: -1px;
+      width: 10px; height: 10px;
+      border-bottom: 2px solid var(--neon-blue);
+      border-right: 2px solid var(--neon-blue);
+    }
+
+    .panel h2 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: #8899ac;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 1rem;
+      border-bottom: 1px dashed rgba(255,255,255,0.05);
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--neon-green);
+      font-weight: bold;
+      text-shadow: 0 0 8px rgba(0, 255, 157, 0.3);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .control-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .control-row label {
+      flex: 1;
+      font-size: 0.9rem;
+      color: #adb5bd;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      flex: 2;
+      background: transparent;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: var(--neon-blue);
+      margin-top: -6px;
+      box-shadow: 0 0 10px var(--neon-blue);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+    }
+
+    .control-row .value {
+      width: 45px;
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--neon-blue);
+    }
+
+    button {
+      background: rgba(0, 243, 255, 0.1);
+      border: 1px solid var(--neon-blue);
+      color: var(--neon-blue);
+      padding: 10px 16px;
+      border-radius: 2px;
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: bold;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button:hover {
+      background: var(--neon-blue);
+      color: #000;
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+    }
+
+    button.secondary {
+      border-color: #666;
+      color: #aaa;
+      background: transparent;
+    }
+
+    button.secondary:hover {
+      border-color: #fff;
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      box-shadow: none;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-row button { flex: 1; }
+
+    #leaderboard {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .leader-entry {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 8px;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 2px;
+      transition: transform 0.2s;
+    }
+
+    .leader-entry:hover {
+      background: rgba(255,255,255,0.05);
+      transform: translateX(4px);
+    }
+
+    .leader-entry:nth-child(1) { color: var(--neon-yellow); border-left: 2px solid var(--neon-yellow); }
+    .leader-entry:nth-child(2) { color: #c0c0c0; border-left: 2px solid #c0c0c0; }
+    .leader-entry:nth-child(3) { color: #cd7f32; border-left: 2px solid #cd7f32; }
+
+    .leader-entry .name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-right: 10px;
+    }
+
+    .leader-entry .score {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: bold;
+    }
+
+    .leader-entry.dead {
+      opacity: 0.3;
+      text-decoration: line-through;
+    }
+
+    #event-log {
+      max-height: 150px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      display: flex;
+      flex-direction: column-reverse;
+    }
+
+    .event {
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      opacity: 0.8;
+    }
+
+    .event .kill { color: var(--neon-pink); text-shadow: 0 0 5px rgba(255,0,85,0.3); }
+    .event .damage { color: var(--neon-yellow); }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="canvas-container">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="sidebar">
+      <h1>⚔️ Neural Team Deathmatch <span style="font-size:0.6em; vertical-align:top; color:#666">v1.0</span></h1>
+
+      <div class="panel">
+        <h2>// TEAM SCORES</h2>
+        <div class="stat-row" style="font-size: 1.5rem;">
+          <span style="color: #ff4444;">🔴 RED</span>
+          <span class="stat-value" id="red-kills" style="color: #ff4444; font-size: 2rem;">0</span>
+        </div>
+        <div class="stat-row" style="font-size: 0.7rem; opacity: 0.7; margin-top: -5px;">
+          <span style="color: #ff4444;">Kills: <span id="red-raw-kills">0</span> | Ricochet: <span id="red-ricochets">0</span></span>
+        </div>
+        <div class="stat-row" style="font-size: 1.5rem; margin-top: 10px;">
+          <span style="color: #4488ff;">🔵 BLUE</span>
+          <span class="stat-value" id="blue-kills" style="color: #4488ff; font-size: 2rem;">0</span>
+        </div>
+        <div class="stat-row" style="font-size: 0.7rem; opacity: 0.7; margin-top: -5px;">
+          <span style="color: #4488ff;">Kills: <span id="blue-raw-kills">0</span> | Ricochet: <span id="blue-ricochets">0</span></span>
+        </div>
+        <div class="stat-row" style="border-top: 1px solid #333; margin-top: 10px; padding-top: 10px;">
+          <span>FIRST TO</span>
+          <span class="stat-value" id="kill-limit-display">50</span>
+        </div>
+        <div class="stat-row" style="border-top: 1px solid #333; margin-top: 10px; padding-top: 10px;">
+          <span style="color: #ff4444;">🏆 RED WINS</span>
+          <span class="stat-value" id="red-wins" style="color: #ff4444;">0</span>
+        </div>
+        <div class="stat-row">
+          <span style="color: #4488ff;">🏆 BLUE WINS</span>
+          <span class="stat-value" id="blue-wins" style="color: #4488ff;">0</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>// SYSTEM STATUS</h2>
+        <div class="stat-row">
+          <span>GENERATION</span>
+          <span class="stat-value" id="generation">1</span>
+        </div>
+        <div class="stat-row">
+          <span>ACTIVE UNITS</span>
+          <span class="stat-value" id="alive">100</span>
+        </div>
+        <div class="stat-row">
+          <span>T-MINUS</span>
+          <span class="stat-value" id="time-left">120s</span>
+        </div>
+        <div class="stat-row">
+          <span>UPS</span>
+          <span class="stat-value" id="ups" style="color: #00ff9d;">60</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>// QUAKE MODE 🚀</h2>
+        <div class="stat-row">
+          <span style="color: #ff6600;">WEAPON</span>
+          <span class="stat-value">ROCKET LAUNCHER</span>
+        </div>
+        <div class="stat-row">
+          <span>DAMAGE</span>
+          <span class="stat-value">90</span>
+        </div>
+        <div class="stat-row">
+          <span>SPLASH</span>
+          <span class="stat-value">120 radius</span>
+        </div>
+      </div>
+
+      <div class="panel controls">
+        <h2>// PARAMETERS</h2>
+        <div class="control-row">
+          <label>Zoom</label>
+          <input type="range" id="zoom" min="25" max="300" value="100" />
+          <span class="value" id="zoom-value">1.0x</span>
+        </div>
+        <div class="control-row">
+          <label>Sim Speed</label>
+          <input type="range" id="speed" min="1" max="20" value="1" />
+          <span class="value" id="speed-value">1x</span>
+        </div>
+        <div class="control-row">
+          <label>Population</label>
+          <input type="range" id="population" min="20" max="200" value="100" step="10" />
+          <span class="value" id="population-value">100</span>
+        </div>
+        <div class="control-row">
+          <label>Duration (m)</label>
+          <input type="range" id="round-time" min="1" max="10" value="1" step="1" />
+          <span class="value" id="round-time-value">1</span>
+        </div>
+        <div class="control-row">
+          <label>Kill Limit</label>
+          <input type="range" id="kill-limit" min="10" max="100" value="50" step="5" />
+          <span class="value" id="kill-limit-value">50</span>
+        </div>
+
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="pause-btn">PAUSE</button>
+          <button id="restart-btn" class="secondary">RESET</button>
+        </div>
+        <div class="btn-row">
+          <button id="fullscreen-btn" style="background: rgba(0, 255, 157, 0.1); border-color: #00ff9d; color: #00ff9d;">⛶ FULLSCREEN</button>
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="highlight-round-btn" style="background: rgba(255, 200, 0, 0.1); border-color: #ffc800; color: #ffc800;">👑 TOP ROUND</button>
+          <button id="highlight-alltime-btn" style="background: rgba(255, 100, 0, 0.1); border-color: #ff6400; color: #ff6400;">🏆 TOP LEGEND</button>
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="save-btn" style="background: rgba(0, 200, 255, 0.1); border-color: #00c8ff; color: #00c8ff;">💾 SAVE</button>
+          <button id="load-btn" style="background: rgba(200, 0, 255, 0.1); border-color: #c800ff; color: #c800ff;">📂 LOAD</button>
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button id="headless-btn" style="background: rgba(100, 100, 100, 0.1); border-color: #888; color: #888; width: 100%;">🖥️ HEADLESS MODE (OFF)</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>// THIS ROUND</h2>
+        <div id="leaderboard"></div>
+      </div>
+
+      <div class="panel">
+        <h2>// ALL-TIME LEGENDS 🏆</h2>
+        <div id="alltime-leaderboard"></div>
+      </div>
+
+      <div class="panel">
+        <h2>// COMBAT LOG</h2>
+        <div id="event-log"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (() => {
+    'use strict';
+
+    // --------------------
+    // Utility
+    // --------------------
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    // --------------------
+    // Names
+    // --------------------
+    const FIRST_NAMES = ['Ole', 'Lars', 'Erik', 'Anders', 'Magnus', 'Henrik', 'Jonas', 'Marius', 'Kristian', 'Thomas', 'Astrid', 'Ingrid', 'Solveig', 'Freya', 'Sigrid', 'Nora', 'Emma', 'Maja', 'Thea', 'Ella', 'Bjørn', 'Torstein', 'Gunnar', 'Håkon', 'Leif', 'Ragnar', 'Sven', 'Olav', 'Knut', 'Arne', 'Liv', 'Grete', 'Kari', 'Anne', 'James', 'John', 'William', 'David', 'Richard', 'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Michael', 'Christopher', 'Joshua', 'Andrew', 'Brandon', 'Emily', 'Hannah', 'Madison', 'Ashley', 'Olivia', 'Jack', 'Harry', 'Oliver', 'George', 'Charlie', 'Grace', 'Chloe', 'Lily', 'Mia', 'Ruby', 'Viktor', 'Felix', 'Oscar', 'Sebastian', 'Adrian', 'Aurora', 'Emilie', 'Hedda', 'Sara', 'Julie'];
+    const LAST_NAMES = ['Hansen', 'Johansen', 'Olsen', 'Larsen', 'Andersen', 'Pedersen', 'Nilsen', 'Kristiansen', 'Jensen', 'Karlsen', 'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Garcia', 'Rodriguez', 'Wilson', 'Martinez', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Martin', 'Jackson', 'Thompson', 'White', 'Lopez'];
+
+    // --------------------
+    // Neural net
+    // --------------------
+    class NeuralNetwork {
+      constructor(inputSize, hiddenSize, outputSize) {
+        this.inputSize = inputSize;
+        this.hiddenSize = hiddenSize;
+        this.outputSize = outputSize;
+        this.weightsIH = this.randomMatrix(hiddenSize, inputSize, inputSize);
+        this.weightsHO = this.randomMatrix(outputSize, hiddenSize, hiddenSize);
+        this.biasH = new Array(hiddenSize).fill(0).map(() => (Math.random() - 0.5) * 0.1);
+        this.biasO = new Array(outputSize).fill(0).map(() => (Math.random() - 0.5) * 0.1);
+      }
+      randomMatrix(rows, cols, fanIn) {
+        const scale = Math.sqrt(2 / fanIn);
+        const m = new Array(rows);
+        for (let r = 0; r < rows; r++) {
+          const row = new Array(cols);
+          for (let c = 0; c < cols; c++) row[c] = (Math.random() - 0.5) * 2 * scale;
+          m[r] = row;
+        }
+        return m;
+      }
+      activate(x) { return Math.tanh(x); }
+      forward(inputs) {
+        // Safe pad/truncate so we always use the full weight matrix.
+        const x = (inputs.length === this.inputSize)
+          ? inputs
+          : inputs.length > this.inputSize
+            ? inputs.slice(0, this.inputSize)
+            : inputs.concat(new Array(this.inputSize - inputs.length).fill(0));
+
+        const hidden = new Array(this.hiddenSize);
+        for (let i = 0; i < this.hiddenSize; i++) {
+          let sum = this.biasH[i];
+          const w = this.weightsIH[i];
+          for (let j = 0; j < this.inputSize; j++) sum += w[j] * x[j];
+          hidden[i] = this.activate(sum);
+        }
+
+        const out = new Array(this.outputSize);
+        for (let i = 0; i < this.outputSize; i++) {
+          let sum = this.biasO[i];
+          const w = this.weightsHO[i];
+          for (let j = 0; j < this.hiddenSize; j++) sum += w[j] * hidden[j];
+          out[i] = this.activate(sum);
+        }
+        return out;
+      }
+      clone() {
+        const nn = new NeuralNetwork(this.inputSize, this.hiddenSize, this.outputSize);
+        nn.weightsIH = this.weightsIH.map(row => row.slice());
+        nn.weightsHO = this.weightsHO.map(row => row.slice());
+        nn.biasH = this.biasH.slice();
+        nn.biasO = this.biasO.slice();
+        return nn;
+      }
+      mutate(rate = 0.1, strength = 0.3) {
+        const mutateVal = (v) => (Math.random() < rate ? v + (Math.random() - 0.5) * 2 * strength : v);
+        const mutateArr = (arr) => { for (let i = 0; i < arr.length; i++) arr[i] = mutateVal(arr[i]); };
+        const mutateMat = (mat) => { for (let r = 0; r < mat.length; r++) mutateArr(mat[r]); };
+        mutateMat(this.weightsIH);
+        mutateMat(this.weightsHO);
+        mutateArr(this.biasH);
+        mutateArr(this.biasO);
+      }
+    }
+
+    // --------------------
+    // Pickups
+    // --------------------
+    class BowPickup { constructor(x, y) { this.x = x; this.y = y; this.radius = 18; this.pickedUp = false; } }
+    class KnifePickup { constructor(x, y) { this.x = x; this.y = y; this.radius = 14; this.pickedUp = false; } }
+    class SniperPickup { constructor(x, y) { this.x = x; this.y = y; this.radius = 18; this.pickedUp = false; } }
+    class ShotgunPickup { constructor(x, y) { this.x = x; this.y = y; this.radius = 18; this.pickedUp = false; } }
+    class BazookaPickup { constructor(x, y) { this.x = x; this.y = y; this.radius = 22; this.pickedUp = false; this.spawnTime = Date.now(); } }
+    class HealingPickup { constructor(x, y) { this.x = x; this.y = y; this.radius = 14; this.pickedUp = false; this.healAmount = 50; } }
+    class ArmorPickup { constructor(x, y) { this.x = x; this.y = y; this.radius = 14; this.pickedUp = false; } }
+
+    // --------------------
+    // Projectiles
+    // --------------------
+    class Arrow {
+      constructor(x, y, angle, owner) {
+        this.x = x; this.y = y; this.angle = angle; this.owner = owner;
+        this.speed = 350; this.damage = 50; this.maxRange = 1200;
+        this.distanceTraveled = 0; this.alive = true; this.radius = 5;
+      }
+      update(dt, agents, obstacles) {
+        if (!this.alive) return null;
+        const moveX = Math.cos(this.angle) * this.speed * dt;
+        const moveY = Math.sin(this.angle) * this.speed * dt;
+        this.x += moveX; this.y += moveY;
+        this.distanceTraveled += Math.hypot(moveX, moveY);
+        if (this.distanceTraveled >= this.maxRange) { this.alive = false; return null; }
+        for (const obs of obstacles) {
+          if (this.x >= obs.x && this.x <= obs.x + obs.w && this.y >= obs.y && this.y <= obs.y + obs.h) {
+            this.alive = false; return null;
+          }
+        }
+        for (const agent of agents) {
+          if (agent === this.owner || !agent.alive || agent.team === this.owner.team) continue;
+          const dx = this.x - agent.x, dy = this.y - agent.y;
+          if (Math.hypot(dx, dy) < agent.radius + this.radius) { this.alive = false; return agent; }
+        }
+        return null;
+      }
+    }
+
+    class Bullet {
+      constructor(x, y, angle, owner) {
+        this.x = x; this.y = y; this.angle = angle; this.owner = owner;
+        this.speed = 800; this.damage = 100; this.maxRange = 2000;
+        this.distanceTraveled = 0; this.alive = true; this.radius = 3;
+      }
+      update(dt, agents, obstacles) {
+        if (!this.alive) return null;
+        const moveX = Math.cos(this.angle) * this.speed * dt;
+        const moveY = Math.sin(this.angle) * this.speed * dt;
+        this.x += moveX; this.y += moveY;
+        this.distanceTraveled += Math.hypot(moveX, moveY);
+        if (this.distanceTraveled >= this.maxRange) { this.alive = false; return null; }
+        for (const obs of obstacles) {
+          if (this.x >= obs.x && this.x <= obs.x + obs.w && this.y >= obs.y && this.y <= obs.y + obs.h) {
+            this.alive = false; return null;
+          }
+        }
+        for (const agent of agents) {
+          if (agent === this.owner || !agent.alive || agent.team === this.owner.team) continue;
+          const dx = this.x - agent.x, dy = this.y - agent.y;
+          if (Math.hypot(dx, dy) < agent.radius + this.radius) { this.alive = false; return agent; }
+        }
+        return null;
+      }
+    }
+
+    class ShotgunBlast {
+      constructor(x, y, angle, owner) {
+        this.x = x; this.y = y; this.angle = angle; this.owner = owner;
+        this.nearRange = 80; this.farRange = 150; this.spreadAngle = Math.PI / 4;
+        this.maxTime = 0.2; this.timer = 0; this.active = true;
+        this.hasDealtNearDamage = false; this.hasDealtFarDamage = false;
+        this.currentRadius = 0; this.speed = 800;
+      }
+      update(dt, agents, world) {
+        if (!this.active) return;
+        this.timer += dt;
+        this.currentRadius = this.timer * this.speed;
+        if (!this.hasDealtNearDamage && this.currentRadius >= this.nearRange) {
+          this.hasDealtNearDamage = true;
+          this.dealDamageInRange(agents, world, 0, this.nearRange, 100);
+        }
+        if (!this.hasDealtFarDamage && this.currentRadius >= this.farRange) {
+          this.hasDealtFarDamage = true;
+          this.dealDamageInRange(agents, world, this.nearRange, this.farRange, 50);
+        }
+        if (this.timer >= this.maxTime) this.active = false;
+      }
+      dealDamageInRange(agents, world, minDist, maxDist, damage) {
+        for (const agent of agents) {
+          if (agent === this.owner || !agent.alive || agent.team === this.owner.team) continue;
+          const dx = agent.x - this.x, dy = agent.y - this.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < minDist || dist > maxDist) continue;
+
+          let angleToAgent = Math.atan2(dy, dx);
+          let angleDiff = angleToAgent - this.angle;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          if (Math.abs(angleDiff) > this.spreadAngle) continue;
+
+          const killed = agent.takeDamage(damage, this.owner, world);
+          this.owner.damageDealt += damage;
+          world.addEvent(this.owner.name + ' blasted ' + agent.name, 'damage');
+          if (killed) {
+            this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
+            world.teamKills[this.owner.team]++;
+            this.owner.killScore += 50;
+            world.addEvent(this.owner.name + ' killed ' + agent.name + '!', 'kill');
+          }
+        }
+      }
+    }
+
+    class Rocket {
+      constructor(x, y, angle, owner) {
+        this.x = x; this.y = y; this.angle = angle; this.owner = owner;
+        this.speed = 280; // Slower than arrows (350)
+        this.maxRange = 1500;
+        this.distanceTraveled = 0;
+        this.alive = true;
+        this.radius = 8;
+        this.explosionRadius = 120;
+        this.damage = 200; // Instakill in center
+        // Trail particles
+        this.trail = [];
+        this.trailTimer = 0;
+      }
+      update(dt, agents, obstacles, world) {
+        if (!this.alive) return null;
+        
+        // Wobbly flight path for visual fun
+        const wobble = Math.sin(this.distanceTraveled * 0.05) * 0.02;
+        const moveAngle = this.angle + wobble;
+        
+        const moveX = Math.cos(moveAngle) * this.speed * dt;
+        const moveY = Math.sin(moveAngle) * this.speed * dt;
+        this.x += moveX;
+        this.y += moveY;
+        this.distanceTraveled += Math.hypot(moveX, moveY);
+        
+        // Add smoke trail particles
+        this.trailTimer += dt;
+        if (this.trailTimer > 0.02) {
+          this.trailTimer = 0;
+          this.trail.push({
+            x: this.x - Math.cos(this.angle) * 15,
+            y: this.y - Math.sin(this.angle) * 15,
+            life: 1,
+            size: 8 + Math.random() * 6,
+            vx: (Math.random() - 0.5) * 30,
+            vy: (Math.random() - 0.5) * 30
+          });
+        }
+        
+        // Update trail
+        for (const p of this.trail) {
+          p.life -= dt * 2;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.size *= 0.98;
+        }
+        this.trail = this.trail.filter(p => p.life > 0);
+        
+        // Max range - explode
+        if (this.distanceTraveled >= this.maxRange) {
+          this.alive = false;
+          return { type: 'explode', x: this.x, y: this.y };
+        }
+        
+        // Hit obstacle - explode
+        for (const obs of obstacles) {
+          if (this.x >= obs.x && this.x <= obs.x + obs.w && this.y >= obs.y && this.y <= obs.y + obs.h) {
+            this.alive = false;
+            return { type: 'explode', x: this.x, y: this.y };
+          }
+        }
+        
+        // Hit agent - explode
+        for (const agent of agents) {
+          if (agent === this.owner || !agent.alive || agent.team === this.owner.team) continue;
+          const dx = this.x - agent.x, dy = this.y - agent.y;
+          if (Math.hypot(dx, dy) < agent.radius + this.radius) {
+            this.alive = false;
+            return { type: 'explode', x: this.x, y: this.y };
+          }
+        }
+        
+        return null;
+      }
+    }
+
+    class Explosion {
+      constructor(x, y, owner, radius, damage) {
+        this.x = x;
+        this.y = y;
+        this.owner = owner;
+        this.radius = radius;
+        this.damage = damage;
+        this.maxTime = 0.6;
+        this.timer = 0;
+        this.hasDealtDamage = false;
+        this.currentRadius = 0;
+        // Shockwave rings
+        this.rings = [];
+        // Debris particles
+        this.particles = [];
+        for (let i = 0; i < 40; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 150 + Math.random() * 350;
+          this.particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.4 + Math.random() * 0.4,
+            size: 3 + Math.random() * 8,
+            color: Math.random() > 0.5 ? '#ff6600' : (Math.random() > 0.5 ? '#ffcc00' : '#ff0000')
+          });
+        }
+        // Initial flash
+        this.flashIntensity = 1;
+      }
+      update(dt, agents, world) {
+        this.timer += dt;
+        this.currentRadius = Math.min(this.radius, (this.timer / 0.15) * this.radius);
+        this.flashIntensity = Math.max(0, 1 - this.timer * 4);
+        
+        // Add expanding rings
+        if (this.timer < 0.3 && Math.random() < 0.3) {
+          this.rings.push({ radius: this.currentRadius * 0.3, alpha: 1 });
+        }
+        
+        // Update rings
+        for (const ring of this.rings) {
+          ring.radius += 400 * dt;
+          ring.alpha -= dt * 3;
+        }
+        this.rings = this.rings.filter(r => r.alpha > 0);
+        
+        // Update particles
+        for (const p of this.particles) {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.96;
+          p.vy *= 0.96;
+          p.vy += 200 * dt; // Gravity
+          p.life -= dt;
+          p.size *= 0.97;
+        }
+        this.particles = this.particles.filter(p => p.life > 0);
+        
+        // Deal damage once at peak
+        if (!this.hasDealtDamage && this.timer >= 0.05) {
+          this.hasDealtDamage = true;
+          for (const agent of agents) {
+            if (!agent.alive || (this.owner && agent.team === this.owner.team)) continue;
+            const dx = agent.x - this.x, dy = agent.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > this.radius) continue;
+            
+            // Damage falloff: 100% at center, 50% at edge
+            const falloff = 1 - (dist / this.radius) * 0.5;
+            const finalDamage = Math.floor(this.damage * falloff);
+            
+            const killed = agent.takeDamage(finalDamage, this.owner, world);
+            if (this.owner) {
+              this.owner.damageDealt += finalDamage;
+              if (killed) {
+                this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
+                world.teamKills[this.owner.team]++;
+                this.owner.killScore += 50;
+                world.addEvent('💥 ' + this.owner.name + ' OBLITERATED ' + agent.name + '!', 'kill');
+              } else {
+                world.addEvent(this.owner.name + ' rocket hit ' + agent.name, 'damage');
+              }
+            }
+          }
+        }
+        
+        return this.timer >= this.maxTime;
+      }
+    }
+
+    // --------------------
+    // Control Point
+    // --------------------
+    class ControlPoint {
+      constructor(x, y, size) {
+        this.x = x; this.y = y; this.size = size;
+        this.owner = null; this.capturer = null;
+        this.captureProgress = 0; this.captureTime = 10;
+        this.contested = false;
+        this.color = 'hsl(' + (Math.random() * 360) + ', 100%, 50%)';
+      }
+      containsAgent(agent) {
+        return agent.x >= this.x && agent.x <= this.x + this.size && agent.y >= this.y && agent.y <= this.y + this.size;
+      }
+      getAgentsInside(agents) { return agents.filter(a => a.alive && this.containsAgent(a)); }
+      update(dt, agents, world) {
+        const inside = this.getAgentsInside(agents);
+
+        if (this.owner && !this.owner.alive) {
+          world.addEvent(this.owner.name + ' lost point', 'damage');
+          this.owner = null;
+        }
+
+        this.contested = inside.length > 1;
+        if (this.contested) {
+          this.capturer = null;
+          this.captureProgress = 0;
+          return;
+        }
+
+        if (inside.length === 1) {
+          const agent = inside[0];
+
+          if (this.owner === agent) {
+            agent.controlPointSeconds += dt;
+            return;
+          }
+
+          // Capturing
+          if (this.capturer !== agent) {
+            this.capturer = agent;
+            this.captureProgress = 0;
+          }
+          this.captureProgress += dt;
+
+          if (this.captureProgress >= this.captureTime) {
+            if (this.owner && this.owner !== agent) world.addEvent(agent.name + ' took point from ' + this.owner.name + '!', 'kill');
+            this.owner = agent;
+            this.capturer = null;
+            this.captureProgress = 0;
+            agent.controlPointCaptures++;
+            world.addEvent(agent.name + ' captured point!', 'kill');
+          }
+          return;
+        }
+
+        // Nobody inside
+        this.capturer = null;
+        this.captureProgress = 0;
+        if (this.owner && this.owner.alive) this.owner.controlPointSeconds += dt;
+      }
+    }
+
+    // --------------------
+    // Spatial hash (cheap nearest-neighbor acceleration)
+    // --------------------
+    class SpatialHash {
+      constructor(cellSize) {
+        this.cellSize = cellSize;
+        this.map = new Map();
+      }
+      key(cx, cy) { return (cx << 16) ^ (cy & 0xffff); }
+      cell(v) { return Math.floor(v / this.cellSize); }
+      clear() { this.map.clear(); }
+      insert(obj, x, y) {
+        const cx = this.cell(x), cy = this.cell(y);
+        const k = this.key(cx, cy);
+        let arr = this.map.get(k);
+        if (!arr) { arr = []; this.map.set(k, arr); }
+        arr.push(obj);
+      }
+      query(x, y, radius) {
+        const r = radius;
+        const cs = this.cellSize;
+        const minX = this.cell(x - r), maxX = this.cell(x + r);
+        const minY = this.cell(y - r), maxY = this.cell(y + r);
+        const out = [];
+        for (let cx = minX; cx <= maxX; cx++) {
+          for (let cy = minY; cy <= maxY; cy++) {
+            const arr = this.map.get(this.key(cx, cy));
+            if (arr) out.push(...arr);
+          }
+        }
+        return out;
+      }
+    }
+
+    // --------------------
+    // Agent
+    // --------------------
+    // QUAKE MODE - Everyone gets a rocket launcher!
+    const ROCKET = {
+      damage: 90,          // Direct hit = almost one-shot
+      splashRadius: 120,   // Big splash
+      splashFalloff: 0.4,  // 40% damage at edge
+      speed: 450,          // Fast enough to hit, slow enough to dodge
+      fireRate: 4.0,        // 4 seconds between shots - makes each rocket count!
+      selfDamage: true,    // Watch your feet!
+      maxRange: 2000
+    };
+
+    class Agent {
+      constructor(x, y, name, brain = null, team = 0) {
+        this.x = x; this.y = y; this.name = name;
+        this.team = team; // 0 = red, 1 = blue
+        this.rotation = Math.random() * Math.PI * 2;
+        this.vx = 0; this.vy = 0;
+
+        this.health = 100; this.maxHealth = 100;
+        this.stamina = 100; this.maxStamina = 100;
+
+        this.alive = true;
+        this.attackCooldown = 0;
+        this.attackRecovery = 0;
+        
+        // Respawn system
+        this.respawnTimer = 0;
+        this.deaths = 0;
+
+        // Weapon cooldown
+        this.weaponCooldown = 0;
+
+        this.damageDealt = 0;
+        this.damageTaken = 0;
+        this.kills = 0;
+        this.assists = 0;
+        this.lastHitBy = null; // For assist tracking
+        
+        // Lifetime stats (persist across rounds)
+        this.totalKills = 0;
+        this.totalDeaths = 0;
+        this.roundsPlayed = 0;
+
+        // Network: 24 inputs → 16 hidden → 4 outputs (simplified)
+        // Inputs: 16 raycast distances/types + 8 state (health, cooldown, velocity, etc)
+        // Outputs: turn, move speed, shoot, strafe
+        this.brain = brain || new NeuralNetwork(24, 16, 4);
+
+        this.radius = 16;
+        this.color = team === 0 ? '#ff4444' : '#4488ff';
+      }
+      
+      // Reset for new round but keep identity
+      resetForRound() {
+        this.alive = true;
+        this.respawnTimer = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.attackCooldown = 0;
+        this.attackRecovery = 0;
+        this.weaponCooldown = 0;
+        this.weaponCooldown = 0;
+        this.lastHitBy = null;
+        
+        // Reset round stats but not lifetime stats
+        this.damageDealt = 0;
+        this.damageTaken = 0;
+        this.kills = 0;
+        this.deaths = 0;
+        this.assists = 0;
+        this.roundsPlayed++;
+        
+        this.health = this.maxHealth;
+        this.stamina = this.maxStamina;
+      }
+      
+      // Respawn after death
+      respawn(world) {
+        this.health = this.maxHealth;
+        this.stamina = this.maxStamina;
+        this.alive = true;
+        this.respawnTimer = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.attackCooldown = 0;
+        this.attackRecovery = 0;
+        this.weaponCooldown = 0;
+        this.lastHitBy = null;
+        
+        // Spawn at back of team's side
+        const clusterX = this.team === 0 ? 80 : world.width - 80;
+        this.x = clusterX + (Math.random() - 0.5) * 100;
+        this.y = world.height / 2 + (Math.random() - 0.5) * (world.height - 200);
+        this.x = clamp(this.x, 40, world.width - 40);
+        this.y = clamp(this.y, 40, world.height - 40);
+        this.rotation = this.team === 0 ? 0 : Math.PI;
+      }
+
+      get score() {
+        const killPoints = this.kills * 50;
+        const assistPoints = this.assists * 25;
+        const damagePoints = this.damageDealt;
+        return killPoints + assistPoints + damagePoints - this.damageTaken;
+      }
+
+      castRays(world, numRays = 8, fov = Math.PI * 0.8) {
+        const { agents, obstacles, width: worldWidth, height: worldHeight } = world;
+        const rayData = [];
+
+        const startAngle = this.rotation - fov / 2;
+        const angleStep = fov / (numRays - 1);
+        const maxDist = Math.hypot(worldWidth, worldHeight);
+
+        // Check all alive agents for raycasts (full map visibility)
+        const nearCandidates = agents.filter(a => a.alive && a !== this);
+
+        for (let i = 0; i < numRays; i++) {
+          const angle = startAngle + angleStep * i;
+          let closestDist = maxDist;
+          let closestType = 0;
+
+          const edgeDist = this.raycastMapEdge(angle, worldWidth, worldHeight);
+          if (edgeDist < closestDist) { closestDist = edgeDist; closestType = 0; }
+
+          for (const obs of obstacles) {
+            const dist = this.raycastRect(angle, closestDist, obs);
+            if (dist < closestDist) { closestDist = dist; closestType = 0.5; }
+          }
+
+          for (const other of nearCandidates) {
+            if (other === this || !other.alive) continue;
+            const dist = this.raycastCircle(angle, closestDist, other.x, other.y, other.radius);
+            if (dist < closestDist) { closestDist = dist; closestType = 1; }
+          }
+
+          rayData.push(closestDist / maxDist);
+          rayData.push(closestType);
+        }
+        return rayData;
+      }
+
+      raycastMapEdge(angle, w, h) {
+        const dx = Math.cos(angle), dy = Math.sin(angle);
+        let tMin = Infinity;
+        if (dx < 0) { const t = -this.x / dx; if (t > 0 && t < tMin) tMin = t; }
+        if (dx > 0) { const t = (w - this.x) / dx; if (t > 0 && t < tMin) tMin = t; }
+        if (dy < 0) { const t = -this.y / dy; if (t > 0 && t < tMin) tMin = t; }
+        if (dy > 0) { const t = (h - this.y) / dy; if (t > 0 && t < tMin) tMin = t; }
+        return tMin;
+      }
+
+      raycastRect(angle, max, rect) {
+        const dx = Math.cos(angle), dy = Math.sin(angle);
+        let tMin = 0, tMax = max;
+
+        if (dx !== 0) {
+          const t1 = (rect.x - this.x) / dx;
+          const t2 = (rect.x + rect.w - this.x) / dx;
+          tMin = Math.max(tMin, Math.min(t1, t2));
+          tMax = Math.min(tMax, Math.max(t1, t2));
+        } else if (this.x < rect.x || this.x > rect.x + rect.w) {
+          return max;
+        }
+
+        if (dy !== 0) {
+          const t1 = (rect.y - this.y) / dy;
+          const t2 = (rect.y + rect.h - this.y) / dy;
+          tMin = Math.max(tMin, Math.min(t1, t2));
+          tMax = Math.min(tMax, Math.max(t1, t2));
+        } else if (this.y < rect.y || this.y > rect.y + rect.h) {
+          return max;
+        }
+
+        if (tMin <= tMax && tMin > 0) return tMin;
+        return max;
+      }
+
+      raycastCircle(angle, max, cx, cy, r) {
+        const dx = Math.cos(angle), dy = Math.sin(angle);
+        const fx = this.x - cx, fy = this.y - cy;
+        const a = dx * dx + dy * dy;
+        const b = 2 * (fx * dx + fy * dy);
+        const c = fx * fx + fy * fy - r * r;
+        const d = b * b - 4 * a * c;
+        if (d < 0) return max;
+        const t = (-b - Math.sqrt(d)) / (2 * a);
+        if (t > 0 && t < max) return t;
+        return max;
+      }
+
+      think(world) {
+        if (!this.alive) return null;
+
+        const rayData = this.castRays(world);
+
+        // Find nearest enemy
+        let nearestEnemyDist = 1;
+        let nearestEnemyAngle = 0;
+        const enemies = world.agents.filter(a => a.alive && a.team !== this.team);
+        for (const enemy of enemies) {
+          const dx = enemy.x - this.x, dy = enemy.y - this.y;
+          const dist = Math.hypot(dx, dy);
+          const nDist = Math.min(1, dist / 1000);
+          if (nDist < nearestEnemyDist) {
+            nearestEnemyDist = nDist;
+            let a = Math.atan2(dy, dx) - this.rotation;
+            while (a > Math.PI) a -= Math.PI * 2;
+            while (a < -Math.PI) a += Math.PI * 2;
+            nearestEnemyAngle = a / Math.PI;
+          }
+        }
+
+        // Find nearest ally (to avoid friendly fire)
+        let nearestAllyDist = 1;
+        let nearestAllyAngle = 0;
+        const allies = world.agents.filter(a => a.alive && a.team === this.team && a !== this);
+        for (const ally of allies) {
+          const dx = ally.x - this.x, dy = ally.y - this.y;
+          const dist = Math.hypot(dx, dy);
+          const nDist = Math.min(1, dist / 500);
+          if (nDist < nearestAllyDist) {
+            nearestAllyDist = nDist;
+            let a = Math.atan2(dy, dx) - this.rotation;
+            while (a > Math.PI) a -= Math.PI * 2;
+            while (a < -Math.PI) a += Math.PI * 2;
+            nearestAllyAngle = a / Math.PI;
+          }
+        }
+
+        const speedNorm = clamp(Math.hypot(this.vx, this.vy) / 200, 0, 1);
+        const weaponReady = this.weaponCooldown <= 0 ? 1 : 0;
+
+        // Simplified inputs for rocket mode: 24 total (16 rays + 8 internal)
+        const internal = [
+          this.health / this.maxHealth,
+          speedNorm,
+          weaponReady,
+          nearestEnemyAngle,
+          nearestEnemyDist,
+          nearestAllyAngle,
+          nearestAllyDist,
+          this.team
+        ];
+
+        const outputs = this.brain.forward(rayData.concat(internal));
+
+        return {
+          turnAmount: outputs[0],
+          speedAmount: (outputs[1] + 1) / 2,
+          wantsShoot: outputs[2] > 0,
+          strafe: outputs[3]
+        };
+      }
+
+      update(decision, dt, world, obstacles) {
+        if (!this.alive) return;
+
+        this.attackCooldown = Math.max(0, this.attackCooldown - dt);
+        this.attackRecovery = Math.max(0, this.attackRecovery - dt);
+        this.weaponCooldown = Math.max(0, this.weaponCooldown - dt);
+
+        if (!decision) return;
+
+        this.rotation += decision.turnAmount * 4 * dt; // Faster turning for dodging
+
+        // Forward/backward movement
+        let targetSpeed = decision.speedAmount * 150; // Faster base speed
+        
+        // Strafing (perpendicular movement)
+        const strafeSpeed = (decision.strafe || 0) * 100;
+
+        const tvx = Math.cos(this.rotation) * targetSpeed + Math.cos(this.rotation + Math.PI/2) * strafeSpeed;
+        const tvy = Math.sin(this.rotation) * targetSpeed + Math.sin(this.rotation + Math.PI/2) * strafeSpeed;
+        
+        const lerp = Math.min(1, 8 * dt); // Snappier movement
+        this.vx += (tvx - this.vx) * lerp;
+        this.vy += (tvy - this.vy) * lerp;
+
+        let nx = this.x + this.vx * dt;
+        let ny = this.y + this.vy * dt;
+
+        for (const obs of obstacles) {
+          const col = this.checkRectCollision(nx, ny, obs);
+          if (col) { nx = col.x; ny = col.y; }
+        }
+
+        this.x = clamp(nx, this.radius, world.width - this.radius);
+        this.y = clamp(ny, this.radius, world.height - this.radius);
+      }
+
+      // Shoot rocket!
+      tryShoot(world) {
+        if (!this.alive || this.weaponCooldown > 0) return null;
+
+        this.weaponCooldown = ROCKET.fireRate;
+        
+        return { 
+          type: 'rocket', 
+          x: this.x + Math.cos(this.rotation) * 25, 
+          y: this.y + Math.sin(this.rotation) * 25, 
+          angle: this.rotation, 
+          owner: this, 
+          damage: ROCKET.damage,
+          splashRadius: ROCKET.splashRadius,
+          splashFalloff: ROCKET.splashFalloff,
+          speed: ROCKET.speed, 
+          range: ROCKET.maxRange,
+          traveled: 0,
+          alive: true
+        };
+      }
+
+      checkRectCollision(newX, newY, rect) {
+        const cx = Math.max(rect.x, Math.min(newX, rect.x + rect.w));
+        const cy = Math.max(rect.y, Math.min(newY, rect.y + rect.h));
+        const dx = newX - cx, dy = newY - cy;
+        const dist = Math.hypot(dx, dy);
+        if (dist < this.radius) {
+          const ov = this.radius - dist;
+          if (dist > 0) return { x: newX + (dx / dist) * ov, y: newY + (dy / dist) * ov };
+          return { x: newX + this.radius, y: newY };
+        }
+        return null;
+      }
+
+      tryAttack(agents, world) {
+        // No melee in Quake mode - rockets only!
+        return null;
+      }
+
+      takeDamage(amount, attacker, world) {
+        this.health -= amount;
+        this.damageTaken += amount;
+
+        // Track who hit us for assists
+        if (attacker && attacker !== this.lastHitBy) {
+          if (this.lastHitBy && this.health <= 0 && this.lastHitBy !== attacker) {
+            this.lastHitBy.assists++;
+          }
+          this.lastHitBy = attacker;
+        }
+
+        if (this.health > 0) return false;
+
+        // Death
+        this.alive = false;
+        this.deaths++;
+        this.totalDeaths++;
+        this.respawnTimer = 5.0; // 5 seconds to respawn
+        return true;
+      }
+
+      clone(newName, team) {
+        const child = new Agent(this.x, this.y, newName, this.brain.clone(), team);
+        return child;
+      }
+    }
+
+    // --------------------
+    // World
+    // --------------------
+    class World {
+      constructor(width, height) {
+        this.width = width;
+        this.height = height;
+
+        this.agents = [];
+        this.obstacles = [];
+        this.buildings = [];
+
+        // Projectiles - ROCKETS ONLY in Quake mode
+        this.rockets = [];
+        this.explosions = [];
+        this.smokeParticles = []; // Smoke trail particles
+
+        this.roundTime = 180; // 3 minutes
+        this.timeLeft = this.roundTime;
+
+        this.usedNames = new Set();
+        this.generation = 1;
+        this.events = [];
+        this.paused = false;
+
+        this.population = 100; // 50 per team
+        this.aliveCount = 0;
+        
+        // Team Deathmatch specific
+        this.teamKills = [0, 0]; // [red kills, blue kills] - NET score (kills - ricochets)
+        this.teamRawKills = [0, 0]; // Actual enemy kills
+        this.teamRicochets = [0, 0]; // Friendly fire incidents
+        this.killLimit = 20;
+        this.winningTeam = null;
+        this.teamWins = [0, 0]; // Track total wins per team
+        
+        // Team brains (evolved separately)
+        this.teamBrains = [null, null];
+
+        this.spatialAgents = new SpatialHash(120);
+
+        this.generateObstacles();
+      }
+
+      setRoundTimeSeconds(sec) {
+        this.roundTime = Math.max(10, sec);
+        this.timeLeft = Math.min(this.timeLeft, this.roundTime);
+      }
+
+      generateObstacles() {
+        this.obstacles = [];
+        this.buildings = [];
+
+        const bTypes = [
+          { w: 100, h: 100 },
+          { w: 150, h: 100 },
+          { w: 80, h: 80 },
+          { w: 120, h: 60 },
+          { w: 60, h: 120 },
+        ];
+
+        const overlaps = (x, y, w, h, margin = 30) => {
+          for (const o of this.obstacles) {
+            if (x < o.x + o.w + margin && x + w > o.x - margin && 
+                y < o.y + o.h + margin && y + h > o.y - margin) return true;
+          }
+          return false;
+        };
+
+        const addBuilding = (x, y, w, h) => {
+          if (!overlaps(x, y, w, h)) {
+            this.buildings.push({ x, y, w, h });
+            this.obstacles.push({ x, y, w, h });
+            return true;
+          }
+          return false;
+        };
+
+        // =====================
+        // SPAWN AREA COVER - Heavy protection near spawns
+        // =====================
+        
+        // Red spawn cover (left side, x: 100-500)
+        for (let i = 0; i < 8; i++) {
+          const x = 120 + Math.random() * 350;
+          const y = 150 + (i / 8) * (this.height - 300);
+          const t = bTypes[Math.floor(Math.random() * bTypes.length)];
+          addBuilding(x, y, t.w, t.h);
+        }
+        
+        // Blue spawn cover (right side, x: width-500 to width-100)
+        for (let i = 0; i < 8; i++) {
+          const x = this.width - 470 + Math.random() * 350;
+          const y = 150 + (i / 8) * (this.height - 300);
+          const t = bTypes[Math.floor(Math.random() * bTypes.length)];
+          addBuilding(x, y, t.w, t.h);
+        }
+
+        // =====================
+        // MID TRANSITION - Some cover between spawn and open middle
+        // =====================
+        
+        // Red side transition (x: 500-800)
+        for (let i = 0; i < 4; i++) {
+          const x = 500 + Math.random() * 250;
+          const y = 200 + Math.random() * (this.height - 400);
+          const t = bTypes[Math.floor(Math.random() * bTypes.length)];
+          addBuilding(x, y, t.w, t.h);
+        }
+        
+        // Blue side transition (x: width-800 to width-500)
+        for (let i = 0; i < 4; i++) {
+          const x = this.width - 750 + Math.random() * 250;
+          const y = 200 + Math.random() * (this.height - 400);
+          const t = bTypes[Math.floor(Math.random() * bTypes.length)];
+          addBuilding(x, y, t.w, t.h);
+        }
+
+        // =====================
+        // OPEN MIDDLE - Very sparse, just a few small covers
+        // =====================
+        
+        // Only 2-3 small obstacles in the center zone (x: 900-1500)
+        for (let i = 0; i < 3; i++) {
+          const x = 950 + Math.random() * 500;
+          const y = 300 + Math.random() * (this.height - 600);
+          addBuilding(x, y, 60, 60); // Small cover only
+        }
+
+        // =====================
+        // EDGE LANES - Cover along top and bottom for flanking
+        // =====================
+        
+        // Top lane
+        for (let i = 0; i < 4; i++) {
+          const x = 300 + (i / 4) * (this.width - 600);
+          addBuilding(x, 80 + Math.random() * 60, 80, 80);
+        }
+        
+        // Bottom lane
+        for (let i = 0; i < 4; i++) {
+          const x = 300 + (i / 4) * (this.width - 600);
+          addBuilding(x, this.height - 160 + Math.random() * 60, 80, 80);
+        }
+      }
+
+      generateUniqueName() {
+        let n;
+        let att = 0;
+        do {
+          n = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)] + ' ' + LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+          if (this.usedNames.has(n)) {
+            let s = 2;
+            while (this.usedNames.has(n + ' (' + s + ')')) s++;
+            n = n + ' (' + s + ')';
+          }
+          att++;
+        } while (this.usedNames.has(n) && att < 100);
+        this.usedNames.add(n);
+        return n;
+      }
+
+      spawnAgents(count) {
+        this.population = count;
+        this.agents = [];
+        this.usedNames.clear();
+
+        this.rockets = [];
+        this.explosions = [];
+        this.smokeParticles = [];
+
+        this.teamKills = [0, 0];
+        this.teamRawKills = [0, 0];
+        this.teamRicochets = [0, 0];
+        this.winningTeam = null;
+
+        const perTeam = Math.floor(count / 2);
+        
+        // Create persistent soldiers for each team
+        for (let team = 0; team < 2; team++) {
+          const clusterX = team === 0 ? 80 : this.width - 80;
+          const clusterY = this.height / 2;
+          
+          for (let i = 0; i < perTeam; i++) {
+            let x = clusterX + (Math.random() - 0.5) * 150;
+            let y = clusterY + (Math.random() - 0.5) * (this.height - 200);
+            x = clamp(x, 40, this.width - 40);
+            y = clamp(y, 40, this.height - 40);
+            
+            const brain = this.teamBrains[team]?.clone() || null;
+            const agent = new Agent(x, y, this.generateUniqueName(), brain, team);
+            agent.rotation = team === 0 ? 0 : Math.PI;
+            
+            if (this.teamBrains[team] && i > 0) {
+              agent.brain.mutate(0.1, 0.3);
+            }
+            
+            this.agents.push(agent);
+          }
+        }
+
+        this.timeLeft = this.roundTime;
+      }
+
+      spawnNextRound() {
+        // Sort each team by score
+        const redAgents = this.agents.filter(a => a.team === 0);
+        const blueAgents = this.agents.filter(a => a.team === 1);
+        
+        redAgents.sort((a, b) => b.score - a.score);
+        blueAgents.sort((a, b) => b.score - a.score);
+        
+        // Brain transfer: EVERYONE below top 10% gets a clone of a top performer
+        const transferBrains = (agents) => {
+          if (agents.length === 0) return;
+          
+          const top10pct = Math.max(1, Math.floor(agents.length * 0.1)); // Top 5 agents
+          const top10Brains = agents.slice(0, top10pct).map(a => a.brain.clone());
+          
+          // Top 10% - keep their brains, tiny mutation to explore
+          for (let i = 0; i < top10pct; i++) {
+            agents[i].brain.mutate(0.02, 0.1);
+          }
+          
+          // Everyone else gets a random top performer's brain with mutation
+          for (let i = top10pct; i < agents.length; i++) {
+            const parentBrain = top10Brains[Math.floor(Math.random() * top10Brains.length)];
+            agents[i].brain = parentBrain.clone();
+            
+            // More mutation the worse they performed
+            const performanceRatio = i / agents.length; // 0.1 to 1.0
+            const mutationRate = 0.1 + performanceRatio * 0.2; // 0.1 to 0.3
+            const mutationStrength = 0.2 + performanceRatio * 0.4; // 0.2 to 0.6
+            agents[i].brain.mutate(mutationRate, mutationStrength);
+          }
+        };
+        
+        transferBrains(redAgents);
+        transferBrains(blueAgents);
+        
+        // Update team brains to best performer
+        if (redAgents[0]) this.teamBrains[0] = redAgents[0].brain.clone();
+        if (blueAgents[0]) this.teamBrains[1] = blueAgents[0].brain.clone();
+        
+        // Reset round state
+        this.teamKills = [0, 0];
+        this.teamRawKills = [0, 0];
+        this.teamRicochets = [0, 0];
+        this.winningTeam = null;
+        this.timeLeft = this.roundTime;
+        this.generateObstacles();
+
+        this.rockets = [];
+        this.explosions = [];
+        this.smokeParticles = [];
+        
+        // Reset all agents for new round (but keep names and lifetime stats)
+        for (const agent of this.agents) {
+          const clusterX = agent.team === 0 ? 80 : this.width - 80;
+          agent.x = clusterX + (Math.random() - 0.5) * 150;
+          agent.y = this.height / 2 + (Math.random() - 0.5) * (this.height - 200);
+          agent.x = clamp(agent.x, 40, this.width - 40);
+          agent.y = clamp(agent.y, 40, this.height - 40);
+          agent.rotation = agent.team === 0 ? 0 : Math.PI;
+          agent.resetForRound();
+        }
+      }
+
+      // Keep for compatibility
+      spawnFromParents(parents, total) {
+        this.spawnNextRound();
+      }
+
+      rebuildSpatial() {
+        this.spatialAgents.clear();
+        for (const a of this.agents) if (a.alive) this.spatialAgents.insert(a, a.x, a.y);
+      }
+
+      update(dt) {
+        if (this.paused) return;
+
+        this.timeLeft -= dt;
+
+        // Update alive count + spatial hash
+        let alive = 0;
+        for (const a of this.agents) if (a.alive) alive++;
+        this.aliveCount = alive;
+        this.rebuildSpatial();
+        
+        // Handle respawns
+        for (const agent of this.agents) {
+          if (!agent.alive && agent.respawnTimer > 0) {
+            agent.respawnTimer -= dt;
+            if (agent.respawnTimer <= 0) {
+              agent.respawn(this);
+              this.addEvent('🔄 ' + agent.name + ' respawned', 'damage');
+            }
+          }
+        }
+
+        // Update rockets
+        for (const r of this.rockets) {
+          if (!r.alive) continue;
+          
+          // Move rocket
+          r.x += Math.cos(r.angle) * r.speed * dt;
+          r.y += Math.sin(r.angle) * r.speed * dt;
+          r.traveled += r.speed * dt;
+          
+          // Spawn smoke particles behind rocket
+          r.smokeTimer = (r.smokeTimer || 0) + dt;
+          if (r.smokeTimer > 0.02) { // Every 20ms
+            r.smokeTimer = 0;
+            this.smokeParticles.push({
+              x: r.x - Math.cos(r.angle) * 15,
+              y: r.y - Math.sin(r.angle) * 15,
+              vx: (Math.random() - 0.5) * 30,
+              vy: (Math.random() - 0.5) * 30,
+              life: 0.4, // 400ms lifetime
+              maxLife: 0.4,
+              size: 8 + Math.random() * 6
+            });
+          }
+          
+          let explode = false;
+          let explodeX = r.x;
+          let explodeY = r.y;
+          
+          // Check range
+          if (r.traveled >= r.range) {
+            explode = true;
+          }
+          
+          // Check wall collision
+          if (r.x < 0 || r.x > this.width || r.y < 0 || r.y > this.height) {
+            explode = true;
+            explodeX = clamp(r.x, 0, this.width);
+            explodeY = clamp(r.y, 0, this.height);
+          }
+          
+          // Check obstacle collision
+          if (!explode) {
+            for (const obs of this.obstacles) {
+              if (r.x >= obs.x && r.x <= obs.x + obs.w && r.y >= obs.y && r.y <= obs.y + obs.h) {
+                explode = true;
+                break;
+              }
+            }
+          }
+          
+          // Check agent collision (direct hit)
+          if (!explode) {
+            for (const agent of this.agents) {
+              if (agent === r.owner || !agent.alive) continue;
+              if (Math.hypot(r.x - agent.x, r.y - agent.y) < agent.radius + 8) {
+                explode = true;
+                explodeX = agent.x;
+                explodeY = agent.y;
+                break;
+              }
+            }
+          }
+          
+          // Create explosion
+          if (explode) {
+            r.alive = false;
+            this.explosions.push({
+              x: explodeX, y: explodeY, 
+              owner: r.owner, 
+              damage: r.damage,
+              splashRadius: r.splashRadius,
+              splashFalloff: r.splashFalloff,
+              timer: 0, 
+              maxTime: 0.4, 
+              dealtDamage: false
+            });
+          }
+        }
+        this.rockets = this.rockets.filter(r => r.alive);
+
+        // Update smoke particles
+        for (const p of this.smokeParticles) {
+          p.life -= dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= 0.95; // Slow down
+          p.vy *= 0.95;
+          p.size += dt * 10; // Expand
+        }
+        this.smokeParticles = this.smokeParticles.filter(p => p.life > 0);
+
+        // Update explosions - SPLASH DAMAGE (no friendly fire)
+        for (const e of this.explosions) {
+          e.timer += dt;
+          
+          if (!e.dealtDamage && e.timer >= 0.05) {
+            e.dealtDamage = true;
+            
+            for (const agent of this.agents) {
+              if (!agent.alive) continue;
+              
+              const dist = Math.hypot(agent.x - e.x, agent.y - e.y);
+              if (dist > e.splashRadius) continue;
+              
+              // Damage falloff based on distance
+              const falloff = 1 - (dist / e.splashRadius) * e.splashFalloff;
+              const dmg = Math.floor(e.damage * falloff);
+              
+              if (agent === e.owner) {
+                // Direct self-damage
+                const killed = agent.takeDamage(dmg, e.owner, this);
+                if (killed) {
+                  this.addEvent('💀 ' + e.owner.name + ' ROCKET JUMPED TOO HARD!', 'kill');
+                }
+              } else if (e.owner && agent.team === e.owner.team) {
+                // NO FRIENDLY FIRE - skip teammates
+                continue;
+              } else {
+                // Enemy damage
+                const killed = agent.takeDamage(dmg, e.owner, this);
+                if (e.owner) {
+                  e.owner.damageDealt += dmg;
+                  if (killed) {
+                    e.owner.kills++; 
+                    e.owner.totalKills = (e.owner.totalKills || 0) + 1;
+                    this.teamKills[e.owner.team]++;
+                    this.teamRawKills[e.owner.team]++;
+                    this.addEvent('🚀 ' + e.owner.name + ' FRAGGED ' + agent.name + '!', 'kill');
+                  }
+                }
+              }
+            }
+          }
+        }
+        this.explosions = this.explosions.filter(e => e.timer < e.maxTime);
+
+        // Get decisions
+        const decisions = new Array(this.agents.length);
+        for (let i = 0; i < this.agents.length; i++) {
+          decisions[i] = this.agents[i].think(this);
+        }
+
+        // Update agents
+        for (let i = 0; i < this.agents.length; i++) {
+          const a = this.agents[i];
+          const d = decisions[i];
+          a.update(d, dt, this, this.obstacles);
+
+          // Handle shooting
+          if (d && d.wantsShoot) {
+            const rocket = a.tryShoot(this);
+            if (rocket) {
+              this.rockets.push(rocket);
+            }
+          }
+        }
+
+        // Agent-agent collision (push apart)
+        const aliveAgents = this.agents.filter(a => a.alive);
+        for (let i = 0; i < aliveAgents.length; i++) {
+          for (let j = i + 1; j < aliveAgents.length; j++) {
+            const a = aliveAgents[i];
+            const b = aliveAgents[j];
+            
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy);
+            const minDist = a.radius + b.radius;
+            
+            if (dist < minDist && dist > 0) {
+              // Push apart
+              const overlap = minDist - dist;
+              const pushX = (dx / dist) * overlap * 0.5;
+              const pushY = (dy / dist) * overlap * 0.5;
+              
+              a.x -= pushX;
+              a.y -= pushY;
+              b.x += pushX;
+              b.y += pushY;
+              
+              // Clamp to world bounds
+              a.x = clamp(a.x, a.radius, this.width - a.radius);
+              a.y = clamp(a.y, a.radius, this.height - a.radius);
+              b.x = clamp(b.x, b.radius, this.width - b.radius);
+              b.y = clamp(b.y, b.radius, this.height - b.radius);
+            }
+          }
+        }
+
+        // Check win condition
+        if (this.teamKills[0] >= this.killLimit || this.teamKills[1] >= this.killLimit || this.timeLeft <= 0) {
+          this.endRound();
+        }
+      }
+      endRound() {
+        // Determine winner
+        if (this.teamKills[0] >= this.killLimit) {
+          this.winningTeam = 0;
+          this.teamWins[0]++;
+          this.addEvent('🔴 RED TEAM WINS! ' + this.teamKills[0] + ' kills!', 'kill');
+        } else if (this.teamKills[1] >= this.killLimit) {
+          this.winningTeam = 1;
+          this.teamWins[1]++;
+          this.addEvent('🔵 BLUE TEAM WINS! ' + this.teamKills[1] + ' kills!', 'kill');
+        } else {
+          // Time out - team with most kills wins
+          this.winningTeam = this.teamKills[0] > this.teamKills[1] ? 0 : 1;
+          this.teamWins[this.winningTeam]++;
+          const winnerName = this.winningTeam === 0 ? 'RED' : 'BLUE';
+          this.addEvent('⏱️ TIME! ' + winnerName + ' WINS ' + this.teamKills[this.winningTeam] + '-' + this.teamKills[1-this.winningTeam], 'kill');
+        }
+        
+        // Get best brain from winning team
+        const winningAgents = this.agents.filter(a => a.team === this.winningTeam);
+        const bestAgent = winningAgents.sort((a, b) => b.score - a.score)[0];
+        
+        // Update the winning team's brain
+        this.teamBrains[this.winningTeam] = bestAgent.brain.clone();
+        
+        // Losing team gets a mutated version of their best, or copy winner if they had none
+        const losingTeam = 1 - this.winningTeam;
+        const losingAgents = this.agents.filter(a => a.team === losingTeam);
+        const bestLoser = losingAgents.sort((a, b) => b.score - a.score)[0];
+        if (bestLoser) {
+          this.teamBrains[losingTeam] = bestLoser.brain.clone();
+          this.teamBrains[losingTeam].mutate(0.2, 0.5);
+        }
+        
+        this.addEvent('GENERATION ' + this.generation + ' COMPLETE', 'kill');
+        this.generation++;
+        this.spawnNextRound();
+      }
+
+      addEvent(text, type) {
+        this.events.unshift({ text, type, time: Date.now() });
+        if (this.events.length > 80) this.events.pop();
+      }
+
+      getLeaderboard() {
+        return [...this.agents].sort((a, b) => b.score - a.score).slice(0, 10);
+      }
+    }
+
+    // --------------------
+    // Renderer
+    // --------------------
+    class Renderer {
+      constructor(canvas, world) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d', { alpha: false });
+        this.world = world;
+
+        this.cameraX = 0;
+        this.cameraY = 0;
+        this.zoom = 1;
+        this.minZoom = 0.25;
+        this.maxZoom = 3;
+
+        this.isDragging = false;
+        this.baseScale = 1;
+        this.cssW = 0;
+        this.cssH = 0;
+        this.dpr = 1;
+
+        this.setupControls();
+        this.resize();
+      }
+
+      setupControls() {
+        const onWheel = (e) => {
+          e.preventDefault();
+          const rect = this.canvas.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const mouseY = e.clientY - rect.top;
+
+          const worldX = this.cameraX + mouseX / (this.baseScale * this.zoom);
+          const worldY = this.cameraY + mouseY / (this.baseScale * this.zoom);
+
+          const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+          this.zoom = clamp(this.zoom * zoomFactor, this.minZoom, this.maxZoom);
+
+          this.cameraX = worldX - mouseX / (this.baseScale * this.zoom);
+          this.cameraY = worldY - mouseY / (this.baseScale * this.zoom);
+
+          this.clampCamera();
+        };
+
+        this.canvas.addEventListener('wheel', onWheel, { passive: false });
+
+        const startDrag = (x, y) => {
+          this.isDragging = true;
+          this.dragStartX = x;
+          this.dragStartY = y;
+          this.dragCamX = this.cameraX;
+          this.dragCamY = this.cameraY;
+          this.canvas.style.cursor = 'grabbing';
+        };
+
+        const moveDrag = (x, y) => {
+          if (!this.isDragging) return;
+          const dx = x - this.dragStartX;
+          const dy = y - this.dragStartY;
+          this.cameraX = this.dragCamX - dx / (this.baseScale * this.zoom);
+          this.cameraY = this.dragCamY - dy / (this.baseScale * this.zoom);
+          this.clampCamera();
+        };
+
+        const endDrag = () => {
+          this.isDragging = false;
+          this.canvas.style.cursor = 'grab';
+        };
+
+        this.canvas.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
+        window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+        window.addEventListener('mouseup', endDrag);
+
+        // Touch (single finger pan)
+        this.canvas.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+          if (!this.isDragging || e.touches.length !== 1) return;
+          e.preventDefault();
+          moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        this.canvas.addEventListener('touchend', endDrag);
+
+        this.canvas.style.cursor = 'grab';
+      }
+
+      clampCamera() {
+        const vw = this.cssW / (this.baseScale * this.zoom);
+        const vh = this.cssH / (this.baseScale * this.zoom);
+        this.cameraX = clamp(this.cameraX, -100, this.world.width - vw + 100);
+        this.cameraY = clamp(this.cameraY, -100, this.world.height - vh + 100);
+      }
+
+      resize() {
+        const container = this.canvas.parentElement;
+        this.cssW = container.clientWidth;
+        this.cssH = container.clientHeight;
+        this.dpr = window.devicePixelRatio || 1;
+
+        this.canvas.width = Math.floor(this.cssW * this.dpr);
+        this.canvas.height = Math.floor(this.cssH * this.dpr);
+
+        // Auto-fit: baseScale makes the world fit perfectly in the canvas at zoom=1
+        const scaleX = this.cssW / this.world.width;
+        const scaleY = this.cssH / this.world.height;
+        this.baseScale = Math.min(scaleX, scaleY);
+        
+        // Center camera on world
+        this.cameraX = 0;
+        this.cameraY = 0;
+        
+        this.clampCamera();
+      }
+
+      render(highlightTopRound = false, highlightTopAlltime = false) {
+        const ctx = this.ctx;
+        const s = this.baseScale * this.zoom;
+
+        // Find top agents for highlighting
+        let topRoundAgent = null;
+        let topAlltimeAgent = null;
+        
+        if (highlightTopRound) {
+          const alive = this.world.agents.filter(a => a.alive);
+          if (alive.length > 0) {
+            topRoundAgent = alive.reduce((best, a) => a.score > best.score ? a : best, alive[0]);
+          }
+        }
+        
+        if (highlightTopAlltime) {
+          const alive = this.world.agents.filter(a => a.alive);
+          if (alive.length > 0) {
+            topAlltimeAgent = alive.reduce((best, a) => (a.totalKills || 0) > (best.totalKills || 0) ? a : best, alive[0]);
+          }
+        }
+
+        // Draw in CSS pixels, with DPR scaling handled by transform.
+        ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+        ctx.fillStyle = '#050510';
+        ctx.fillRect(0, 0, this.cssW, this.cssH);
+
+        ctx.save();
+        ctx.translate(-this.cameraX * s, -this.cameraY * s);
+
+        // Grid
+        ctx.strokeStyle = '#151525';
+        ctx.lineWidth = 1;
+        const step = 100 * s;
+        const maxX = this.world.width * s;
+        const maxY = this.world.height * s;
+        for (let x = 0; x <= maxX; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, maxY); ctx.stroke(); }
+        for (let y = 0; y <= maxY; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(maxX, y); ctx.stroke(); }
+
+        // Border
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(0, 0, maxX, maxY);
+
+        // Buildings
+        for (const b of this.world.buildings) {
+          const x = b.x * s, y = b.y * s, w = b.w * s, h = b.h * s;
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(x + 10, y + 10, w, h);
+          ctx.fillStyle = '#111';
+          ctx.fillRect(x, y, w, h);
+          ctx.strokeStyle = '#334';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(x, y, w, h);
+        }
+
+        // Agents with class-based rendering
+        for (const agent of this.world.agents) {
+          if (!agent.alive) continue;
+          const x = agent.x * s, y = agent.y * s, r = agent.radius * s;
+
+          // Check if this agent should be highlighted
+          const isTopRound = agent === topRoundAgent;
+          const isTopAlltime = agent === topAlltimeAgent;
+
+          ctx.save();
+          ctx.translate(x, y);
+          
+          // Highlight rings (before rotation)
+          if (isTopRound || isTopAlltime) {
+            // Pulsing effect
+            const pulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
+            
+            if (isTopAlltime) {
+              // Orange glow for all-time legend
+              ctx.strokeStyle = `rgba(255, 100, 0, ${pulse})`;
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.arc(0, 0, r + 12 * s, 0, Math.PI * 2);
+              ctx.stroke();
+              
+              // Crown icon above
+              ctx.fillStyle = '#ff6400';
+              ctx.font = 'bold ' + (20 * s) + 'px serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText('🏆', 0, -r - 25 * s);
+            }
+            
+            if (isTopRound) {
+              // Gold glow for top this round
+              ctx.strokeStyle = `rgba(255, 200, 0, ${pulse})`;
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(0, 0, r + 8 * s, 0, Math.PI * 2);
+              ctx.stroke();
+              
+              // Crown icon (offset if both)
+              ctx.fillStyle = '#ffc800';
+              ctx.font = 'bold ' + (18 * s) + 'px serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              const crownY = isTopAlltime ? -r - 45 * s : -r - 25 * s;
+              ctx.fillText('👑', 0, crownY);
+            }
+          }
+          
+          ctx.rotate(agent.rotation);
+
+          // Vision cone
+          const fov = Math.PI * 0.4;
+          const viewDist = 200 * s;
+          const grad = ctx.createRadialGradient(0, 0, r, 0, 0, viewDist);
+          grad.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+          grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, viewDist, -fov / 2, fov / 2);
+          ctx.fill();
+
+          // Body
+          ctx.shadowBlur = isTopRound || isTopAlltime ? 25 : 15;
+          ctx.shadowColor = isTopAlltime ? '#ff6400' : (isTopRound ? '#ffc800' : agent.color);
+          ctx.fillStyle = '#000';
+          ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = agent.color;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Rocket launcher icon
+          ctx.fillStyle = '#ff6600';
+          ctx.font = 'bold ' + (r * 0.7) + 'px monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🚀', 0, 0);
+
+          // Rocket launcher weapon
+          ctx.strokeStyle = '#ff6600';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(r * 0.3, 0);
+          ctx.lineTo(r * 1.6, 0);
+          ctx.stroke();
+          // Launcher tip
+          ctx.fillStyle = '#ffcc00';
+          ctx.beginPath();
+          ctx.arc(r * 1.6, 0, 4 * s, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+          ctx.shadowBlur = 0;
+
+          // Health bar
+          const barW = 30 * s;
+          const barH = 4 * s;
+          ctx.fillStyle = '#333';
+          ctx.fillRect(x - barW / 2, y - r - 12 * s, barW, barH);
+          ctx.fillStyle = agent.health > 50 ? '#00ff9d' : '#ff0055';
+          ctx.fillRect(x - barW / 2, y - r - 12 * s, barW * (agent.health / agent.maxHealth), barH);
+          
+          // Weapon cooldown indicator
+          if (agent.weaponCooldown > 0) {
+            const cooldownPct = agent.weaponCooldown / ROCKET.fireRate;
+            ctx.fillStyle = 'rgba(255, 100, 0, 0.5)';
+            ctx.fillRect(x - barW / 2, y - r - 6 * s, barW * cooldownPct, 2 * s);
+          }
+        }
+
+        // Projectiles
+        ctx.shadowBlur = 0;
+        
+        // Smoke particles (draw first, behind rockets)
+        for (const p of this.world.smokeParticles) {
+          const px = p.x * s, py = p.y * s;
+          const alpha = (p.life / p.maxLife) * 0.6;
+          const size = p.size * s;
+          
+          ctx.fillStyle = `rgba(100, 100, 100, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(px, py, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Rockets
+        for (const r of this.world.rockets) {
+          if (!r.alive) continue;
+          const rx = r.x * s, ry = r.y * s;
+          
+          ctx.save();
+          ctx.translate(rx, ry);
+          ctx.rotate(r.angle);
+          
+          // Flame trail (behind rocket)
+          const flameGrad = ctx.createLinearGradient(-35 * s, 0, 0, 0);
+          flameGrad.addColorStop(0, 'rgba(255, 100, 0, 0)');
+          flameGrad.addColorStop(0.3, 'rgba(255, 150, 0, 0.8)');
+          flameGrad.addColorStop(0.6, 'rgba(255, 200, 50, 1)');
+          flameGrad.addColorStop(1, 'rgba(255, 255, 200, 1)');
+          
+          ctx.fillStyle = flameGrad;
+          ctx.beginPath();
+          ctx.moveTo(-35 * s, 0);
+          ctx.lineTo(-8 * s, -6 * s);
+          ctx.lineTo(-8 * s, 6 * s);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Rocket body
+          ctx.fillStyle = '#444';
+          ctx.strokeStyle = '#666';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 12 * s, 5 * s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          
+          // Rocket nose (red tip)
+          ctx.fillStyle = '#ff3300';
+          ctx.beginPath();
+          ctx.moveTo(12 * s, 0);
+          ctx.lineTo(6 * s, -4 * s);
+          ctx.lineTo(6 * s, 4 * s);
+          ctx.closePath();
+          ctx.fill();
+          
+          // Fins
+          ctx.fillStyle = '#ff3300';
+          ctx.beginPath();
+          ctx.moveTo(-8 * s, -5 * s);
+          ctx.lineTo(-12 * s, -10 * s);
+          ctx.lineTo(-6 * s, -5 * s);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.beginPath();
+          ctx.moveTo(-8 * s, 5 * s);
+          ctx.lineTo(-12 * s, 10 * s);
+          ctx.lineTo(-6 * s, 5 * s);
+          ctx.closePath();
+          ctx.fill();
+          
+          ctx.restore();
+        }
+
+        // Explosions
+        ctx.globalCompositeOperation = 'lighter';
+        for (const e of this.world.explosions) {
+          const ex = e.x * s, ey = e.y * s;
+          const progress = e.timer / e.maxTime;
+          const currentRadius = e.splashRadius * s * (0.3 + progress * 0.7);
+          
+          // Outer shockwave ring
+          ctx.strokeStyle = `rgba(255, 100, 0, ${1 - progress})`;
+          ctx.lineWidth = 8 * (1 - progress);
+          ctx.beginPath();
+          ctx.arc(ex, ey, currentRadius, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Inner flash
+          const innerGrad = ctx.createRadialGradient(ex, ey, 0, ex, ey, currentRadius * 0.8);
+          innerGrad.addColorStop(0, `rgba(255, 255, 200, ${0.9 - progress * 0.9})`);
+          innerGrad.addColorStop(0.3, `rgba(255, 200, 0, ${0.7 - progress * 0.7})`);
+          innerGrad.addColorStop(0.6, `rgba(255, 100, 0, ${0.5 - progress * 0.5})`);
+          innerGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+          ctx.fillStyle = innerGrad;
+          ctx.beginPath();
+          ctx.arc(ex, ey, currentRadius * 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      }
+    }
+
+    // --------------------
+    // Init
+    // --------------------
+    const canvas = document.getElementById('canvas');
+    const world = new World(2400, 2400);
+    const renderer = new Renderer(canvas, world);
+
+    let population = 100;
+    let simSpeed = 1;
+
+    world.spawnAgents(population);
+
+    const ui = {
+      gen: document.getElementById('generation'),
+      alive: document.getElementById('alive'),
+      time: document.getElementById('time-left'),
+      leaderboard: document.getElementById('leaderboard'),
+      log: document.getElementById('event-log'),
+      alltimeLeaderboard: document.getElementById('alltime-leaderboard'),
+
+      zoom: document.getElementById('zoom'),
+      speed: document.getElementById('speed'),
+      population: document.getElementById('population'),
+      roundTime: document.getElementById('round-time'),
+      killLimit: document.getElementById('kill-limit'),
+
+      zoomValue: document.getElementById('zoom-value'),
+      speedValue: document.getElementById('speed-value'),
+      populationValue: document.getElementById('population-value'),
+      roundTimeValue: document.getElementById('round-time-value'),
+      killLimitValue: document.getElementById('kill-limit-value'),
+      killLimitDisplay: document.getElementById('kill-limit-display'),
+
+      // Team score elements
+      redKills: document.getElementById('red-kills'),
+      blueKills: document.getElementById('blue-kills'),
+      redRawKills: document.getElementById('red-raw-kills'),
+      blueRawKills: document.getElementById('blue-raw-kills'),
+      redRicochets: document.getElementById('red-ricochets'),
+      blueRicochets: document.getElementById('blue-ricochets'),
+      redWins: document.getElementById('red-wins'),
+      blueWins: document.getElementById('blue-wins'),
+
+      pauseBtn: document.getElementById('pause-btn'),
+      restartBtn: document.getElementById('restart-btn'),
+      fullscreenBtn: document.getElementById('fullscreen-btn'),
+      highlightRoundBtn: document.getElementById('highlight-round-btn'),
+      highlightAlltimeBtn: document.getElementById('highlight-alltime-btn'),
+      saveBtn: document.getElementById('save-btn'),
+      loadBtn: document.getElementById('load-btn'),
+      headlessBtn: document.getElementById('headless-btn'),
+      ups: document.getElementById('ups'),
+    };
+
+    // Headless mode
+    let headlessMode = true;
+    // Set initial headless button state
+    ui.headlessBtn.textContent = '🖥️ HEADLESS MODE (ON)';
+    ui.headlessBtn.style.background = 'rgba(0, 255, 0, 0.3)';
+    ui.headlessBtn.style.borderColor = '#0f0';
+    ui.headlessBtn.style.color = '#0f0';
+    
+    ui.headlessBtn.addEventListener('click', () => {
+      headlessMode = !headlessMode;
+      ui.headlessBtn.textContent = headlessMode ? '🖥️ HEADLESS MODE (ON)' : '🖥️ HEADLESS MODE (OFF)';
+      ui.headlessBtn.style.background = headlessMode ? 'rgba(0, 255, 0, 0.3)' : 'rgba(100, 100, 100, 0.1)';
+      ui.headlessBtn.style.borderColor = headlessMode ? '#0f0' : '#888';
+      ui.headlessBtn.style.color = headlessMode ? '#0f0' : '#888';
+    });
+
+    // Highlight toggles
+    let highlightTopRound = false;
+    let highlightTopAlltime = false;
+
+    ui.highlightRoundBtn.addEventListener('click', () => {
+      highlightTopRound = !highlightTopRound;
+      ui.highlightRoundBtn.style.background = highlightTopRound ? 'rgba(255, 200, 0, 0.4)' : 'rgba(255, 200, 0, 0.1)';
+    });
+
+    ui.highlightAlltimeBtn.addEventListener('click', () => {
+      highlightTopAlltime = !highlightTopAlltime;
+      ui.highlightAlltimeBtn.style.background = highlightTopAlltime ? 'rgba(255, 100, 0, 0.4)' : 'rgba(255, 100, 0, 0.1)';
+    });
+
+    // Fullscreen
+    ui.fullscreenBtn.addEventListener('click', () => {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) elem.requestFullscreen();
+      else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+      else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+    });
+    
+    // Auto-resize and reset zoom on fullscreen change
+    document.addEventListener('fullscreenchange', () => {
+      setTimeout(() => {
+        renderer.zoom = 1;
+        renderer.resize();
+        ui.zoom.value = 100;
+        ui.zoomValue.textContent = '1.0x';
+      }, 100); // Small delay to let browser finish fullscreen transition
+    });
+
+    // Sliders
+    ui.zoom.addEventListener('input', (e) => {
+      renderer.zoom = parseInt(e.target.value, 10) / 100;
+      renderer.clampCamera();
+      ui.zoomValue.textContent = renderer.zoom.toFixed(1) + 'x';
+    });
+
+    ui.speed.addEventListener('input', (e) => {
+      simSpeed = parseInt(e.target.value, 10);
+      ui.speedValue.textContent = simSpeed + 'x';
+    });
+
+    ui.population.addEventListener('input', (e) => {
+      population = parseInt(e.target.value, 10);
+      ui.populationValue.textContent = String(population);
+      world.spawnAgents(population);
+    });
+
+    ui.roundTime.addEventListener('input', (e) => {
+      const minutes = parseInt(e.target.value, 10);
+      world.setRoundTimeSeconds(minutes * 60);
+      ui.roundTimeValue.textContent = String(minutes);
+    });
+    
+    ui.killLimit.addEventListener('input', (e) => {
+      world.killLimit = parseInt(e.target.value, 10);
+      ui.killLimitValue.textContent = String(world.killLimit);
+      ui.killLimitDisplay.textContent = String(world.killLimit);
+    });
+
+    // Pause/Reset
+    ui.pauseBtn.addEventListener('click', (e) => {
+      world.paused = !world.paused;
+      e.target.textContent = world.paused ? 'RESUME' : 'PAUSE';
+    });
+
+    ui.restartBtn.addEventListener('click', () => {
+      world.generation = 1;
+      world.events = [];
+      world.teamBrains = [null, null];
+      world.spawnAgents(population);
+    });
+
+    // Save checkpoint to localStorage
+    ui.saveBtn.addEventListener('click', () => {
+      const checkpoint = {
+        version: '2.8',
+        timestamp: Date.now(),
+        generation: world.generation,
+        teamWins: world.teamWins,
+        teamBrains: world.teamBrains.map(b => b ? {
+          weightsIH: b.weightsIH.map(row => Array.from(row)),
+          weightsHO: b.weightsHO.map(row => Array.from(row)),
+          biasH: Array.from(b.biasH),
+          biasO: Array.from(b.biasO),
+          inputSize: b.inputSize,
+          hiddenSize: b.hiddenSize,
+          outputSize: b.outputSize
+        } : null)
+      };
+      
+      localStorage.setItem('quake-checkpoint', JSON.stringify(checkpoint));
+      world.addEvent('💾 Checkpoint saved! Gen ' + world.generation, 'kill');
+      ui.saveBtn.textContent = '💾 SAVED!';
+      setTimeout(() => ui.saveBtn.textContent = '💾 SAVE', 1000);
+    });
+
+    // Load checkpoint from localStorage
+    ui.loadBtn.addEventListener('click', () => {
+      try {
+        const data = localStorage.getItem('quake-checkpoint');
+        if (!data) {
+          alert('No checkpoint found!');
+          return;
+        }
+        
+        const checkpoint = JSON.parse(data);
+        
+        world.generation = checkpoint.generation || 1;
+        world.teamWins = checkpoint.teamWins || [0, 0];
+        
+        // Restore brains
+        world.teamBrains = checkpoint.teamBrains.map(b => {
+          if (!b) return null;
+          const brain = new NeuralNetwork(b.inputSize, b.hiddenSize, b.outputSize);
+          brain.weightsIH = b.weightsIH.map(row => [...row]);
+          brain.weightsHO = b.weightsHO.map(row => [...row]);
+          brain.biasH = [...b.biasH];
+          brain.biasO = [...b.biasO];
+          return brain;
+        });
+        
+        // Respawn with loaded brains
+        world.spawnAgents(population);
+        
+        const savedTime = new Date(checkpoint.timestamp).toLocaleTimeString();
+        world.addEvent('📂 Loaded Gen ' + world.generation + ' (saved ' + savedTime + ')', 'kill');
+        ui.loadBtn.textContent = '📂 LOADED!';
+        setTimeout(() => ui.loadBtn.textContent = '📂 LOAD', 1000);
+      } catch (err) {
+        alert('Failed to load: ' + err.message);
+      }
+    });
+
+    // Hotkeys: Space pause, R reset, F fullscreen
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        world.paused = !world.paused;
+        ui.pauseBtn.textContent = world.paused ? 'RESUME' : 'PAUSE';
+      } else if (e.code === 'KeyR') {
+        world.generation = 1;
+        world.events = [];
+        world.teamBrains = [null, null];
+        world.spawnAgents(population);
+      } else if (e.code === 'KeyF') {
+        ui.fullscreenBtn.click();
+      }
+    });
+
+    // Resize
+    window.addEventListener('resize', () => renderer.resize());
+
+    // --------------------
+    // Game loop (fixed timestep)
+    // --------------------
+    const FIXED_DT = 1 / 60;
+    let accumulator = 0;
+    let lastTime = performance.now();
+
+    // UPS tracking
+    let upsCounter = 0;
+    let upsTimer = 0;
+    let currentUps = 60;
+
+    let uiTimer = 0;
+    const UI_INTERVAL = 0.2; // seconds
+
+    function drawUI(dt) {
+      uiTimer += dt;
+      if (uiTimer < UI_INTERVAL) return;
+      uiTimer = 0;
+
+      ui.gen.textContent = world.generation;
+      ui.alive.textContent = world.agents.filter(a => a.alive).length;
+      ui.time.textContent = Math.ceil(world.timeLeft) + 's';
+      
+      // UPS display with color coding
+      ui.ups.textContent = currentUps;
+      if (currentUps >= 55) {
+        ui.ups.style.color = '#00ff9d'; // Green - good
+      } else if (currentUps >= 30) {
+        ui.ups.style.color = '#ffc800'; // Yellow - ok
+      } else {
+        ui.ups.style.color = '#ff4444'; // Red - lagging
+      }
+      
+      // Team scores
+      ui.redKills.textContent = world.teamKills[0];
+      ui.blueKills.textContent = world.teamKills[1];
+      ui.redRawKills.textContent = world.teamRawKills[0];
+      ui.blueRawKills.textContent = world.teamRawKills[1];
+      ui.redRicochets.textContent = world.teamRicochets[0];
+      ui.blueRicochets.textContent = world.teamRicochets[1];
+      ui.redWins.textContent = world.teamWins[0];
+      ui.blueWins.textContent = world.teamWins[1];
+
+      // This round leaderboard
+      ui.leaderboard.innerHTML = world.getLeaderboard().map((a, i) => {
+        const status = a.alive ? '' : (a.respawnTimer > 0 ? ' (' + Math.ceil(a.respawnTimer) + 's)' : '');
+        const kd = a.kills + '/' + a.deaths;
+        return '<div class="leader-entry ' + (a.alive ? '' : 'dead') + '" style="border-left-color: ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
+          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">🚀 ' + a.name + status + '</span>' +
+          '<span class="score" title="K/D: ' + kd + '">' + a.score + ' <small style="opacity:0.6">(' + kd + ')</small></span>' +
+        '</div>';
+      }).join('');
+
+      // All-time legends leaderboard
+      const allTimeSorted = [...world.agents].sort((a, b) => b.totalKills - a.totalKills).slice(0, 10);
+      ui.alltimeLeaderboard.innerHTML = allTimeSorted.map((a, i) => {
+        const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+        const kd = a.totalKills + '/' + a.totalDeaths;
+        const kdr = a.totalDeaths > 0 ? (a.totalKills / a.totalDeaths).toFixed(2) : a.totalKills.toFixed(2);
+        return '<div class="leader-entry" style="border-left-color: ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
+          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + medal + '🚀 ' + a.name + '</span>' +
+          '<span class="score" title="Total K/D: ' + kd + '">' + a.totalKills + 'K <small style="opacity:0.6">(' + kdr + ' KDR)</small></span>' +
+        '</div>';
+      }).join('');
+
+      ui.log.innerHTML = world.events.slice(0, 15).map(e =>
+        '<div class="event"><span class="' + e.type + '">[' + new Date(e.time).toLocaleTimeString().split(' ')[0] + '] ' + e.text + '</span></div>'
+      ).join('');
+    }
+
+    function gameLoop(curr) {
+      const realDt = Math.min((curr - lastTime) / 1000, 0.1);
+      lastTime = curr;
+
+      // UPS tracking
+      upsTimer += realDt;
+      if (upsTimer >= 1.0) {
+        currentUps = upsCounter;
+        upsCounter = 0;
+        upsTimer = 0;
+      }
+
+      // scale by simSpeed into the simulation accumulator
+      accumulator += realDt * simSpeed;
+
+      // prevent spiral of death - but allow more steps in headless mode
+      const maxSteps = headlessMode ? 100 : 12;
+      let steps = 0;
+      while (accumulator >= FIXED_DT && steps < maxSteps) {
+        world.update(FIXED_DT);
+        accumulator -= FIXED_DT;
+        steps++;
+        upsCounter++;
+      }
+      // if we hit max steps, drop the rest to keep UI responsive
+      if (steps === maxSteps) accumulator = 0;
+
+      // Only render if not headless
+      if (!headlessMode) {
+        renderer.render(highlightTopRound, highlightTopAlltime);
+      }
+      drawUI(realDt);
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Initialize UI values
+    ui.zoomValue.textContent = renderer.zoom.toFixed(1) + 'x';
+    ui.speedValue.textContent = simSpeed + 'x';
+    ui.populationValue.textContent = String(population);
+    ui.roundTimeValue.textContent = String(parseInt(ui.roundTime.value, 10));
+    ui.killLimitValue.textContent = String(world.killLimit);
+
+    requestAnimationFrame(gameLoop);
+  })();
+  </script>
+</body>
+</html>
