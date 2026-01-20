@@ -592,6 +592,10 @@ button.secondary:hover {
         <label>💨 Dodging</label>
         <div class="toggle active" id="toggle-dodge"></div>
       </div>
+      <div class="toggle-row" title="Teleporters activate randomly during round for 30 seconds. Quick map traversal.">
+        <label>🌀 Teleporters</label>
+        <div class="toggle active" id="toggle-teleporter"></div>
+      </div>
       <div class="toggle-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;" title="Rockets damage teammates directly.">
         <label>💥 Friendly Fire</label>
         <div class="toggle" id="toggle-ff"></div>
@@ -1711,7 +1715,16 @@ button.secondary:hover {
         this.friendlyFireRicochet = false;
         this.dodgingEnabled = true; // Agents can dash/dodge
         this.respawnTime = 3; // seconds
-        
+
+        // Teleporters - pair of portals for quick map traversal
+        this.teleportersEnabled = true;
+        this.teleporters = []; // Will be populated in generateObstacles
+        this.teleporterActive = false; // Currently usable?
+        this.teleporterActiveTimer = 0; // Time remaining in active window
+        this.teleporterActiveDuration = 30; // Active for 30 seconds
+        this.teleporterNextActivation = 0; // When portals will activate
+        this.teleporterWarpEffects = []; // Warp in/out animations
+
         // Team brains (evolved separately)
         this.teamBrains = [null, null];
 
@@ -2214,6 +2227,158 @@ button.secondary:hover {
 
         // Bottom-right area: health pit (opening faces DOWN toward wall)
         createPit(this.width - pitOffsetX, this.height - pitOffsetY, 'down', 'health');
+
+        // =====================
+        // TELEPORTERS - Pair of portals for quick map traversal
+        // =====================
+        this.teleporters = [];
+        const teleporterRadius = 35;
+        const teleporterMargin = 150; // Distance from corners
+
+        // Bottom-left teleporter (near red side)
+        const tele1 = {
+          x: teleporterMargin + 100,
+          y: this.height - teleporterMargin,
+          radius: teleporterRadius,
+          linkedTo: null, // Will be set after both are created
+          lastUsedBy: null, // Prevent instant re-teleport
+          useCooldown: 0
+        };
+
+        // Top-right teleporter (near blue side)
+        const tele2 = {
+          x: this.width - teleporterMargin - 100,
+          y: teleporterMargin,
+          radius: teleporterRadius,
+          linkedTo: null,
+          lastUsedBy: null,
+          useCooldown: 0
+        };
+
+        // Link them together
+        tele1.linkedTo = tele2;
+        tele2.linkedTo = tele1;
+
+        this.teleporters.push(tele1, tele2);
+
+        // Schedule first activation at random time (leaving 30s buffer at end)
+        this.scheduleTeleporterActivation();
+      }
+
+      scheduleTeleporterActivation() {
+        // Activate at random time, but ensure 30s active window fits before round ends
+        // Random activation between 10s and (roundTime - 30s)
+        const minTime = 10;
+        const maxTime = Math.max(minTime, this.roundTime - this.teleporterActiveDuration);
+        const activationTime = minTime + Math.random() * (maxTime - minTime);
+        this.teleporterNextActivation = this.roundTime - activationTime; // timeLeft when it activates
+        this.teleporterActive = false;
+        this.teleporterActiveTimer = 0;
+      }
+
+      updateTeleporters(dt) {
+        if (!this.teleportersEnabled || this.teleporters.length < 2) return;
+
+        // Update warp effects
+        for (const effect of this.teleporterWarpEffects) {
+          effect.timer += dt;
+        }
+        this.teleporterWarpEffects = this.teleporterWarpEffects.filter(e => e.timer < e.maxTime);
+
+        // Update teleporter cooldowns
+        for (const tele of this.teleporters) {
+          if (tele.useCooldown > 0) {
+            tele.useCooldown -= dt;
+            if (tele.useCooldown <= 0) {
+              tele.lastUsedBy = null;
+            }
+          }
+        }
+
+        // Check for activation
+        if (!this.teleporterActive) {
+          // Waiting to activate
+          if (this.timeLeft <= this.teleporterNextActivation && this.timeLeft > 0) {
+            this.teleporterActive = true;
+            this.teleporterActiveTimer = this.teleporterActiveDuration;
+            this.addEvent('🌀 TELEPORTERS ACTIVATED!', 'teleporter');
+
+            // Add activation warp effects at both portals
+            for (const tele of this.teleporters) {
+              this.teleporterWarpEffects.push({
+                x: tele.x, y: tele.y,
+                type: 'activate',
+                timer: 0,
+                maxTime: 0.5
+              });
+            }
+          }
+        } else {
+          // Currently active, count down
+          this.teleporterActiveTimer -= dt;
+          if (this.teleporterActiveTimer <= 0) {
+            this.teleporterActive = false;
+            this.addEvent('🌀 Teleporters deactivated', 'teleporter');
+
+            // Add deactivation effects
+            for (const tele of this.teleporters) {
+              this.teleporterWarpEffects.push({
+                x: tele.x, y: tele.y,
+                type: 'deactivate',
+                timer: 0,
+                maxTime: 0.3
+              });
+            }
+          }
+        }
+
+        // Check for agent teleportation (only when active)
+        if (this.teleporterActive) {
+          for (const agent of this.agents) {
+            if (!agent.alive) continue;
+
+            for (const tele of this.teleporters) {
+              // Skip if this agent just used this teleporter
+              if (tele.lastUsedBy === agent || tele.useCooldown > 0) continue;
+
+              const dist = Math.hypot(agent.x - tele.x, agent.y - tele.y);
+              if (dist < tele.radius + agent.radius) {
+                // Teleport!
+                const dest = tele.linkedTo;
+
+                // Warp out effect at entry
+                this.teleporterWarpEffects.push({
+                  x: agent.x, y: agent.y,
+                  type: 'warp_out',
+                  team: agent.team,
+                  timer: 0,
+                  maxTime: 0.25
+                });
+
+                // Move agent to destination (offset slightly so they don't instantly re-enter)
+                const exitAngle = Math.atan2(this.height/2 - dest.y, this.width/2 - dest.x);
+                agent.x = dest.x + Math.cos(exitAngle) * (dest.radius + agent.radius + 10);
+                agent.y = dest.y + Math.sin(exitAngle) * (dest.radius + agent.radius + 10);
+
+                // Warp in effect at exit
+                this.teleporterWarpEffects.push({
+                  x: agent.x, y: agent.y,
+                  type: 'warp_in',
+                  team: agent.team,
+                  timer: 0,
+                  maxTime: 0.25
+                });
+
+                // Set cooldown on destination to prevent instant return
+                dest.lastUsedBy = agent;
+                dest.useCooldown = 1.0; // 1 second cooldown
+
+                this.addEvent('🌀 ' + agent.name + ' teleported!', 'teleporter');
+                break; // Only teleport once per frame
+              }
+            }
+          }
+        }
       }
 
       generateUniqueName() {
@@ -2259,6 +2424,16 @@ button.secondary:hover {
           pit.respawnTime = 0;
         }
         this.spawnPickups(); // Spawn initial pickups in all pits
+
+        // Reset teleporters for new round
+        this.teleporterActive = false;
+        this.teleporterActiveTimer = 0;
+        this.teleporterWarpEffects = [];
+        for (const tele of this.teleporters) {
+          tele.lastUsedBy = null;
+          tele.useCooldown = 0;
+        }
+        this.scheduleTeleporterActivation();
 
         this.teamKills = [0, 0];
         this.teamRawKills = [0, 0];
@@ -2366,6 +2541,16 @@ button.secondary:hover {
         }
         this.spawnPickups(); // Spawn initial pickups in all pits
 
+        // Reset teleporters for new round
+        this.teleporterActive = false;
+        this.teleporterActiveTimer = 0;
+        this.teleporterWarpEffects = [];
+        for (const tele of this.teleporters) {
+          tele.lastUsedBy = null;
+          tele.useCooldown = 0;
+        }
+        this.scheduleTeleporterActivation();
+
         // Reset all agents for new round (but keep names and lifetime stats)
         for (const agent of this.agents) {
           const clusterX = agent.team === 0 ? 80 : this.width - 80;
@@ -2400,6 +2585,9 @@ button.secondary:hover {
         // Pickup spawning (health/armor only - weapons spawn at round start)
         // Update per-pit respawn timers (Roshan-style random respawn)
         this.updatePitTimers(dt);
+
+        // Teleporter activation and usage
+        this.updateTeleporters(dt);
 
         // Pickup collection
         for (const agent of this.agents) {
@@ -3151,6 +3339,9 @@ button.secondary:hover {
           ctx.lineWidth = 1;
           ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
         }
+
+        // Teleporters
+        this.drawTeleporters(ctx, s);
 
         // Pickups
         for (const p of this.world.pickups) {
@@ -4107,6 +4298,261 @@ button.secondary:hover {
         ctx.shadowBlur = 0;
         ctx.restore();
       }
+
+      drawTeleporters(ctx, s) {
+        const world = this.world;
+        if (!world.teleporters || world.teleporters.length === 0) return;
+
+        const isEnabled = world.teleportersEnabled;
+        const isActive = world.teleporterActive;
+        const time = Date.now() / 1000; // For animations
+
+        for (let i = 0; i < world.teleporters.length; i++) {
+          const tele = world.teleporters[i];
+          const x = tele.x * s;
+          const y = tele.y * s;
+          const r = tele.radius * s;
+
+          ctx.save();
+
+          if (!isEnabled) {
+            // DISABLED STATE - Dim and gray
+            // Outer ring
+            ctx.strokeStyle = 'rgba(60, 60, 60, 0.5)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner circle
+            ctx.fillStyle = 'rgba(30, 30, 30, 0.4)';
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // X mark
+            ctx.strokeStyle = 'rgba(100, 100, 100, 0.6)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x - r * 0.4, y - r * 0.4);
+            ctx.lineTo(x + r * 0.4, y + r * 0.4);
+            ctx.moveTo(x + r * 0.4, y - r * 0.4);
+            ctx.lineTo(x - r * 0.4, y + r * 0.4);
+            ctx.stroke();
+
+          } else if (!isActive) {
+            // INACTIVE STATE - Waiting to activate (cyan/purple neutral)
+            const pulse = 0.5 + Math.sin(time * 2) * 0.2;
+
+            // Outer ring - dim cyan
+            ctx.strokeStyle = `rgba(100, 200, 220, ${pulse * 0.4})`;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner dormant circle
+            const innerGrad = ctx.createRadialGradient(x, y, 0, x, y, r * 0.8);
+            innerGrad.addColorStop(0, `rgba(60, 40, 80, ${pulse * 0.3})`);
+            innerGrad.addColorStop(0.7, `rgba(40, 60, 80, ${pulse * 0.2})`);
+            innerGrad.addColorStop(1, 'rgba(20, 30, 40, 0.1)');
+            ctx.fillStyle = innerGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Dormant symbol (circle with dot)
+            ctx.strokeStyle = `rgba(150, 200, 220, ${pulse * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = `rgba(150, 200, 220, ${pulse * 0.4})`;
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else {
+            // ACTIVE STATE - Glowing, spinning, ready to use!
+            const spinAngle = time * 3;
+            const pulse = 0.8 + Math.sin(time * 8) * 0.2;
+            const timeRemaining = world.teleporterActiveTimer;
+            const urgency = timeRemaining < 10 ? (1 + Math.sin(time * 15) * 0.3) : 1;
+
+            // Glow effect
+            ctx.shadowBlur = 25 * pulse * urgency;
+            ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
+
+            // Outer spinning ring
+            ctx.strokeStyle = `rgba(0, 255, 255, ${0.8 * urgency})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Spinning arc segments
+            ctx.lineWidth = 3;
+            for (let j = 0; j < 4; j++) {
+              const arcStart = spinAngle + (j * Math.PI / 2);
+              const arcEnd = arcStart + Math.PI / 4;
+              ctx.strokeStyle = j % 2 === 0
+                ? `rgba(255, 100, 150, ${0.7 * pulse})` // Slight red accent
+                : `rgba(100, 150, 255, ${0.7 * pulse})`; // Slight blue accent
+              ctx.beginPath();
+              ctx.arc(x, y, r * 0.85, arcStart, arcEnd);
+              ctx.stroke();
+            }
+
+            // Inner vortex gradient
+            const vortexGrad = ctx.createRadialGradient(x, y, 0, x, y, r * 0.75);
+            vortexGrad.addColorStop(0, `rgba(255, 255, 255, ${0.9 * pulse})`);
+            vortexGrad.addColorStop(0.3, `rgba(0, 255, 255, ${0.7 * pulse})`);
+            vortexGrad.addColorStop(0.6, `rgba(100, 0, 200, ${0.5 * pulse})`);
+            vortexGrad.addColorStop(1, 'rgba(0, 50, 100, 0.2)');
+            ctx.fillStyle = vortexGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, r * 0.75, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Spiral lines
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 * pulse})`;
+            ctx.lineWidth = 2;
+            for (let j = 0; j < 3; j++) {
+              ctx.beginPath();
+              for (let t = 0; t <= 1; t += 0.05) {
+                const spiralR = r * 0.1 + r * 0.6 * t;
+                const spiralAngle = spinAngle + t * Math.PI * 2 + (j * Math.PI * 2 / 3);
+                const px = x + Math.cos(spiralAngle) * spiralR;
+                const py = y + Math.sin(spiralAngle) * spiralR;
+                if (t === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+              }
+              ctx.stroke();
+            }
+
+            // Center bright spot
+            ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
+            ctx.beginPath();
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.shadowBlur = 0;
+
+            // Timer indicator when low
+            if (timeRemaining < 10) {
+              ctx.fillStyle = `rgba(255, 200, 0, ${urgency * 0.8})`;
+              ctx.font = `bold ${12 * s}px monospace`;
+              ctx.textAlign = 'center';
+              ctx.fillText(Math.ceil(timeRemaining) + 's', x, y + r + 20);
+            }
+          }
+
+          ctx.restore();
+        }
+
+        // Draw warp effects
+        for (const effect of world.teleporterWarpEffects) {
+          const progress = effect.timer / effect.maxTime;
+          const x = effect.x * s;
+          const y = effect.y * s;
+
+          ctx.save();
+
+          if (effect.type === 'warp_out') {
+            // Shrinking spiral effect
+            const shrink = 1 - progress;
+            const teamColor = effect.team === 0 ? [255, 100, 100] : [100, 150, 255];
+
+            ctx.globalAlpha = shrink;
+            ctx.strokeStyle = `rgb(${teamColor.join(',')})`;
+            ctx.lineWidth = 3 * shrink;
+
+            // Imploding circles
+            for (let i = 0; i < 3; i++) {
+              const circleR = (40 - i * 10) * s * shrink;
+              ctx.beginPath();
+              ctx.arc(x, y, circleR, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
+            // Converging lines
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+              const angle = (i / 8) * Math.PI * 2 + progress * Math.PI * 4;
+              const innerR = 5 * s;
+              const outerR = 50 * s * shrink;
+              ctx.beginPath();
+              ctx.moveTo(x + Math.cos(angle) * innerR, y + Math.sin(angle) * innerR);
+              ctx.lineTo(x + Math.cos(angle) * outerR, y + Math.sin(angle) * outerR);
+              ctx.stroke();
+            }
+
+          } else if (effect.type === 'warp_in') {
+            // Expanding burst effect
+            const expand = progress;
+            const teamColor = effect.team === 0 ? [255, 100, 100] : [100, 150, 255];
+
+            ctx.globalAlpha = 1 - progress;
+            ctx.strokeStyle = `rgb(${teamColor.join(',')})`;
+            ctx.lineWidth = 3 * (1 - progress);
+
+            // Expanding circles
+            for (let i = 0; i < 3; i++) {
+              const circleR = (10 + i * 15 + expand * 30) * s;
+              ctx.beginPath();
+              ctx.arc(x, y, circleR, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+
+            // Radiating lines
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 8; i++) {
+              const angle = (i / 8) * Math.PI * 2;
+              const innerR = 10 * s * expand;
+              const outerR = (30 + expand * 40) * s;
+              ctx.beginPath();
+              ctx.moveTo(x + Math.cos(angle) * innerR, y + Math.sin(angle) * innerR);
+              ctx.lineTo(x + Math.cos(angle) * outerR, y + Math.sin(angle) * outerR);
+              ctx.stroke();
+            }
+
+          } else if (effect.type === 'activate') {
+            // Portal activation burst
+            const expand = progress;
+            ctx.globalAlpha = 1 - progress;
+            ctx.strokeStyle = 'rgba(0, 255, 255, 1)';
+            ctx.lineWidth = 4 * (1 - progress);
+
+            // Big expanding ring
+            ctx.beginPath();
+            ctx.arc(x, y, (50 + expand * 100) * s, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner flash
+            const flashGrad = ctx.createRadialGradient(x, y, 0, x, y, 60 * s);
+            flashGrad.addColorStop(0, `rgba(255, 255, 255, ${0.8 * (1 - progress)})`);
+            flashGrad.addColorStop(1, 'rgba(0, 255, 255, 0)');
+            ctx.fillStyle = flashGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, 60 * s, 0, Math.PI * 2);
+            ctx.fill();
+
+          } else if (effect.type === 'deactivate') {
+            // Portal deactivation fade
+            ctx.globalAlpha = 1 - progress;
+            ctx.strokeStyle = 'rgba(100, 100, 150, 0.8)';
+            ctx.lineWidth = 2;
+
+            // Collapsing ring
+            const collapse = 1 - progress;
+            ctx.beginPath();
+            ctx.arc(x, y, 40 * s * collapse, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        }
+      }
     }
 
     // --------------------
@@ -4154,6 +4600,7 @@ button.secondary:hover {
       toggleLaser: document.getElementById('toggle-laser'),
       toggleSword: document.getElementById('toggle-sword'),
       toggleDodge: document.getElementById('toggle-dodge'),
+      toggleTeleporter: document.getElementById('toggle-teleporter'),
       toggleFf: document.getElementById('toggle-ff'),
       toggleRicochet: document.getElementById('toggle-ricochet'),
 
@@ -4247,6 +4694,11 @@ button.secondary:hover {
     ui.toggleDodge.addEventListener('click', () => {
       ui.toggleDodge.classList.toggle('active');
       world.dodgingEnabled = ui.toggleDodge.classList.contains('active');
+    });
+
+    ui.toggleTeleporter.addEventListener('click', () => {
+      ui.toggleTeleporter.classList.toggle('active');
+      world.teleportersEnabled = ui.toggleTeleporter.classList.contains('active');
     });
 
     // Sliders
