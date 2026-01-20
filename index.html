@@ -816,6 +816,22 @@ button.secondary:hover {
       </div>
 
       <div class="profile-section">
+        <div class="section-label">Weapon Kills</div>
+        <div class="stat-row" style="font-size: 10px;">
+          <span>🚀 Rocket</span>
+          <span class="stat-value" id="profile-rocket-kills">0 / 0</span>
+        </div>
+        <div class="stat-row" style="font-size: 10px;">
+          <span>⚡ Laser</span>
+          <span class="stat-value" id="profile-laser-kills">0 / 0</span>
+        </div>
+        <div class="stat-row" style="font-size: 10px;">
+          <span>🗡️ Sword</span>
+          <span class="stat-value" id="profile-sword-kills">0 / 0</span>
+        </div>
+      </div>
+
+      <div class="profile-section">
         <div class="section-label">Neural Activity</div>
         <div class="neural-grid">
           <div class="neural-indicator">
@@ -1211,6 +1227,8 @@ button.secondary:hover {
               this.owner.damageDealt += finalDamage;
               if (killed) {
                 this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
+                this.owner.weaponKills.rocket++;
+                this.owner.totalWeaponKills.rocket++;
                 world.teamKills[this.owner.team]++;
                 this.owner.killScore += 50;
                 world.addEvent('💥 ' + this.owner.name + ' OBLITERATED ' + agent.name + '!', 'kill');
@@ -1382,6 +1400,11 @@ button.secondary:hover {
         this.totalDeaths = 0;
         this.roundsPlayed = 0;
 
+        // Weapon kill stats (per round)
+        this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
+        // Weapon kill stats (lifetime)
+        this.totalWeaponKills = { rocket: 0, laser: 0, sword: 0 };
+
         // Network: 52 inputs → 16 hidden → 5 outputs
         // Inputs: 42 raycast (21 rays × 2) + 10 state (health, cooldown, velocity, weapon type, etc)
         // Outputs: turn, move speed, shoot, strafe, dash
@@ -1430,6 +1453,7 @@ button.secondary:hover {
         this.kills = 0;
         this.deaths = 0;
         this.assists = 0;
+        this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
         this.roundsPlayed++;
         
         this.health = this.maxHealth;
@@ -2190,6 +2214,8 @@ button.secondary:hover {
                   if (killed) {
                     agent.kills++;
                     agent.totalKills++;
+                    agent.weaponKills.laser++;
+                    agent.totalWeaponKills.laser++;
                     this.teamKills[agent.team]++;
                     this.teamRawKills[agent.team]++;
                     killCount++;
@@ -2260,6 +2286,8 @@ button.secondary:hover {
               if (killed) {
                 owner.kills++;
                 owner.totalKills++;
+                owner.weaponKills.laser++;
+                owner.totalWeaponKills.laser++;
                 this.teamKills[owner.team]++;
                 this.teamRawKills[owner.team]++;
                 this.addEvent('💥 ' + owner.name + ' LASER EXPLOSION KILL!', 'laser');
@@ -2426,6 +2454,8 @@ button.secondary:hover {
             if (killed) {
               agent.kills++;
               agent.totalKills++;
+              agent.weaponKills.sword++;
+              agent.totalWeaponKills.sword++;
               this.teamKills[agent.team]++;
               this.teamRawKills[agent.team]++;
               killCount++;
@@ -3295,8 +3325,10 @@ button.secondary:hover {
                 if (e.owner) {
                   e.owner.damageDealt += dmg;
                   if (killed) {
-                    e.owner.kills++; 
+                    e.owner.kills++;
                     e.owner.totalKills = (e.owner.totalKills || 0) + 1;
+                    e.owner.weaponKills.rocket++;
+                    e.owner.totalWeaponKills.rocket++;
                     this.teamKills[e.owner.team]++;
                     this.teamRawKills[e.owner.team]++;
                     this.addEvent('🚀 ' + e.owner.name + ' FRAGGED ' + agent.name + '!', 'kill');
@@ -5230,6 +5262,9 @@ button.secondary:hover {
       profileArmorVal: document.getElementById('profile-armor-val'),
       profileWeapon: document.getElementById('profile-weapon'),
       profileKd: document.getElementById('profile-kd'),
+      profileRocketKills: document.getElementById('profile-rocket-kills'),
+      profileLaserKills: document.getElementById('profile-laser-kills'),
+      profileSwordKills: document.getElementById('profile-sword-kills'),
       neuralTurn: document.getElementById('neural-turn'),
       neuralSpeed: document.getElementById('neural-speed'),
       neuralStrafe: document.getElementById('neural-strafe'),
@@ -5585,6 +5620,11 @@ button.secondary:hover {
 
       // K/D
       ui.profileKd.textContent = agent.kills + '/' + agent.deaths;
+
+      // Weapon kills (game / total)
+      ui.profileRocketKills.textContent = agent.weaponKills.rocket + ' / ' + agent.totalWeaponKills.rocket;
+      ui.profileLaserKills.textContent = agent.weaponKills.laser + ' / ' + agent.totalWeaponKills.laser;
+      ui.profileSwordKills.textContent = agent.weaponKills.sword + ' / ' + agent.totalWeaponKills.sword;
 
       // Neural activity (from last decision)
       if (agent.lastDecision) {
