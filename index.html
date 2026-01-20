@@ -1650,20 +1650,68 @@ button.secondary:hover {
         this.weaponCooldown = Math.max(0, this.weaponCooldown - dt);
         this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
 
-        // Handle sword lunge movement
+        // Handle sword lunge movement (with chain support)
         if (this.swordLunging) {
-          // Scale lunge speed with distance (500 units/sec for consistent visual speed)
-          const lungeSpeed = 500 / Math.max(50, this.lungeDist);
-          this.lungeProgress += dt * lungeSpeed;
-          if (this.lungeProgress >= 1) {
-            this.swordLunging = false;
-            this.x = this.lungeEndX;
-            this.y = this.lungeEndY;
-            this.weaponCooldown = 1.0; // 1 second cooldown after lunge
+          if (this.chainTargets && this.chainTargets.length > 0) {
+            // Chain lunge - follow path through multiple targets
+            const chainSpeed = 600; // Slightly faster for chain kills
+
+            // Calculate total chain distance
+            let totalDist = 0;
+            const segmentDists = [];
+            for (const chain of this.chainTargets) {
+              const d = Math.hypot(chain.toX - chain.fromX, chain.toY - chain.fromY);
+              segmentDists.push(d);
+              totalDist += d;
+            }
+
+            // Update progress based on total distance
+            this.lungeProgress += (dt * chainSpeed) / Math.max(50, totalDist);
+
+            if (this.lungeProgress >= 1) {
+              this.swordLunging = false;
+              const lastChain = this.chainTargets[this.chainTargets.length - 1];
+              this.x = lastChain.toX;
+              this.y = lastChain.toY;
+              this.weaponCooldown = 1.0;
+              this.chainTargets = null;
+            } else {
+              // Find which segment we're on
+              let progressDist = this.lungeProgress * totalDist;
+              let segmentIndex = 0;
+              let segmentStart = 0;
+
+              for (let i = 0; i < segmentDists.length; i++) {
+                if (progressDist <= segmentStart + segmentDists[i]) {
+                  segmentIndex = i;
+                  break;
+                }
+                segmentStart += segmentDists[i];
+              }
+
+              const chain = this.chainTargets[segmentIndex];
+              const segmentProgress = (progressDist - segmentStart) / segmentDists[segmentIndex];
+
+              // Interpolate position within segment
+              this.x = chain.fromX + (chain.toX - chain.fromX) * segmentProgress;
+              this.y = chain.fromY + (chain.toY - chain.fromY) * segmentProgress;
+
+              // Face the target
+              this.rotation = Math.atan2(chain.toY - chain.fromY, chain.toX - chain.fromX);
+            }
           } else {
-            // Interpolate position
-            this.x = this.lungeStartX + (this.lungeEndX - this.lungeStartX) * this.lungeProgress;
-            this.y = this.lungeStartY + (this.lungeEndY - this.lungeStartY) * this.lungeProgress;
+            // Regular lunge (no chain)
+            const lungeSpeed = 500 / Math.max(50, this.lungeDist);
+            this.lungeProgress += dt * lungeSpeed;
+            if (this.lungeProgress >= 1) {
+              this.swordLunging = false;
+              this.x = this.lungeEndX;
+              this.y = this.lungeEndY;
+              this.weaponCooldown = 1.0;
+            } else {
+              this.x = this.lungeStartX + (this.lungeEndX - this.lungeStartX) * this.lungeProgress;
+              this.y = this.lungeStartY + (this.lungeEndY - this.lungeStartY) * this.lungeProgress;
+            }
           }
           return; // Skip normal movement during lunge
         }
@@ -2166,112 +2214,218 @@ button.secondary:hover {
       }
 
       executeSwordLunge(agent, chargeTime) {
-        // Calculate lunge distance based on charge time (0.5s min charge, 2s max)
+        // Calculate initial lunge distance based on charge time (0.5s min charge, 2s max)
         const minDist = 50;
-        const maxDist = 500; // Doubled range for longer lunges
-        const chargeRatio = Math.min(1, Math.max(0, (chargeTime - 0.3) / 1.7)); // 0.3s to 2s
+        const maxDist = 500;
+        const chargeRatio = Math.min(1, Math.max(0, (chargeTime - 0.3) / 1.7));
         const lungeDist = minDist + chargeRatio * (maxDist - minDist);
-        
+        const chainRange = 200; // Range for chaining to next enemy
+
         const startX = agent.x;
         const startY = agent.y;
-        const endX = agent.x + Math.cos(agent.rotation) * lungeDist;
-        const endY = agent.y + Math.sin(agent.rotation) * lungeDist;
-        
+
+        // Build chain of targets
+        const chainTargets = [];
+        let currentX = startX;
+        let currentY = startY;
+        let currentAngle = agent.rotation;
+        let currentRange = lungeDist;
+        const hitTargets = new Set(); // Track already hit targets
+
+        // Find chain of enemies to hit
+        let searching = true;
+        while (searching) {
+          // Find first enemy along current lunge path
+          let firstHit = null;
+          let firstHitDist = currentRange;
+
+          const endX = currentX + Math.cos(currentAngle) * currentRange;
+          const endY = currentY + Math.sin(currentAngle) * currentRange;
+
+          for (const target of this.agents) {
+            if (target === agent || !target.alive || hitTargets.has(target)) continue;
+            if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
+
+            // Point-to-line distance check
+            const dx = endX - currentX;
+            const dy = endY - currentY;
+            const len = Math.hypot(dx, dy);
+            if (len === 0) continue;
+
+            const nx = -dy / len;
+            const ny = dx / len;
+            const px = target.x - currentX;
+            const py = target.y - currentY;
+            const perpDist = Math.abs(px * nx + py * ny);
+            const alongDist = px * (dx / len) + py * (dy / len);
+
+            // Check if target is along the path and closer than current first hit
+            if (perpDist < target.radius + 20 && alongDist > 0 && alongDist < firstHitDist) {
+              firstHit = target;
+              firstHitDist = alongDist;
+            }
+          }
+
+          if (firstHit) {
+            // Found an enemy - add to chain
+            hitTargets.add(firstHit);
+            chainTargets.push({
+              target: firstHit,
+              fromX: currentX,
+              fromY: currentY,
+              toX: firstHit.x,
+              toY: firstHit.y
+            });
+
+            // Look for next chain target from this position
+            currentX = firstHit.x;
+            currentY = firstHit.y;
+            currentRange = chainRange;
+
+            // Find closest enemy within chain range (any direction)
+            let nextTarget = null;
+            let nextDist = chainRange;
+
+            for (const target of this.agents) {
+              if (target === agent || !target.alive || hitTargets.has(target)) continue;
+              if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
+
+              const dist = Math.hypot(target.x - currentX, target.y - currentY);
+              if (dist < nextDist) {
+                nextTarget = target;
+                nextDist = dist;
+              }
+            }
+
+            if (nextTarget) {
+              // Update angle to face next target
+              currentAngle = Math.atan2(nextTarget.y - currentY, nextTarget.x - currentX);
+            } else {
+              searching = false; // No more targets in range
+            }
+          } else {
+            searching = false; // No enemy hit on this path
+          }
+        }
+
+        // Determine final destination
+        let finalX, finalY;
+        if (chainTargets.length > 0) {
+          // End at last chain target
+          const lastChain = chainTargets[chainTargets.length - 1];
+          finalX = lastChain.toX;
+          finalY = lastChain.toY;
+        } else {
+          // No hits - lunge to original destination
+          finalX = startX + Math.cos(agent.rotation) * lungeDist;
+          finalY = startY + Math.sin(agent.rotation) * lungeDist;
+        }
+
         // Clamp to world bounds
-        const clampedEndX = clamp(endX, agent.radius, this.width - agent.radius);
-        const clampedEndY = clamp(endY, agent.radius, this.height - agent.radius);
-        
-        // Set up lunge
+        finalX = clamp(finalX, agent.radius, this.width - agent.radius);
+        finalY = clamp(finalY, agent.radius, this.height - agent.radius);
+
+        // Set up lunge (for now, teleport through chain - we'll animate later)
         agent.lungeStartX = startX;
         agent.lungeStartY = startY;
-        agent.lungeEndX = clampedEndX;
-        agent.lungeEndY = clampedEndY;
+        agent.lungeEndX = finalX;
+        agent.lungeEndY = finalY;
         agent.lungeProgress = 0;
-        agent.lungeDist = Math.hypot(clampedEndX - startX, clampedEndY - startY);
+        agent.lungeDist = Math.hypot(finalX - startX, finalY - startY);
         agent.swordLunging = true;
-        
-        // Check for hits along the lunge path
+        agent.chainTargets = chainTargets; // Store for animation
+        agent.chainIndex = 0;
+
+        // Deal damage to all chain targets
         let killCount = 0;
-        for (const target of this.agents) {
-          if (target === agent || !target.alive) continue;
-          
-          // Skip teammates unless FF is on
-          if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
-          
-          // Point-to-line distance check
-          const dx = clampedEndX - startX;
-          const dy = clampedEndY - startY;
-          const len = Math.hypot(dx, dy);
-          if (len === 0) continue;
-          
-          const nx = -dy / len;
-          const ny = dx / len;
-          
-          const px = target.x - startX;
-          const py = target.y - startY;
-          const dist = Math.abs(px * nx + py * ny);
-          
-          // Check if target is along the path
-          const dot = px * (dx / len) + py * (dy / len);
-          
-          if (dist < target.radius + 20 && dot > 0 && dot < len) {
-            // Hit!
-            if (target.team === agent.team) {
-              if (this.friendlyFireRicochet) {
-                const killed = agent.takeDamage(999, agent, this);
-                this.teamRicochets[agent.team]++;
-                if (killed) {
-                  this.addEvent('🔄 ' + agent.name + ' SWORD RICOCHET!', 'sword');
-                }
-              } else if (this.friendlyFire) {
-                const killed = target.takeDamage(999, agent, this);
-                if (killed) {
-                  this.teamRicochets[agent.team]++;
-                  this.addEvent('🗡️ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'sword');
-                }
+        for (const chain of chainTargets) {
+          const target = chain.target;
+          if (!target.alive) continue;
+
+          if (target.team === agent.team) {
+            if (this.friendlyFireRicochet) {
+              const killed = agent.takeDamage(999, agent, this);
+              this.teamRicochets[agent.team]++;
+              if (killed) {
+                this.addEvent('🔄 ' + agent.name + ' SWORD RICOCHET!', 'sword');
               }
-            } else {
+            } else if (this.friendlyFire) {
               const killed = target.takeDamage(999, agent, this);
               if (killed) {
-                agent.kills++;
-                agent.totalKills++;
-                this.teamKills[agent.team]++;
-                this.teamRawKills[agent.team]++;
-                killCount++;
+                this.teamRicochets[agent.team]++;
+                this.addEvent('🗡️ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'sword');
               }
+            }
+          } else {
+            const killed = target.takeDamage(999, agent, this);
+            if (killed) {
+              agent.kills++;
+              agent.totalKills++;
+              this.teamKills[agent.team]++;
+              this.teamRawKills[agent.team]++;
+              killCount++;
             }
           }
         }
-        
+
+        // Event messages
         if (killCount > 0) {
-          const msg = killCount > 1 
-            ? '🗡️ ' + agent.name + ' SWORD MULTI-KILL x' + killCount + '!'
-            : '🗡️ ' + agent.name + ' SWORD KILL!';
+          let msg;
+          if (killCount >= 4) {
+            msg = '⚔️ ' + agent.name + ' SWORD RAMPAGE x' + killCount + '!';
+          } else if (killCount >= 2) {
+            msg = '⚔️ ' + agent.name + ' CHAIN KILL x' + killCount + '!';
+          } else {
+            msg = '🗡️ ' + agent.name + ' SWORD KILL!';
+          }
           this.addEvent(msg, 'sword');
         }
-        
-        // Add slash animation (scale duration with distance)
-        // Sword is held to the right side - calculate perpendicular offset
-        const perpX = Math.cos(agent.rotation + Math.PI / 2); // perpendicular right
-        const perpY = Math.sin(agent.rotation + Math.PI / 2);
-        const bladeLength = agent.radius * 1.7; // blade from r*0.5 to r*2.2
-        const swordOffset = agent.radius * 1.35; // center of blade (avg of 0.5 and 2.2)
 
-        const actualDist = Math.hypot(clampedEndX - startX, clampedEndY - startY);
-        const lungeDuration = actualDist / 500; // How long the agent lunge takes
-        const slashDuration = lungeDuration + 0.2; // Trail lasts a bit longer for fading effect
-        this.swordSlashes.push({
-          // Trail follows the sword position (offset to the right of agent path)
-          startX: startX + perpX * swordOffset,
-          startY: startY + perpY * swordOffset,
-          endX: clampedEndX + perpX * swordOffset,
-          endY: clampedEndY + perpY * swordOffset,
-          bladeLength: bladeLength, // trail width = blade length
-          team: agent.team,
-          timer: 0,
-          maxTime: slashDuration,
-          lungeDuration: lungeDuration // Store for syncing sweep with agent
-        });
+        // Add slash animations for each chain segment
+        const bladeLength = agent.radius * 1.7;
+        const swordOffset = agent.radius * 1.35;
+
+        if (chainTargets.length > 0) {
+          // Create slash for each chain hop
+          for (const chain of chainTargets) {
+            const segAngle = Math.atan2(chain.toY - chain.fromY, chain.toX - chain.fromX);
+            const perpX = Math.cos(segAngle + Math.PI / 2);
+            const perpY = Math.sin(segAngle + Math.PI / 2);
+            const segDist = Math.hypot(chain.toX - chain.fromX, chain.toY - chain.fromY);
+            const segDuration = segDist / 500;
+
+            this.swordSlashes.push({
+              startX: chain.fromX + perpX * swordOffset,
+              startY: chain.fromY + perpY * swordOffset,
+              endX: chain.toX + perpX * swordOffset,
+              endY: chain.toY + perpY * swordOffset,
+              bladeLength: bladeLength,
+              team: agent.team,
+              timer: 0,
+              maxTime: segDuration + 0.15,
+              lungeDuration: segDuration,
+              isChain: true
+            });
+          }
+        } else {
+          // No chain - regular slash
+          const perpX = Math.cos(agent.rotation + Math.PI / 2);
+          const perpY = Math.sin(agent.rotation + Math.PI / 2);
+          const actualDist = Math.hypot(finalX - startX, finalY - startY);
+          const lungeDuration = actualDist / 500;
+
+          this.swordSlashes.push({
+            startX: startX + perpX * swordOffset,
+            startY: startY + perpY * swordOffset,
+            endX: finalX + perpX * swordOffset,
+            endY: finalY + perpY * swordOffset,
+            bladeLength: bladeLength,
+            team: agent.team,
+            timer: 0,
+            maxTime: lungeDuration + 0.2,
+            lungeDuration: lungeDuration
+          });
+        }
       }
 
       setRoundTimeSeconds(sec) {
