@@ -60,7 +60,15 @@ The sidebar has controls for:
 - Toggle switches for all optional features
 - Zoom and camera (drag to pan, scroll to zoom)
 
-Click on any agent to follow them and see their stats.
+Click on any agent to follow them and see their stats. Click elsewhere to stop following. Dragging the camera also stops following.
+
+## Training Tips
+
+More agents and faster generations generally lead to better results. The key is finding a balance where rounds are long enough for agents to actually engage in combat and learn, but short enough to get through many generations quickly.
+
+If your system struggles with large populations, enable headless mode. This skips rendering entirely and runs the simulation as fast as your CPU allows. Useful for overnight training runs.
+
+A round that ends in 1-2 seconds is too short - agents won't have time to do anything meaningful. Aim for rounds where agents have time to move around, find enemies, and fight.
 
 ## Running Locally
 

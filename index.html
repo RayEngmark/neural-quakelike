@@ -3049,6 +3049,10 @@ button.secondary:hover {
         this.cssH = 0;
         this.dpr = 1;
 
+        // Agent following
+        this.followAgent = null;
+        this.dragDistance = 0; // Track drag to distinguish click from drag
+
         this.setupControls();
         this.resize();
       }
@@ -3101,6 +3105,7 @@ button.secondary:hover {
           this.dragStartY = y;
           this.dragCamX = this.cameraX;
           this.dragCamY = this.cameraY;
+          this.dragDistance = 0;
           this.canvas.style.cursor = 'grabbing';
         };
 
@@ -3108,19 +3113,30 @@ button.secondary:hover {
           if (!this.isDragging) return;
           const dx = x - this.dragStartX;
           const dy = y - this.dragStartY;
+          this.dragDistance = Math.hypot(dx, dy);
           this.cameraX = this.dragCamX - dx / (this.baseScale * this.zoom);
           this.cameraY = this.dragCamY - dy / (this.baseScale * this.zoom);
           this.clampCamera();
+          // Stop following when user drags
+          if (this.dragDistance > 5) {
+            this.followAgent = null;
+          }
         };
 
-        const endDrag = () => {
+        const endDrag = (x, y) => {
+          const wasClick = this.dragDistance < 5;
           this.isDragging = false;
           this.canvas.style.cursor = 'grab';
+
+          // Handle click to select agent
+          if (wasClick && x !== undefined) {
+            this.handleClick(x, y);
+          }
         };
 
         this.canvas.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
         window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
-        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('mouseup', (e) => endDrag(e.clientX, e.clientY));
 
         // Touch (single finger pan)
         this.canvas.addEventListener('touchstart', (e) => {
@@ -3143,6 +3159,52 @@ button.secondary:hover {
         const vh = this.cssH / (this.baseScale * this.zoom);
         this.cameraX = clamp(this.cameraX, -100, this.world.width - vw + 100);
         this.cameraY = clamp(this.cameraY, -100, this.world.height - vh + 100);
+      }
+
+      handleClick(clientX, clientY) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = clientX - rect.left;
+        const mouseY = clientY - rect.top;
+
+        // Convert to world coordinates
+        const offset = this.getCenterOffset();
+        const s = this.baseScale * this.zoom;
+        const worldX = this.cameraX + (mouseX - offset.x) / s;
+        const worldY = this.cameraY + (mouseY - offset.y) / s;
+
+        // Find clicked agent
+        let closestAgent = null;
+        let closestDist = 30; // Click radius threshold
+
+        for (const agent of this.world.agents) {
+          const dist = Math.hypot(agent.x - worldX, agent.y - worldY);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestAgent = agent;
+          }
+        }
+
+        if (closestAgent) {
+          this.followAgent = closestAgent;
+        } else {
+          this.followAgent = null;
+        }
+      }
+
+      updateFollow() {
+        // Clear follow if agent is dead or doesn't exist
+        if (this.followAgent && !this.followAgent.alive) {
+          this.followAgent = null;
+        }
+
+        if (!this.followAgent) return;
+
+        // Center camera on followed agent
+        const vw = this.cssW / (this.baseScale * this.zoom);
+        const vh = this.cssH / (this.baseScale * this.zoom);
+        this.cameraX = this.followAgent.x - vw / 2;
+        this.cameraY = this.followAgent.y - vh / 2;
+        this.clampCamera();
       }
 
       resize() {
@@ -3502,6 +3564,22 @@ button.secondary:hover {
         for (const agent of this.world.agents) {
           if (!agent.alive) continue;
           const x = agent.x * s, y = agent.y * s, r = agent.radius * s;
+
+          // Selection highlight for followed agent
+          if (agent === this.followAgent) {
+            ctx.save();
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ffff00';
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.arc(x, y, r + 8, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.shadowBlur = 0;
+            ctx.restore();
+          }
 
           ctx.save();
           ctx.translate(x, y);
@@ -4298,6 +4376,68 @@ button.secondary:hover {
         ctx.globalCompositeOperation = 'source-over';
         ctx.shadowBlur = 0;
         ctx.restore();
+
+        // Draw followed agent stats overlay
+        if (this.followAgent) {
+          this.drawAgentStats(ctx);
+        }
+      }
+
+      drawAgentStats(ctx) {
+        const agent = this.followAgent;
+        if (!agent) return;
+
+        const padding = 12;
+        const lineHeight = 18;
+        const boxWidth = 180;
+        const boxHeight = 130;
+        const boxX = 10;
+        const boxY = this.canvas.height / this.dpr - boxHeight - 10;
+
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+
+        // Border
+        ctx.strokeStyle = agent.team === 0 ? '#ff4444' : '#4488ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+
+        // Text
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px JetBrains Mono, monospace';
+        ctx.textAlign = 'left';
+
+        let y = boxY + padding + 12;
+
+        // Name
+        ctx.fillStyle = agent.team === 0 ? '#ff6666' : '#6699ff';
+        ctx.fillText(agent.name, boxX + padding, y);
+        y += lineHeight + 4;
+
+        ctx.font = '12px JetBrains Mono, monospace';
+        ctx.fillStyle = '#cccccc';
+
+        // Health
+        ctx.fillText(`HP: ${Math.ceil(agent.health)}/${agent.maxHealth}`, boxX + padding, y);
+        y += lineHeight;
+
+        // Armor
+        ctx.fillText(`Armor: ${Math.ceil(agent.armor)}/${agent.maxArmor}`, boxX + padding, y);
+        y += lineHeight;
+
+        // Weapon
+        const weaponName = agent.weapon.charAt(0).toUpperCase() + agent.weapon.slice(1);
+        ctx.fillText(`Weapon: ${weaponName}`, boxX + padding, y);
+        y += lineHeight;
+
+        // Kills this round
+        ctx.fillText(`Kills: ${agent.kills}`, boxX + padding, y);
+        y += lineHeight;
+
+        // Total kills
+        ctx.fillStyle = '#888888';
+        ctx.fillText(`Total: ${agent.totalKills} kills, ${agent.totalDeaths} deaths`, boxX + padding, y);
       }
 
       drawTeleporters(ctx, s) {
@@ -4944,6 +5084,7 @@ button.secondary:hover {
 
       // Only render if not headless
       if (!headlessMode) {
+        renderer.updateFollow();
         renderer.render();
       }
       drawUI(realDt);
