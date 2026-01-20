@@ -3008,10 +3008,11 @@ button.secondary:hover {
           // Body
           ctx.shadowBlur = 15;
           const swordColor = agent.team === 0 ? '#ff4444' : '#4488ff';
-          ctx.shadowColor = agent.weapon === 'laser' ? '#00ffff' : (agent.weapon === 'sword' ? swordColor : agent.color);
+          const laserColor = agent.team === 0 ? '#ff00aa' : '#00aaff'; // Magenta for red team, electric blue for blue team
+          ctx.shadowColor = agent.weapon === 'laser' ? laserColor : (agent.weapon === 'sword' ? swordColor : agent.color);
           ctx.fillStyle = '#000';
           ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = agent.weapon === 'laser' ? '#00ffff' : (agent.weapon === 'sword' ? swordColor : agent.color);
+          ctx.strokeStyle = agent.weapon === 'laser' ? laserColor : (agent.weapon === 'sword' ? swordColor : agent.color);
           ctx.lineWidth = 2;
           ctx.stroke();
 
@@ -3068,15 +3069,23 @@ button.secondary:hover {
             ctx.textBaseline = 'middle';
             ctx.fillText('🚀', 0, 0);
           } else if (agent.weapon === 'laser') {
-            // Legendary Plasma Cannon
+            // Legendary Plasma Cannon - Team colored
             const chargeProgress = agent.laserCharging ? agent.laserCharge / 3.0 : 0;
+
+            // Team-specific colors
+            const isRed = agent.team === 0;
+            const primaryColor = isRed ? '#ff00aa' : '#00aaff';
+            const primaryRGB = isRed ? '255, 0, 170' : '0, 170, 255';
+            const secondaryRGB = isRed ? '255, 100, 200' : '100, 200, 255';
+            const darkTint = isRed ? '#2a1a2a' : '#1a2a3a';
+            const midTint = isRed ? '#3a1a3a' : '#0a1a2a';
 
             // Main body - sleek futuristic design
             const bodyGradient = ctx.createLinearGradient(r * 0.2, -6 * s, r * 0.2, 6 * s);
-            bodyGradient.addColorStop(0, '#2a3a4a');
-            bodyGradient.addColorStop(0.3, '#1a2a3a');
-            bodyGradient.addColorStop(0.7, '#0a1a2a');
-            bodyGradient.addColorStop(1, '#1a2a3a');
+            bodyGradient.addColorStop(0, darkTint);
+            bodyGradient.addColorStop(0.3, midTint);
+            bodyGradient.addColorStop(0.7, '#0a0a1a');
+            bodyGradient.addColorStop(1, midTint);
             ctx.fillStyle = bodyGradient;
             ctx.beginPath();
             ctx.moveTo(r * 0.2, -5 * s);
@@ -3090,13 +3099,13 @@ button.secondary:hover {
 
             // Energy coils around barrel
             ctx.shadowBlur = 8;
-            ctx.shadowColor = '#00ffff';
-            ctx.strokeStyle = '#00ffff';
+            ctx.shadowColor = primaryColor;
+            ctx.strokeStyle = primaryColor;
             ctx.lineWidth = 1.5;
             for (let i = 0; i < 3; i++) {
               const cx = r * 0.6 + i * r * 0.35;
               const coilAlpha = 0.4 + chargeProgress * 0.6;
-              ctx.strokeStyle = `rgba(0, 255, 255, ${coilAlpha})`;
+              ctx.strokeStyle = `rgba(${primaryRGB}, ${coilAlpha})`;
               ctx.beginPath();
               ctx.arc(cx, 0, 5 * s, -Math.PI * 0.7, Math.PI * 0.7);
               ctx.stroke();
@@ -3104,24 +3113,24 @@ button.secondary:hover {
 
             // Central energy conduit
             const conduitGradient = ctx.createLinearGradient(r * 0.3, 0, r * 1.5, 0);
-            conduitGradient.addColorStop(0, 'rgba(0, 100, 150, 0.8)');
-            conduitGradient.addColorStop(0.5, `rgba(0, 255, 255, ${0.3 + chargeProgress * 0.7})`);
-            conduitGradient.addColorStop(1, 'rgba(0, 200, 255, 0.9)');
+            conduitGradient.addColorStop(0, `rgba(${primaryRGB}, 0.4)`);
+            conduitGradient.addColorStop(0.5, `rgba(${primaryRGB}, ${0.3 + chargeProgress * 0.7})`);
+            conduitGradient.addColorStop(1, `rgba(${secondaryRGB}, 0.9)`);
             ctx.fillStyle = conduitGradient;
             ctx.fillRect(r * 0.3, -2 * s, r * 1.2, 4 * s);
 
             // Barrel tip - focusing lens
             ctx.shadowBlur = 10 + chargeProgress * 15;
-            ctx.fillStyle = '#0a1a2a';
+            ctx.fillStyle = '#0a0a1a';
             ctx.beginPath();
             ctx.arc(r * 1.7, 0, 5 * s, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = `rgba(0, 255, 255, ${0.6 + chargeProgress * 0.4})`;
+            ctx.strokeStyle = `rgba(${primaryRGB}, ${0.6 + chargeProgress * 0.4})`;
             ctx.lineWidth = 2;
             ctx.stroke();
 
             // Inner focusing ring
-            ctx.fillStyle = `rgba(0, 255, 255, ${0.3 + chargeProgress * 0.7})`;
+            ctx.fillStyle = `rgba(${primaryRGB}, ${0.3 + chargeProgress * 0.7})`;
             ctx.beginPath();
             ctx.arc(r * 1.7, 0, 3 * s, 0, Math.PI * 2);
             ctx.fill();
@@ -3129,19 +3138,32 @@ button.secondary:hover {
             // Charging effect - energy spiral
             if (agent.laserCharging && agent.laserCharge > 0) {
               ctx.shadowBlur = 20 * chargeProgress;
-              ctx.shadowColor = '#00ffff';
+              ctx.shadowColor = primaryColor;
 
               // Rotating energy particles converging to barrel tip
-              for (let i = 0; i < 6; i++) {
-                const angle = (Date.now() / 150 + i * Math.PI / 3) % (Math.PI * 2);
-                const dist = (1 - chargeProgress * 0.7) * r * 0.8;
+              for (let i = 0; i < 8; i++) {
+                const angle = (Date.now() / 120 + i * Math.PI / 4) % (Math.PI * 2);
+                const dist = (1 - chargeProgress * 0.7) * r * 0.9;
                 const px = r * 1.7 + Math.cos(angle) * dist;
                 const py = Math.sin(angle) * dist;
-                const pSize = (2 + chargeProgress * 3) * s;
+                const pSize = (2 + chargeProgress * 4) * s;
 
-                ctx.fillStyle = `rgba(0, 255, 255, ${chargeProgress * 0.9})`;
+                ctx.fillStyle = `rgba(${primaryRGB}, ${chargeProgress * 0.9})`;
                 ctx.beginPath();
                 ctx.arc(px, py, pSize, 0, Math.PI * 2);
+                ctx.fill();
+              }
+
+              // Secondary particle ring
+              for (let i = 0; i < 4; i++) {
+                const angle = (Date.now() / 200 + i * Math.PI / 2 + Math.PI / 4) % (Math.PI * 2);
+                const dist = (1 - chargeProgress * 0.5) * r * 1.2;
+                const px = r * 1.7 + Math.cos(angle) * dist;
+                const py = Math.sin(angle) * dist;
+
+                ctx.fillStyle = `rgba(255, 255, 255, ${chargeProgress * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(px, py, 2 * s, 0, Math.PI * 2);
                 ctx.fill();
               }
 
@@ -3151,13 +3173,24 @@ button.secondary:hover {
               ctx.arc(r * 1.7, 0, (2 + chargeProgress * 6) * s, 0, Math.PI * 2);
               ctx.fill();
 
-              // Warning indicator
+              // Warning indicator - pulsing ring
               if (chargeProgress > 0.7) {
-                ctx.strokeStyle = `rgba(255, 255, 255, ${(Math.sin(Date.now() / 50) + 1) * 0.5})`;
+                const pulse = (Math.sin(Date.now() / 50) + 1) * 0.5;
+                ctx.strokeStyle = `rgba(255, 255, 255, ${pulse})`;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
                 ctx.arc(r * 1.7, 0, (8 + chargeProgress * 4) * s, 0, Math.PI * 2);
                 ctx.stroke();
+
+                // Additional warning particles
+                for (let i = 0; i < 3; i++) {
+                  const sparkAngle = Date.now() / 30 + i * Math.PI * 2 / 3;
+                  const sparkDist = (10 + chargeProgress * 5) * s;
+                  ctx.fillStyle = `rgba(${primaryRGB}, ${pulse})`;
+                  ctx.beginPath();
+                  ctx.arc(r * 1.7 + Math.cos(sparkAngle) * sparkDist, Math.sin(sparkAngle) * sparkDist, 2 * s, 0, Math.PI * 2);
+                  ctx.fill();
+                }
               }
             }
 
@@ -3410,58 +3443,136 @@ button.secondary:hover {
           ctx.fill();
         }
         
-        // Laser beams (anime style)
+        // Laser beams (epic team-colored)
         for (const beam of this.world.laserBeams) {
           const progress = beam.timer / beam.maxTime;
           const sx = beam.startX * s, sy = beam.startY * s;
           const ex = beam.endX * s, ey = beam.endY * s;
-          
+
+          // Team colors
+          const isRed = beam.team === 0;
+          const outerRGB = isRed ? '255, 0, 100' : '0, 150, 255';
+          const midRGB = isRed ? '255, 50, 150' : '50, 200, 255';
+          const innerRGB = isRed ? '255, 150, 200' : '150, 220, 255';
+
           // Phase 1: Expansion (0 - 0.1)
           // Phase 2: Peak (0.1 - 0.4)
           // Phase 3: Contraction (0.4 - 1.0)
-          
+
           let beamWidth, alpha;
           if (progress < 0.1) {
             // Expanding
-            beamWidth = (progress / 0.1) * 25;
+            beamWidth = (progress / 0.1) * 30;
             alpha = 1;
           } else if (progress < 0.4) {
-            // Peak
-            beamWidth = 25;
+            // Peak - with slight pulse
+            const pulse = 1 + Math.sin(progress * 50) * 0.1;
+            beamWidth = 30 * pulse;
             alpha = 1;
           } else {
             // Contracting
             const contractProgress = (progress - 0.4) / 0.6;
-            beamWidth = 25 * (1 - contractProgress);
+            beamWidth = 30 * (1 - contractProgress);
             alpha = 1 - contractProgress;
           }
-          
-          // Outer glow
-          ctx.strokeStyle = `rgba(0, 255, 255, ${alpha * 0.3})`;
-          ctx.lineWidth = beamWidth * s * 3;
+
+          // Calculate beam direction for effects
+          const dx = ex - sx, dy = ey - sy;
+          const len = Math.hypot(dx, dy);
+          const dirX = len > 0 ? dx / len : 1;
+          const dirY = len > 0 ? dy / len : 0;
+          const perpX = -dirY, perpY = dirX;
+
+          // Outer glow (widest)
+          ctx.shadowBlur = 30 * alpha;
+          ctx.shadowColor = isRed ? '#ff0066' : '#0088ff';
+          ctx.strokeStyle = `rgba(${outerRGB}, ${alpha * 0.3})`;
+          ctx.lineWidth = beamWidth * s * 4;
           ctx.lineCap = 'round';
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           ctx.lineTo(ex, ey);
           ctx.stroke();
-          
+
+          // Secondary glow
+          ctx.strokeStyle = `rgba(${outerRGB}, ${alpha * 0.5})`;
+          ctx.lineWidth = beamWidth * s * 2.5;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+
           // Middle glow
-          ctx.strokeStyle = `rgba(100, 255, 255, ${alpha * 0.6})`;
+          ctx.strokeStyle = `rgba(${midRGB}, ${alpha * 0.7})`;
           ctx.lineWidth = beamWidth * s * 1.5;
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           ctx.lineTo(ex, ey);
           ctx.stroke();
-          
-          // Core beam
-          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-          ctx.lineWidth = beamWidth * s * 0.5;
+
+          // Inner bright layer
+          ctx.strokeStyle = `rgba(${innerRGB}, ${alpha * 0.9})`;
+          ctx.lineWidth = beamWidth * s * 0.8;
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           ctx.lineTo(ex, ey);
           ctx.stroke();
+
+          // Core beam (white hot)
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+          ctx.lineWidth = beamWidth * s * 0.3;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+
+          // Energy particles along beam
+          if (alpha > 0.3) {
+            const particleCount = Math.floor(len / (40 * s));
+            for (let i = 0; i < particleCount; i++) {
+              const t = (i + 0.5) / particleCount;
+              const wobble = Math.sin(Date.now() / 50 + i * 2) * beamWidth * s * 0.3;
+              const px = sx + dx * t + perpX * wobble;
+              const py = sy + dy * t + perpY * wobble;
+              const pSize = (2 + Math.random() * 2) * s * alpha;
+
+              ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+              ctx.beginPath();
+              ctx.arc(px, py, pSize, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
+          // Impact flash at end point
+          if (progress < 0.3) {
+            const flashAlpha = (1 - progress / 0.3) * alpha;
+            const flashSize = (20 + progress * 30) * s;
+
+            ctx.shadowBlur = 40;
+            ctx.shadowColor = isRed ? '#ff0066' : '#0088ff';
+            ctx.fillStyle = `rgba(${outerRGB}, ${flashAlpha * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(ex, ey, flashSize * 1.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(ex, ey, flashSize * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+
+          // Muzzle flash at start
+          if (progress < 0.15) {
+            const muzzleAlpha = (1 - progress / 0.15);
+            ctx.fillStyle = `rgba(255, 255, 255, ${muzzleAlpha * 0.9})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, 15 * s * muzzleAlpha, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
-        
+
         // Sword slashes - blade sweep arc effect
         for (const slash of this.world.swordSlashes) {
           const progress = slash.timer / slash.maxTime;
