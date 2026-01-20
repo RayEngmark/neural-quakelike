@@ -1470,7 +1470,7 @@ button.secondary:hover {
       }
 
       castRays(world, numRays = 8, fov = Math.PI * 0.8) {
-        const { agents, obstacles, width: worldWidth, height: worldHeight } = world;
+        const { agents, obstacles, pickups, width: worldWidth, height: worldHeight } = world;
         const rayData = [];
 
         const startAngle = this.rotation - fov / 2;
@@ -1491,6 +1491,12 @@ button.secondary:hover {
           for (const obs of obstacles) {
             const dist = this.raycastRect(angle, closestDist, obs);
             if (dist < closestDist) { closestDist = dist; closestType = 0.5; }
+          }
+
+          // Check pickups (weapons, health, armor)
+          for (const pickup of pickups) {
+            const dist = this.raycastCircle(angle, closestDist, pickup.x, pickup.y, pickup.radius);
+            if (dist < closestDist) { closestDist = dist; closestType = 0.25; }
           }
 
           for (const other of nearCandidates) {
@@ -3815,11 +3821,14 @@ button.secondary:hover {
             const endY = y + Math.sin(angle) * dist * s;
 
             // Color based on what the ray hit
+            // Types: 0=wall, 0.25=pickup, 0.5=obstacle, 1=agent
             let color;
             if (type >= 0.9) {
-              color = '#ff4444'; // Hit an agent (enemy or ally)
+              color = '#ff4444'; // Hit an agent
             } else if (type >= 0.4) {
               color = '#ffaa00'; // Hit an obstacle
+            } else if (type >= 0.2) {
+              color = '#00ff88'; // Hit a pickup (weapon/health/armor)
             } else {
               color = '#444444'; // Hit a wall
             }
