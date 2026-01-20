@@ -2134,6 +2134,11 @@ button.secondary:hover {
 
         let currentX = agent.x + Math.cos(agent.rotation) * agent.radius;
         let currentY = agent.y + Math.sin(agent.rotation) * agent.radius;
+
+        // Ensure starting position is within bounds
+        currentX = clamp(currentX, 5, this.width - 5);
+        currentY = clamp(currentY, 5, this.height - 5);
+
         let angle = agent.rotation;
 
         const beamSegments = []; // Store all segments for visualization
@@ -2145,15 +2150,22 @@ button.secondary:hover {
           const cosA = Math.cos(angle);
           const sinA = Math.sin(angle);
 
-          // Find where beam hits world boundary
-          const tRight = cosA > 0 ? (this.width - currentX) / cosA : Infinity;
-          const tLeft = cosA < 0 ? -currentX / cosA : Infinity;
-          const tBottom = sinA > 0 ? (this.height - currentY) / sinA : Infinity;
-          const tTop = sinA < 0 ? -currentY / sinA : Infinity;
+          // Find where beam hits world boundary (with safety checks)
+          let tRight = Infinity, tLeft = Infinity, tBottom = Infinity, tTop = Infinity;
 
-          const t = Math.min(tRight, tLeft, tBottom, tTop);
-          const endX = currentX + cosA * t;
-          const endY = currentY + sinA * t;
+          if (cosA > 0.001) tRight = (this.width - currentX) / cosA;
+          else if (cosA < -0.001) tLeft = -currentX / cosA;
+
+          if (sinA > 0.001) tBottom = (this.height - currentY) / sinA;
+          else if (sinA < -0.001) tTop = -currentY / sinA;
+
+          let t = Math.min(tRight, tLeft, tBottom, tTop);
+
+          // Safety: ensure t is positive and finite
+          if (!isFinite(t) || t <= 0) t = 100;
+
+          const endX = clamp(currentX + cosA * t, 0, this.width);
+          const endY = clamp(currentY + sinA * t, 0, this.height);
 
           // Check for enemy hits along this segment (piercing - hits all)
           for (const target of this.agents) {
