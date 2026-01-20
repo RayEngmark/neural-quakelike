@@ -588,6 +588,10 @@ button.secondary:hover {
         <label>🗡️ Sword Drops</label>
         <div class="toggle active" id="toggle-sword"></div>
       </div>
+      <div class="toggle-row" title="Agents can dash/dodge in any direction. 6 second cooldown.">
+        <label>💨 Dodging</label>
+        <div class="toggle active" id="toggle-dodge"></div>
+      </div>
       <div class="toggle-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;" title="Rockets damage teammates directly.">
         <label>💥 Friendly Fire</label>
         <div class="toggle" id="toggle-ff"></div>
@@ -1152,13 +1156,16 @@ button.secondary:hover {
         this.totalDeaths = 0;
         this.roundsPlayed = 0;
 
-        // Network: 24 inputs → 16 hidden → 4 outputs
-        // Inputs: 16 raycast distances/types + 8 state (health, cooldown, velocity, etc)
-        // Outputs: turn, move speed, shoot, strafe
-        this.brain = brain || new NeuralNetwork(24, 16, 4);
+        // Network: 26 inputs → 16 hidden → 5 outputs
+        // Inputs: 16 raycast + 10 state (health, cooldown, velocity, weapon type, etc)
+        // Outputs: turn, move speed, shoot, strafe, dash
+        this.brain = brain || new NeuralNetwork(26, 16, 5);
 
         // Track if agent has picked up a special weapon this round (can only pick up once)
         this.hasPickedUpWeapon = false;
+
+        // Dodge ability
+        this.dodgeCooldown = 0;
 
         this.radius = 16;
         this.color = team === 0 ? '#ff4444' : '#4488ff';
@@ -1175,6 +1182,7 @@ button.secondary:hover {
         this.weaponCooldown = 0;
         this.weapon = 'rocket';
         this.hasPickedUpWeapon = false; // Can pick up one special weapon per round
+        this.dodgeCooldown = 0;
         this.laserCharge = 0;
         this.laserCharging = false;
         this.swordCharge = 0;
@@ -1357,8 +1365,11 @@ button.secondary:hover {
 
         const speedNorm = clamp(Math.hypot(this.vx, this.vy) / 200, 0, 1);
         const weaponReady = this.weaponCooldown <= 0 ? 1 : 0;
+        const hasLaser = this.weapon === 'laser' ? 1 : 0;
+        const hasSword = this.weapon === 'sword' ? 1 : 0;
+        const dodgeReady = this.dodgeCooldown <= 0 ? 1 : 0;
 
-        // Inputs: 24 total (16 rays + 8 internal)
+        // Inputs: 26 total (16 rays + 10 internal)
         const internal = [
           this.health / this.maxHealth,
           speedNorm,
@@ -1367,7 +1378,9 @@ button.secondary:hover {
           nearestEnemyDist,
           nearestAllyAngle,
           nearestAllyDist,
-          this.team
+          this.team,
+          hasLaser,
+          hasSword
         ];
 
         const outputs = this.brain.forward(rayData.concat(internal));
@@ -1376,7 +1389,8 @@ button.secondary:hover {
           turnAmount: outputs[0],
           speedAmount: (outputs[1] + 1) / 2,
           wantsShoot: outputs[2] > 0,
-          strafe: outputs[3]
+          strafe: outputs[3],
+          wantsDash: outputs[4] > 0
         };
       }
 
@@ -1386,6 +1400,7 @@ button.secondary:hover {
         this.attackCooldown = Math.max(0, this.attackCooldown - dt);
         this.attackRecovery = Math.max(0, this.attackRecovery - dt);
         this.weaponCooldown = Math.max(0, this.weaponCooldown - dt);
+        this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
 
         // Handle sword lunge movement
         if (this.swordLunging) {
@@ -1406,6 +1421,41 @@ button.secondary:hover {
         }
 
         if (!decision) return;
+
+        // Handle dodge/dash (if enabled in world)
+        if (decision.wantsDash && this.dodgeCooldown <= 0 && world.dodgingEnabled) {
+          const dashDistance = 70; // Short dash distance
+
+          // Dash in movement direction, or facing direction if not moving
+          let dashAngle;
+          const moveX = Math.cos(this.rotation) * decision.speedAmount + Math.cos(this.rotation + Math.PI/2) * (decision.strafe || 0);
+          const moveY = Math.sin(this.rotation) * decision.speedAmount + Math.sin(this.rotation + Math.PI/2) * (decision.strafe || 0);
+          const moveMag = Math.hypot(moveX, moveY);
+
+          if (moveMag > 0.1) {
+            dashAngle = Math.atan2(moveY, moveX);
+          } else {
+            dashAngle = this.rotation; // Dash forward if not moving
+          }
+
+          // Calculate new position
+          let newX = this.x + Math.cos(dashAngle) * dashDistance;
+          let newY = this.y + Math.sin(dashAngle) * dashDistance;
+
+          // Clamp to world bounds
+          newX = clamp(newX, this.radius, world.width - this.radius);
+          newY = clamp(newY, this.radius, world.height - this.radius);
+
+          // Check obstacle collision and adjust
+          for (const obs of obstacles) {
+            const col = this.checkRectCollision(newX, newY, obs);
+            if (col) { newX = col.x; newY = col.y; }
+          }
+
+          this.x = newX;
+          this.y = newY;
+          this.dodgeCooldown = 6.0; // 6 second cooldown
+        }
 
         this.rotation += decision.turnAmount * 4 * dt; // Faster turning for dodging
 
@@ -1609,6 +1659,7 @@ button.secondary:hover {
         // Game modifiers
         this.friendlyFire = false;
         this.friendlyFireRicochet = false;
+        this.dodgingEnabled = true; // Agents can dash/dodge
         this.respawnTime = 3; // seconds
         
         // Team brains (evolved separately)
@@ -3836,6 +3887,7 @@ button.secondary:hover {
       toggleArmor: document.getElementById('toggle-armor'),
       toggleLaser: document.getElementById('toggle-laser'),
       toggleSword: document.getElementById('toggle-sword'),
+      toggleDodge: document.getElementById('toggle-dodge'),
       toggleFf: document.getElementById('toggle-ff'),
       toggleRicochet: document.getElementById('toggle-ricochet'),
 
@@ -3924,6 +3976,11 @@ button.secondary:hover {
     ui.toggleSword.addEventListener('click', () => {
       ui.toggleSword.classList.toggle('active');
       world.swordSpawnsEnabled = ui.toggleSword.classList.contains('active');
+    });
+
+    ui.toggleDodge.addEventListener('click', () => {
+      ui.toggleDodge.classList.toggle('active');
+      world.dodgingEnabled = ui.toggleDodge.classList.contains('active');
     });
 
     // Sliders
