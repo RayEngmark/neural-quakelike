@@ -10,7 +10,6 @@ https://rayengmark.github.io/neural-quakelike/
 
 Red team vs blue team. Each agent has a small neural network brain (26 inputs, 16 hidden neurons, 5 outputs) that controls movement, aiming, and shooting. After each round, the best performers pass their brains to the next generation with mutations. Over time, agents develop combat strategies.
 
-Population size is adjustable.
 
 ### Inputs
 
