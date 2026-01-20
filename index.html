@@ -2180,56 +2180,47 @@ button.secondary:hover {
                   this.pickups.splice(i, 1);
                 }
               } else if (p.type === 'laser') {
-                // Drop current special weapon if holding one
-                if (agent.weapon === 'sword') {
-                  this.dropWeapon(agent.x, agent.y, 'sword');
+                // Only pick up if agent doesn't already have a special weapon
+                if (agent.weapon === 'rocket') {
+                  agent.weapon = 'laser';
+                  agent.laserCharge = 0;
+                  agent.weaponCooldown = 0;
+                  this.addEvent('⚡ ' + agent.name + ' GOT THE LASER!', 'laser');
+                  this.pickups.splice(i, 1);
                 }
-                agent.weapon = 'laser';
-                agent.laserCharge = 0;
-                agent.weaponCooldown = 0;
-                this.addEvent('⚡ ' + agent.name + ' GOT THE LASER!', 'laser');
-                this.pickups.splice(i, 1);
               } else if (p.type === 'sword') {
-                // Drop current special weapon if holding one
-                if (agent.weapon === 'laser') {
-                  this.dropWeapon(agent.x, agent.y, 'laser');
+                // Only pick up if agent doesn't already have a special weapon
+                if (agent.weapon === 'rocket') {
+                  agent.weapon = 'sword';
+                  agent.swordCharge = 0;
+                  agent.swordCharging = false;
+                  agent.weaponCooldown = 0;
+                  this.addEvent('🗡️ ' + agent.name + ' GOT THE ENERGY SWORD!', 'sword');
+                  this.pickups.splice(i, 1);
                 }
-                agent.weapon = 'sword';
-                agent.swordCharge = 0;
-                agent.swordCharging = false;
-                agent.weaponCooldown = 0;
-                this.addEvent('🗡️ ' + agent.name + ' GOT THE ENERGY SWORD!', 'sword');
-                this.pickups.splice(i, 1);
               }
             }
           }
         }
 
-        // Check for dropped weapon pickups
+        // Check for dropped weapon pickups (only if agent doesn't have a special weapon)
         for (const agent of this.agents) {
           if (!agent.alive) continue;
+          // Only pick up if agent doesn't already have a special weapon
+          if (agent.weapon !== 'rocket') continue;
+
           for (let i = this.droppedWeapons.length - 1; i >= 0; i--) {
             const w = this.droppedWeapons[i];
-            // Skip if weapon is still in pickup delay (prevents instant re-pickup after dropping)
-            if (w.pickupDelay && Date.now() - w.spawnTime < w.pickupDelay) continue;
             const dx = agent.x - w.x;
             const dy = agent.y - w.y;
             if (dx * dx + dy * dy < (agent.radius + w.radius) * (agent.radius + w.radius)) {
               if (w.type === 'laser') {
-                // Drop current special weapon if holding one
-                if (agent.weapon === 'sword') {
-                  this.dropWeapon(agent.x, agent.y, 'sword');
-                }
                 agent.weapon = 'laser';
                 agent.laserCharge = 0;
                 agent.weaponCooldown = 0;
                 this.addEvent('⚡ ' + agent.name + ' PICKED UP DROPPED LASER!', 'laser');
                 this.droppedWeapons.splice(i, 1);
               } else if (w.type === 'sword') {
-                // Drop current special weapon if holding one
-                if (agent.weapon === 'laser') {
-                  this.dropWeapon(agent.x, agent.y, 'laser');
-                }
                 agent.weapon = 'sword';
                 agent.swordCharge = 0;
                 agent.swordCharging = false;
@@ -2558,7 +2549,7 @@ button.secondary:hover {
         this.spawnNextRound();
       }
 
-      // Drop a weapon on the ground (when player dies or swaps weapons)
+      // Drop a weapon on the ground (when player dies)
       dropWeapon(x, y, weaponType) {
         if (weaponType !== 'laser' && weaponType !== 'sword') return;
 
@@ -2566,9 +2557,7 @@ button.secondary:hover {
           x: x,
           y: y,
           type: weaponType,
-          radius: 15,
-          spawnTime: Date.now(),
-          pickupDelay: 500 // Can't be picked up for 500ms after dropping
+          radius: 15
         });
 
         this.addEvent('💫 ' + weaponType.toUpperCase() + ' DROPPED!', weaponType);
