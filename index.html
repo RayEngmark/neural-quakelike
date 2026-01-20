@@ -1450,17 +1450,24 @@ button.secondary:hover {
         if (!this.alive || this.weaponCooldown > 0) return null;
 
         this.weaponCooldown = ROCKET.fireRate;
-        
-        return { 
-          type: 'rocket', 
-          x: this.x + Math.cos(this.rotation) * 25, 
-          y: this.y + Math.sin(this.rotation) * 25, 
-          angle: this.rotation, 
-          owner: this, 
+
+        // Rocket spawns from right shoulder position
+        const shoulderOffset = this.radius * 0.7;
+        const perpX = Math.cos(this.rotation - Math.PI / 2) * shoulderOffset; // right side
+        const perpY = Math.sin(this.rotation - Math.PI / 2) * shoulderOffset;
+        const forwardX = Math.cos(this.rotation) * (this.radius * 1.7);
+        const forwardY = Math.sin(this.rotation) * (this.radius * 1.7);
+
+        return {
+          type: 'rocket',
+          x: this.x + perpX + forwardX,
+          y: this.y + perpY + forwardY,
+          angle: this.rotation,
+          owner: this,
           damage: ROCKET.damage,
           splashRadius: ROCKET.splashRadius,
           splashFalloff: ROCKET.splashFalloff,
-          speed: ROCKET.speed, 
+          speed: ROCKET.speed,
           range: ROCKET.maxRange,
           traveled: 0,
           alive: true
@@ -2777,102 +2784,264 @@ button.secondary:hover {
           ctx.stroke();
 
           if (agent.weapon === 'rocket') {
-            // Rocket launcher icon
+            // Rocket launcher on right shoulder
+            ctx.save();
+            const shoulderOffset = r * 0.7; // offset to right shoulder
+            ctx.translate(0, -shoulderOffset);
+
+            // Launcher body - military style tube
+            const gradient = ctx.createLinearGradient(r * 0.2, -5 * s, r * 0.2, 5 * s);
+            gradient.addColorStop(0, '#666');
+            gradient.addColorStop(0.3, '#444');
+            gradient.addColorStop(0.7, '#333');
+            gradient.addColorStop(1, '#222');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(r * 0.2, -5 * s, r * 1.5, 10 * s, 3 * s);
+            ctx.fill();
+
+            // Launcher tube opening
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.arc(r * 1.7, 0, 5 * s, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Orange warning stripes
+            ctx.strokeStyle = '#ff6600';
+            ctx.lineWidth = 2 * s;
+            ctx.beginPath();
+            ctx.moveTo(r * 0.4, -4 * s);
+            ctx.lineTo(r * 0.4, 4 * s);
+            ctx.moveTo(r * 0.6, -4 * s);
+            ctx.lineTo(r * 0.6, 4 * s);
+            ctx.stroke();
+
+            // Scope/sight on top
+            ctx.fillStyle = '#555';
+            ctx.fillRect(r * 0.8, -8 * s, r * 0.4, 3 * s);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(r * 0.9, -7 * s, r * 0.2, 1.5 * s);
+
+            // Exhaust vents at back
+            ctx.fillStyle = '#333';
+            ctx.fillRect(r * 0.1, -4 * s, r * 0.15, 8 * s);
+
+            ctx.restore();
+
+            // Small rocket icon on body
             ctx.fillStyle = '#ff6600';
-            ctx.font = 'bold ' + (r * 0.7) + 'px monospace';
+            ctx.font = 'bold ' + (r * 0.5) + 'px monospace';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText('🚀', 0, 0);
-
-            // Rocket launcher weapon
-            ctx.strokeStyle = '#ff6600';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(r * 0.3, 0);
-            ctx.lineTo(r * 1.6, 0);
-            ctx.stroke();
-            // Launcher tip
-            ctx.fillStyle = '#ffcc00';
-            ctx.beginPath();
-            ctx.arc(r * 1.6, 0, 4 * s, 0, Math.PI * 2);
-            ctx.fill();
           } else if (agent.weapon === 'laser') {
-            // Laser weapon icon
-            ctx.fillStyle = '#00ffff';
-            ctx.font = 'bold ' + (r * 0.7) + 'px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('⚡', 0, 0);
+            // Legendary Plasma Cannon
+            const chargeProgress = agent.laserCharging ? agent.laserCharge / 3.0 : 0;
 
-            // Laser weapon barrel
-            ctx.strokeStyle = '#00ffff';
-            ctx.lineWidth = 3;
+            // Main body - sleek futuristic design
+            const bodyGradient = ctx.createLinearGradient(r * 0.2, -6 * s, r * 0.2, 6 * s);
+            bodyGradient.addColorStop(0, '#2a3a4a');
+            bodyGradient.addColorStop(0.3, '#1a2a3a');
+            bodyGradient.addColorStop(0.7, '#0a1a2a');
+            bodyGradient.addColorStop(1, '#1a2a3a');
+            ctx.fillStyle = bodyGradient;
             ctx.beginPath();
-            ctx.moveTo(r * 0.3, 0);
-            ctx.lineTo(r * 1.8, 0);
-            ctx.stroke();
-            
-            // Charging glow
-            if (agent.laserCharging && agent.laserCharge > 0) {
-              const chargeProgress = agent.laserCharge / 3.0;
-              const glowSize = 8 + chargeProgress * 15;
-              const glowAlpha = 0.3 + chargeProgress * 0.7;
-              
-              ctx.shadowBlur = glowSize * s;
-              ctx.shadowColor = '#00ffff';
-              ctx.fillStyle = `rgba(0, 255, 255, ${glowAlpha})`;
+            ctx.moveTo(r * 0.2, -5 * s);
+            ctx.lineTo(r * 1.4, -4 * s);
+            ctx.lineTo(r * 1.6, -3 * s);
+            ctx.lineTo(r * 1.6, 3 * s);
+            ctx.lineTo(r * 1.4, 4 * s);
+            ctx.lineTo(r * 0.2, 5 * s);
+            ctx.closePath();
+            ctx.fill();
+
+            // Energy coils around barrel
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = '#00ffff';
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 3; i++) {
+              const cx = r * 0.6 + i * r * 0.35;
+              const coilAlpha = 0.4 + chargeProgress * 0.6;
+              ctx.strokeStyle = `rgba(0, 255, 255, ${coilAlpha})`;
               ctx.beginPath();
-              ctx.arc(r * 1.8, 0, (4 + chargeProgress * 8) * s, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.shadowBlur = 0;
+              ctx.arc(cx, 0, 5 * s, -Math.PI * 0.7, Math.PI * 0.7);
+              ctx.stroke();
             }
+
+            // Central energy conduit
+            const conduitGradient = ctx.createLinearGradient(r * 0.3, 0, r * 1.5, 0);
+            conduitGradient.addColorStop(0, 'rgba(0, 100, 150, 0.8)');
+            conduitGradient.addColorStop(0.5, `rgba(0, 255, 255, ${0.3 + chargeProgress * 0.7})`);
+            conduitGradient.addColorStop(1, 'rgba(0, 200, 255, 0.9)');
+            ctx.fillStyle = conduitGradient;
+            ctx.fillRect(r * 0.3, -2 * s, r * 1.2, 4 * s);
+
+            // Barrel tip - focusing lens
+            ctx.shadowBlur = 10 + chargeProgress * 15;
+            ctx.fillStyle = '#0a1a2a';
+            ctx.beginPath();
+            ctx.arc(r * 1.7, 0, 5 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(0, 255, 255, ${0.6 + chargeProgress * 0.4})`;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Inner focusing ring
+            ctx.fillStyle = `rgba(0, 255, 255, ${0.3 + chargeProgress * 0.7})`;
+            ctx.beginPath();
+            ctx.arc(r * 1.7, 0, 3 * s, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Charging effect - energy spiral
+            if (agent.laserCharging && agent.laserCharge > 0) {
+              ctx.shadowBlur = 20 * chargeProgress;
+              ctx.shadowColor = '#00ffff';
+
+              // Rotating energy particles converging to barrel tip
+              for (let i = 0; i < 6; i++) {
+                const angle = (Date.now() / 150 + i * Math.PI / 3) % (Math.PI * 2);
+                const dist = (1 - chargeProgress * 0.7) * r * 0.8;
+                const px = r * 1.7 + Math.cos(angle) * dist;
+                const py = Math.sin(angle) * dist;
+                const pSize = (2 + chargeProgress * 3) * s;
+
+                ctx.fillStyle = `rgba(0, 255, 255, ${chargeProgress * 0.9})`;
+                ctx.beginPath();
+                ctx.arc(px, py, pSize, 0, Math.PI * 2);
+                ctx.fill();
+              }
+
+              // Energy buildup at tip
+              ctx.fillStyle = `rgba(255, 255, 255, ${chargeProgress * 0.8})`;
+              ctx.beginPath();
+              ctx.arc(r * 1.7, 0, (2 + chargeProgress * 6) * s, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Warning indicator
+              if (chargeProgress > 0.7) {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${(Math.sin(Date.now() / 50) + 1) * 0.5})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(r * 1.7, 0, (8 + chargeProgress * 4) * s, 0, Math.PI * 2);
+                ctx.stroke();
+              }
+            }
+
+            ctx.shadowBlur = 0;
           } else if (agent.weapon === 'sword') {
-            // Energy sword - color based on team
-            ctx.fillStyle = swordColor;
-            ctx.font = 'bold ' + (r * 0.7) + 'px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('🗡️', 0, 0);
-            
-            // Sword blade
+            // Legendary Energy Katana
             ctx.save();
             if (agent.swordCharging) {
               // Ready stance - sword held to right side with backward angle (samurai style)
-              ctx.rotate(Math.PI / 2 + Math.PI / 6); // 90° + 30° = sword angled back-right
+              ctx.rotate(Math.PI / 2 + Math.PI / 6);
             }
-            
-            // Draw sword blade
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = swordColor;
-            ctx.strokeStyle = swordColor;
-            ctx.lineWidth = 3;
+
+            const bladeLength = r * 2.0;
+            const bladeWidth = 4 * s;
+            const hiltLength = r * 0.5;
+
+            // Hilt/handle - wrapped grip style
+            const hiltGradient = ctx.createLinearGradient(0, -3 * s, 0, 3 * s);
+            hiltGradient.addColorStop(0, '#2a2a2a');
+            hiltGradient.addColorStop(0.5, '#1a1a1a');
+            hiltGradient.addColorStop(1, '#2a2a2a');
+            ctx.fillStyle = hiltGradient;
+            ctx.fillRect(r * 0.1, -3 * s, hiltLength, 6 * s);
+
+            // Hilt wrapping lines
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < 4; i++) {
+              const wx = r * 0.15 + i * (hiltLength / 4);
+              ctx.beginPath();
+              ctx.moveTo(wx, -3 * s);
+              ctx.lineTo(wx + 3 * s, 3 * s);
+              ctx.stroke();
+            }
+
+            // Guard (tsuba) - circular with team color accent
+            ctx.fillStyle = '#333';
             ctx.beginPath();
-            ctx.moveTo(r * 0.5, 0);
-            ctx.lineTo(r * 2.2, 0);
-            ctx.stroke();
-            
-            // Blade glow tip
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.moveTo(r * 2.2, 0);
-            ctx.lineTo(r * 1.8, -4 * s);
-            ctx.lineTo(r * 1.8, 4 * s);
-            ctx.closePath();
+            ctx.ellipse(r * 0.6, 0, 6 * s, 8 * s, 0, 0, Math.PI * 2);
             ctx.fill();
-            
+            ctx.strokeStyle = swordColor;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Blade outer glow
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = swordColor;
+
+            // Blade shape - katana style with curved edge
+            ctx.beginPath();
+            ctx.moveTo(r * 0.65, -bladeWidth);           // blade start top
+            ctx.lineTo(r * 0.65 + bladeLength * 0.9, -bladeWidth * 0.7);  // taper to tip
+            ctx.quadraticCurveTo(r * 0.65 + bladeLength * 1.05, 0, r * 0.65 + bladeLength * 0.9, bladeWidth * 0.3); // curved tip
+            ctx.lineTo(r * 0.65, bladeWidth * 0.3);      // blade start bottom (thinner back edge)
+            ctx.closePath();
+
+            // Blade gradient - energy core effect
+            const bladeGradient = ctx.createLinearGradient(r * 0.65, -bladeWidth, r * 0.65, bladeWidth);
+            const baseColor = agent.team === 0 ? [255, 68, 68] : [68, 136, 255];
+            bladeGradient.addColorStop(0, `rgba(${baseColor.join(',')}, 0.9)`);
+            bladeGradient.addColorStop(0.3, '#fff');
+            bladeGradient.addColorStop(0.5, `rgba(${baseColor.join(',')}, 0.95)`);
+            bladeGradient.addColorStop(1, `rgba(${baseColor.join(',')}, 0.7)`);
+            ctx.fillStyle = bladeGradient;
+            ctx.fill();
+
+            // Blade edge highlight (sharp edge)
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(r * 0.65, -bladeWidth);
+            ctx.lineTo(r * 0.65 + bladeLength * 0.9, -bladeWidth * 0.7);
+            ctx.quadraticCurveTo(r * 0.65 + bladeLength * 1.05, 0, r * 0.65 + bladeLength * 0.9, bladeWidth * 0.3);
+            ctx.stroke();
+
+            // Energy core line along blade
+            ctx.strokeStyle = `rgba(255, 255, 255, 0.8)`;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(r * 0.7, -bladeWidth * 0.3);
+            ctx.lineTo(r * 0.65 + bladeLength * 0.85, -bladeWidth * 0.4);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
             ctx.restore();
-            
-            // Charging indicator
+
+            // Charging effect - energy gathering at blade
             if (agent.swordCharging && agent.swordCharge > 0) {
               const chargeProgress = agent.swordCharge / 2.0;
-              ctx.shadowBlur = 20 * chargeProgress;
+              ctx.save();
+              ctx.rotate(Math.PI / 2 + Math.PI / 6);
+
+              // Energy particles gathering along blade
+              ctx.shadowBlur = 15 * chargeProgress;
               ctx.shadowColor = swordColor;
-              ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + chargeProgress * 0.5})`;
-              ctx.lineWidth = 2;
+              for (let i = 0; i < 5; i++) {
+                const t = (Date.now() / 200 + i * 0.7) % 1;
+                const px = r * 0.7 + t * bladeLength * 0.8;
+                const py = (Math.sin(t * Math.PI * 4 + i) * 8 - 4) * s * chargeProgress;
+                const pSize = (2 + chargeProgress * 3) * s * (1 - t * 0.5);
+                ctx.fillStyle = `rgba(255, 255, 255, ${(0.3 + chargeProgress * 0.7) * (1 - t)})`;
+                ctx.beginPath();
+                ctx.arc(px, py, pSize, 0, Math.PI * 2);
+                ctx.fill();
+              }
+
+              // Blade intensifying glow
+              ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + chargeProgress * 0.5})`;
+              ctx.lineWidth = 2 + chargeProgress * 2;
               ctx.beginPath();
-              ctx.arc(0, 0, r * (1.2 + chargeProgress * 0.5), 0, Math.PI * 2 * chargeProgress);
+              ctx.moveTo(r * 0.65, 0);
+              ctx.lineTo(r * 0.65 + bladeLength * 0.9, 0);
               ctx.stroke();
+
               ctx.shadowBlur = 0;
+              ctx.restore();
             }
           }
 
@@ -3058,51 +3227,136 @@ button.secondary:hover {
           ctx.stroke();
         }
         
-        // Sword slashes - blade sweep trail
+        // Sword slashes - blade sweep arc effect
         for (const slash of this.world.swordSlashes) {
           const progress = slash.timer / slash.maxTime;
           const sx = slash.startX * s, sy = slash.startY * s;
           const ex = slash.endX * s, ey = slash.endY * s;
 
-          const alpha = 1 - progress;
-          const slashColor = slash.team === 0 ?
-            `rgba(255, 68, 68, ${alpha})` :
-            `rgba(68, 136, 255, ${alpha})`;
+          const alpha = 1 - progress * progress; // Faster initial fade
+          const baseColor = slash.team === 0 ? [255, 68, 68] : [68, 136, 255];
           const glowColor = slash.team === 0 ? '#ff4444' : '#4488ff';
 
-          // Calculate perpendicular for slash width (blade sweeps sideways)
+          // Direction and perpendicular vectors
           const dx = ex - sx;
           const dy = ey - sy;
           const len = Math.hypot(dx, dy);
           if (len === 0) continue;
 
-          const nx = -dy / len;
-          const ny = dx / len;
-          // Trail width = blade length (sword held sideways creates wide sweep)
+          const dirX = dx / len;
+          const dirY = dy / len;
+          const nx = -dirY; // perpendicular
+          const ny = dirX;
+
           const bladeWidth = (slash.bladeLength || 30) * s;
-          const slashWidth = bladeWidth * (1 - progress * 0.3); // slight fade
 
-          // Draw blade sweep trail (full blade width on both ends)
-          ctx.beginPath();
-          ctx.moveTo(sx + nx * slashWidth, sy + ny * slashWidth);
-          ctx.lineTo(ex + nx * slashWidth, ey + ny * slashWidth);
-          ctx.lineTo(ex - nx * slashWidth, ey - ny * slashWidth);
-          ctx.lineTo(sx - nx * slashWidth, sy - ny * slashWidth);
-          ctx.closePath();
+          // Animate the sweep - blade position moves along the path
+          const sweepProgress = Math.min(1, progress * 2.5); // Blade reaches end faster
+          const currentX = sx + dx * sweepProgress;
+          const currentY = sy + dy * sweepProgress;
 
-          // Glow
-          ctx.shadowBlur = 20 * alpha;
+          ctx.shadowBlur = 15 * alpha;
           ctx.shadowColor = glowColor;
-          ctx.fillStyle = slashColor;
-          ctx.fill();
 
-          // Core blade line (center of the sweep)
-          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
-          ctx.lineWidth = 3 * (1 - progress * 0.5);
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+          // Draw multiple trailing ghost blades for motion blur effect
+          const numTrails = 5;
+          for (let t = 0; t < numTrails; t++) {
+            const trailProgress = Math.max(0, sweepProgress - t * 0.15);
+            if (trailProgress <= 0) continue;
+
+            const trailX = sx + dx * trailProgress;
+            const trailY = sy + dy * trailProgress;
+            const trailAlpha = alpha * (1 - t / numTrails) * 0.6;
+
+            // Draw arc-shaped trail segment
+            ctx.fillStyle = `rgba(${baseColor.join(',')}, ${trailAlpha * 0.3})`;
+            ctx.beginPath();
+            ctx.moveTo(trailX + nx * bladeWidth, trailY + ny * bladeWidth);
+            ctx.quadraticCurveTo(
+              trailX + dirX * bladeWidth * 0.3 + nx * bladeWidth * 0.5,
+              trailY + dirY * bladeWidth * 0.3 + ny * bladeWidth * 0.5,
+              trailX - nx * bladeWidth * 0.2, trailY - ny * bladeWidth * 0.2
+            );
+            ctx.lineTo(trailX - nx * bladeWidth * 0.1, trailY - ny * bladeWidth * 0.1);
+            ctx.quadraticCurveTo(
+              trailX + dirX * bladeWidth * 0.2,
+              trailY + dirY * bladeWidth * 0.2,
+              trailX + nx * bladeWidth * 0.9, trailY + ny * bladeWidth * 0.9
+            );
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          // Main sweep arc - curved trail from start to current blade position
+          if (sweepProgress > 0.05) {
+            const gradient = ctx.createLinearGradient(
+              sx + nx * bladeWidth, sy + ny * bladeWidth,
+              sx - nx * bladeWidth * 0.2, sy - ny * bladeWidth * 0.2
+            );
+            gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.9})`);
+            gradient.addColorStop(0.2, `rgba(${baseColor.join(',')}, ${alpha * 0.8})`);
+            gradient.addColorStop(0.6, `rgba(${baseColor.join(',')}, ${alpha * 0.4})`);
+            gradient.addColorStop(1, `rgba(${baseColor.join(',')}, 0)`);
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            // Outer edge (blade tip path) - slight curve
+            ctx.moveTo(sx + nx * bladeWidth, sy + ny * bladeWidth);
+            ctx.quadraticCurveTo(
+              (sx + currentX) / 2 + nx * bladeWidth * 1.1,
+              (sy + currentY) / 2 + ny * bladeWidth * 1.1,
+              currentX + nx * bladeWidth, currentY + ny * bladeWidth
+            );
+            // Blade tip at current position
+            ctx.lineTo(currentX - nx * bladeWidth * 0.15, currentY - ny * bladeWidth * 0.15);
+            // Inner edge (near hilt) - curves back
+            ctx.quadraticCurveTo(
+              (sx + currentX) / 2 - nx * bladeWidth * 0.1,
+              (sy + currentY) / 2 - ny * bladeWidth * 0.1,
+              sx - nx * bladeWidth * 0.1, sy - ny * bladeWidth * 0.1
+            );
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          // Current blade position - sharp leading edge
+          if (sweepProgress < 1) {
+            ctx.shadowBlur = 20 * alpha;
+
+            // Blade shape at current position
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.95})`;
+            ctx.beginPath();
+            ctx.moveTo(currentX + nx * bladeWidth, currentY + ny * bladeWidth); // tip
+            ctx.lineTo(currentX + dirX * 3 * s, currentY + dirY * 3 * s); // sharp point forward
+            ctx.lineTo(currentX - nx * bladeWidth * 0.15, currentY - ny * bladeWidth * 0.15); // back edge
+            ctx.closePath();
+            ctx.fill();
+
+            // Blade edge glow
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(currentX + nx * bladeWidth, currentY + ny * bladeWidth);
+            ctx.lineTo(currentX + dirX * 3 * s, currentY + dirY * 3 * s);
+            ctx.stroke();
+          }
+
+          // Energy particles along the sweep
+          ctx.shadowBlur = 10 * alpha;
+          for (let i = 0; i < 4; i++) {
+            const particleT = (sweepProgress - i * 0.12) % 1;
+            if (particleT < 0 || particleT > sweepProgress) continue;
+
+            const px = sx + dx * particleT + nx * bladeWidth * (0.7 + Math.sin(i * 2) * 0.3);
+            const py = sy + dy * particleT + ny * bladeWidth * (0.7 + Math.sin(i * 2) * 0.3);
+            const particleAlpha = alpha * (1 - i * 0.2);
+            const particleSize = (3 - i * 0.5) * s;
+
+            ctx.fillStyle = `rgba(255, 255, 255, ${particleAlpha * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(px, py, particleSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
 
           ctx.shadowBlur = 0;
         }
