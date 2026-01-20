@@ -339,6 +339,149 @@ button.secondary:hover {
   background-clip: padding-box;
 }
 
+/* AGENT PROFILE CARD */
+#agent-profile {
+  font-size: 0.75rem;
+}
+#profile-header {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.agent-name {
+  font-size: 1rem;
+  font-weight: bold;
+  font-family: 'JetBrains Mono', monospace;
+}
+.agent-team {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  text-transform: uppercase;
+}
+.profile-section {
+  margin: 8px 0;
+  padding: 6px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+.profile-section:last-child {
+  border-bottom: none;
+}
+.section-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  opacity: 0.5;
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.profile-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bar-label {
+  width: 20px;
+  font-size: 0.65rem;
+  opacity: 0.7;
+}
+.bar-track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  transition: width 0.15s ease-out;
+}
+.health-fill {
+  background: linear-gradient(90deg, #ff4444, #ff6666);
+}
+.armor-fill {
+  background: linear-gradient(90deg, #4488ff, #66aaff);
+}
+.bar-value {
+  width: 24px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+}
+.neural-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+.neural-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.neural-indicator span {
+  font-size: 0.55rem;
+  opacity: 0.6;
+}
+.indicator-bar {
+  width: 6px;
+  height: 28px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+.indicator-bar::after {
+  content: '';
+  position: absolute;
+  bottom: 50%;
+  left: 0;
+  right: 0;
+  height: var(--bar-height, 0%);
+  background: var(--neon-green);
+  transition: height 0.1s, bottom 0.1s, top 0.1s;
+  box-shadow: 0 0 4px var(--neon-green);
+}
+.indicator-bar.positive::after {
+  bottom: 50%;
+  top: auto;
+  background: var(--neon-green);
+  box-shadow: 0 0 4px var(--neon-green);
+}
+.indicator-bar.negative::after {
+  bottom: auto;
+  top: 50%;
+  background: var(--neon-pink);
+  box-shadow: 0 0 4px var(--neon-pink);
+}
+.indicator-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: all 0.1s;
+}
+.indicator-light.active {
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+  border-color: var(--neon-green);
+}
+.awareness-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 0.7rem;
+}
+.awareness-value {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--neon-blue);
+}
+
 /* LEADERBOARD */
 #leaderboard, #alltime-leaderboard {
   max-height: 140px;
@@ -628,11 +771,86 @@ button.secondary:hover {
         <span class="stat-value" style="color: #ff00ff;">∞ dmg</span>
       </div>
     </div>
+
+    <!-- Agent Profile Card (shown when following) -->
+    <div class="panel" id="agent-profile" style="display: none;">
+      <h2>// Agent Profile</h2>
+
+      <div id="profile-header">
+        <div class="agent-name" id="profile-name">-</div>
+        <div class="agent-team" id="profile-team">-</div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-bars">
+          <div class="bar-row">
+            <span class="bar-label">HP</span>
+            <div class="bar-track health-track">
+              <div class="bar-fill health-fill" id="profile-health-bar"></div>
+            </div>
+            <span class="bar-value" id="profile-health-val">100</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">AR</span>
+            <div class="bar-track armor-track">
+              <div class="bar-fill armor-fill" id="profile-armor-bar"></div>
+            </div>
+            <span class="bar-value" id="profile-armor-val">0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="stat-row">
+          <span>Weapon</span>
+          <span class="stat-value" id="profile-weapon">Rocket</span>
+        </div>
+        <div class="stat-row">
+          <span>K/D</span>
+          <span class="stat-value" id="profile-kd">0/0</span>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="section-label">Neural Activity</div>
+        <div class="neural-grid">
+          <div class="neural-indicator">
+            <div class="indicator-bar" id="neural-turn"></div>
+            <span>Turn</span>
+          </div>
+          <div class="neural-indicator">
+            <div class="indicator-bar" id="neural-speed"></div>
+            <span>Speed</span>
+          </div>
+          <div class="neural-indicator">
+            <div class="indicator-bar" id="neural-strafe"></div>
+            <span>Strafe</span>
+          </div>
+          <div class="neural-indicator">
+            <div class="indicator-light" id="neural-shoot"></div>
+            <span>Fire</span>
+          </div>
+          <div class="neural-indicator">
+            <div class="indicator-light" id="neural-dash"></div>
+            <span>Dash</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-section">
+        <div class="section-label">Awareness</div>
+        <div class="awareness-row">
+          <span>Enemy</span>
+          <span class="awareness-value" id="awareness-enemy">None</span>
+        </div>
+        <div class="awareness-row">
+          <span>Ally</span>
+          <span class="awareness-value" id="awareness-ally">None</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
-```
-
-  </div>
 
   <script>
   (() => {
@@ -1397,13 +1615,25 @@ button.secondary:hover {
 
         const outputs = this.brain.forward(rayData.concat(internal));
 
-        return {
+        const decision = {
           turnAmount: outputs[0],
           speedAmount: (outputs[1] + 1) / 2,
           wantsShoot: outputs[2] > 0,
           strafe: outputs[3],
           wantsDash: outputs[4] > 0
         };
+
+        // Store for UI visualization
+        this.lastDecision = decision;
+        this.lastRayData = rayData;
+        this.lastAwareness = {
+          enemyDist: nearestEnemyDist,
+          enemyAngle: nearestEnemyAngle,
+          allyDist: nearestAllyDist,
+          allyAngle: nearestAllyAngle
+        };
+
+        return decision;
       }
 
       update(decision, dt, world, obstacles) {
@@ -2022,7 +2252,8 @@ button.secondary:hover {
         const swordOffset = agent.radius * 1.35; // center of blade (avg of 0.5 and 2.2)
 
         const actualDist = Math.hypot(clampedEndX - startX, clampedEndY - startY);
-        const slashDuration = 0.3 + (actualDist / 500) * 0.7; // 0.3s base + up to 0.7s for max range (500 units)
+        const lungeDuration = actualDist / 500; // How long the agent lunge takes
+        const slashDuration = lungeDuration + 0.2; // Trail lasts a bit longer for fading effect
         this.swordSlashes.push({
           // Trail follows the sword position (offset to the right of agent path)
           startX: startX + perpX * swordOffset,
@@ -2032,7 +2263,8 @@ button.secondary:hover {
           bladeLength: bladeLength, // trail width = blade length
           team: agent.team,
           timer: 0,
-          maxTime: slashDuration
+          maxTime: slashDuration,
+          lungeDuration: lungeDuration // Store for syncing sweep with agent
         });
       }
 
@@ -3560,6 +3792,55 @@ button.secondary:hover {
           ctx.shadowBlur = 0;
         }
 
+        // Draw raycast visualization for followed agent (behind everything)
+        if (this.followAgent && this.followAgent.alive && this.followAgent.lastRayData) {
+          const agent = this.followAgent;
+          const x = agent.x * s, y = agent.y * s;
+          const rayData = agent.lastRayData;
+          const numRays = 8;
+          const fov = Math.PI; // 180 degree FOV
+          const startAngle = agent.rotation - fov / 2;
+          const angleStep = fov / (numRays - 1);
+          const maxDist = Math.hypot(this.world.width, this.world.height);
+
+          ctx.save();
+          ctx.globalAlpha = 0.4;
+
+          for (let i = 0; i < numRays; i++) {
+            const dist = rayData[i * 2] * maxDist;
+            const type = rayData[i * 2 + 1];
+            const angle = startAngle + angleStep * i;
+
+            const endX = x + Math.cos(angle) * dist * s;
+            const endY = y + Math.sin(angle) * dist * s;
+
+            // Color based on what the ray hit
+            let color;
+            if (type >= 0.9) {
+              color = '#ff4444'; // Hit an agent (enemy or ally)
+            } else if (type >= 0.4) {
+              color = '#ffaa00'; // Hit an obstacle
+            } else {
+              color = '#444444'; // Hit a wall
+            }
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // Small dot at hit point
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(endX, endY, 3 * s, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+
         // Agents with class-based rendering
         for (const agent of this.world.agents) {
           if (!agent.alive) continue;
@@ -4188,8 +4469,10 @@ button.secondary:hover {
 
           const bladeWidth = (slash.bladeLength || 30) * s;
 
-          // Animate the sweep - blade position moves along the path
-          const sweepProgress = Math.min(1, progress * 2.5); // Blade reaches end faster
+          // Animate the sweep - blade position synced with agent lunge
+          // Blade reaches end when timer equals lungeDuration
+          const lungeDuration = slash.lungeDuration || (slash.maxTime * 0.8);
+          const sweepProgress = Math.min(1, slash.timer / lungeDuration);
           const currentX = sx + dx * sweepProgress;
           const currentY = sy + dy * sweepProgress;
 
@@ -4377,12 +4660,10 @@ button.secondary:hover {
         ctx.shadowBlur = 0;
         ctx.restore();
 
-        // Draw followed agent stats overlay
-        if (this.followAgent) {
-          this.drawAgentStats(ctx);
-        }
+        // Agent stats now displayed in sidebar profile card
       }
 
+      // Deprecated: stats now in sidebar
       drawAgentStats(ctx) {
         const agent = this.followAgent;
         if (!agent) return;
@@ -4761,6 +5042,24 @@ button.secondary:hover {
       headlessBtn: document.getElementById('headless-btn'),
       headlessOverlay: document.getElementById('headless-overlay'),
       ups: document.getElementById('ups'),
+
+      // Agent profile card
+      agentProfile: document.getElementById('agent-profile'),
+      profileName: document.getElementById('profile-name'),
+      profileTeam: document.getElementById('profile-team'),
+      profileHealthBar: document.getElementById('profile-health-bar'),
+      profileHealthVal: document.getElementById('profile-health-val'),
+      profileArmorBar: document.getElementById('profile-armor-bar'),
+      profileArmorVal: document.getElementById('profile-armor-val'),
+      profileWeapon: document.getElementById('profile-weapon'),
+      profileKd: document.getElementById('profile-kd'),
+      neuralTurn: document.getElementById('neural-turn'),
+      neuralSpeed: document.getElementById('neural-speed'),
+      neuralStrafe: document.getElementById('neural-strafe'),
+      neuralShoot: document.getElementById('neural-shoot'),
+      neuralDash: document.getElementById('neural-dash'),
+      awarenessEnemy: document.getElementById('awareness-enemy'),
+      awarenessAlly: document.getElementById('awareness-ally'),
     };
 
     // Headless mode
@@ -5053,6 +5352,87 @@ button.secondary:hover {
       ui.log.innerHTML = world.events.slice(0, 10).map(e =>
         '<div class="event"><span class="' + e.type + '">' + e.text + '</span></div>'
       ).join('');
+
+      // Update agent profile card
+      updateAgentProfile();
+    }
+
+    function updateAgentProfile() {
+      const agent = renderer.followAgent;
+
+      if (!agent) {
+        ui.agentProfile.style.display = 'none';
+        return;
+      }
+
+      ui.agentProfile.style.display = 'block';
+
+      // Header
+      ui.profileName.textContent = agent.name;
+      ui.profileName.style.color = agent.team === 0 ? '#ff6666' : '#6699ff';
+      ui.profileTeam.textContent = agent.team === 0 ? 'RED TEAM' : 'BLUE TEAM';
+      ui.profileTeam.style.color = agent.team === 0 ? '#ff4444' : '#4488ff';
+
+      // Health and armor bars
+      const healthPct = Math.max(0, agent.health / agent.maxHealth * 100);
+      const armorPct = Math.max(0, agent.armor / agent.maxArmor * 100);
+      ui.profileHealthBar.style.width = healthPct + '%';
+      ui.profileHealthVal.textContent = Math.ceil(agent.health);
+      ui.profileArmorBar.style.width = armorPct + '%';
+      ui.profileArmorVal.textContent = Math.ceil(agent.armor);
+
+      // Weapon
+      const weaponDisplay = {
+        'rocket': '🚀 Rocket',
+        'laser': '⚡ Laser',
+        'sword': '🗡️ Sword'
+      };
+      ui.profileWeapon.textContent = weaponDisplay[agent.weapon] || agent.weapon;
+
+      // K/D
+      ui.profileKd.textContent = agent.kills + '/' + agent.deaths;
+
+      // Neural activity (from last decision)
+      if (agent.lastDecision) {
+        const d = agent.lastDecision;
+
+        // Turn: -1 to 1, show as bar from center
+        const turnVal = Math.abs(d.turnAmount) * 50;
+        ui.neuralTurn.style.setProperty('--bar-height', turnVal + '%');
+        ui.neuralTurn.className = 'indicator-bar ' + (d.turnAmount >= 0 ? 'positive' : 'negative');
+
+        // Speed: 0 to 1
+        ui.neuralSpeed.style.setProperty('--bar-height', d.speedAmount * 50 + '%');
+        ui.neuralSpeed.className = 'indicator-bar positive';
+
+        // Strafe: -1 to 1
+        const strafeVal = Math.abs(d.strafe) * 50;
+        ui.neuralStrafe.style.setProperty('--bar-height', strafeVal + '%');
+        ui.neuralStrafe.className = 'indicator-bar ' + (d.strafe >= 0 ? 'positive' : 'negative');
+
+        // Fire and Dash: boolean
+        ui.neuralShoot.className = 'indicator-light' + (d.wantsShoot ? ' active' : '');
+        ui.neuralDash.className = 'indicator-light' + (d.wantsDash ? ' active' : '');
+      }
+
+      // Awareness
+      if (agent.lastAwareness) {
+        const a = agent.lastAwareness;
+        if (a.enemyDist < 1) {
+          const dist = Math.round(a.enemyDist * 1000);
+          const dir = a.enemyAngle > 0 ? 'R' : 'L';
+          ui.awarenessEnemy.textContent = dist + 'm ' + dir;
+        } else {
+          ui.awarenessEnemy.textContent = 'None';
+        }
+        if (a.allyDist < 1) {
+          const dist = Math.round(a.allyDist * 500);
+          const dir = a.allyAngle > 0 ? 'R' : 'L';
+          ui.awarenessAlly.textContent = dist + 'm ' + dir;
+        } else {
+          ui.awarenessAlly.textContent = 'None';
+        }
+      }
     }
 
     function gameLoop(curr) {
