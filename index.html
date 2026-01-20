@@ -1378,10 +1378,10 @@ button.secondary:hover {
         this.totalDeaths = 0;
         this.roundsPlayed = 0;
 
-        // Network: 26 inputs → 16 hidden → 5 outputs
-        // Inputs: 16 raycast + 10 state (health, cooldown, velocity, weapon type, etc)
+        // Network: 52 inputs → 16 hidden → 5 outputs
+        // Inputs: 42 raycast (21 rays × 2) + 10 state (health, cooldown, velocity, weapon type, etc)
         // Outputs: turn, move speed, shoot, strafe, dash
-        this.brain = brain || new NeuralNetwork(26, 16, 5);
+        this.brain = brain || new NeuralNetwork(52, 16, 5);
 
         // Track if agent has picked up a special weapon this round (can only pick up once)
         this.hasPickedUpWeapon = false;
@@ -1469,7 +1469,7 @@ button.secondary:hover {
         return killPoints + assistPoints + damagePoints - this.damageTaken;
       }
 
-      castRays(world, numRays = 8, fov = Math.PI * 0.8) {
+      castRays(world, numRays = 21, fov = Math.PI * 0.8) {
         const { agents, obstacles, pickups, width: worldWidth, height: worldHeight } = world;
         const rayData = [];
 
@@ -3803,8 +3803,8 @@ button.secondary:hover {
           const agent = this.followAgent;
           const x = agent.x * s, y = agent.y * s;
           const rayData = agent.lastRayData;
-          const numRays = 8;
-          const fov = Math.PI; // 180 degree FOV
+          const numRays = 21;
+          const fov = Math.PI * 0.8; // 144 degree FOV
           const startAngle = agent.rotation - fov / 2;
           const angleStep = fov / (numRays - 1);
           const maxDist = Math.hypot(this.world.width, this.world.height);
