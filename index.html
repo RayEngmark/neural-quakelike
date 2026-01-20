@@ -2127,153 +2127,161 @@ button.secondary:hover {
       }
 
       fireLaser(agent) {
-        // Bouncing, piercing laser with explosion on 4th hit
-        const maxBounces = 4;
-        const explosionRadius = 80;
-        const explosionDamage = 60;
+        try {
+          if (!agent || !agent.alive) return;
 
-        let currentX = agent.x + Math.cos(agent.rotation) * agent.radius;
-        let currentY = agent.y + Math.sin(agent.rotation) * agent.radius;
+          // Bouncing, piercing laser with explosion on 4th hit
+          const maxBounces = 4;
+          const explosionRadius = 80;
+          const explosionDamage = 60;
 
-        // Ensure starting position is within bounds
-        currentX = clamp(currentX, 5, this.width - 5);
-        currentY = clamp(currentY, 5, this.height - 5);
+          let currentX = agent.x + Math.cos(agent.rotation) * agent.radius;
+          let currentY = agent.y + Math.sin(agent.rotation) * agent.radius;
 
-        let angle = agent.rotation;
+          // Ensure starting position is within bounds
+          currentX = clamp(currentX, 5, this.width - 5);
+          currentY = clamp(currentY, 5, this.height - 5);
 
-        const beamSegments = []; // Store all segments for visualization
-        const hitTargets = new Set(); // Track already hit targets
-        let totalHits = 0; // Bounces + enemy hits combined
-        let killCount = 0;
+          let angle = agent.rotation;
 
-        for (let bounce = 0; bounce <= maxBounces; bounce++) {
-          const cosA = Math.cos(angle);
-          const sinA = Math.sin(angle);
+          const beamSegments = []; // Store all segments for visualization
+          const hitTargets = new Set(); // Track already hit targets
+          let totalHits = 0; // Bounces + enemy hits combined
+          let killCount = 0;
 
-          // Find where beam hits world boundary (with safety checks)
-          let tRight = Infinity, tLeft = Infinity, tBottom = Infinity, tTop = Infinity;
+          for (let bounce = 0; bounce <= maxBounces; bounce++) {
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
 
-          if (cosA > 0.001) tRight = (this.width - currentX) / cosA;
-          else if (cosA < -0.001) tLeft = -currentX / cosA;
+            // Find where beam hits world boundary (with safety checks)
+            let tRight = Infinity, tLeft = Infinity, tBottom = Infinity, tTop = Infinity;
 
-          if (sinA > 0.001) tBottom = (this.height - currentY) / sinA;
-          else if (sinA < -0.001) tTop = -currentY / sinA;
+            if (cosA > 0.001) tRight = (this.width - currentX) / cosA;
+            else if (cosA < -0.001) tLeft = -currentX / cosA;
 
-          let t = Math.min(tRight, tLeft, tBottom, tTop);
+            if (sinA > 0.001) tBottom = (this.height - currentY) / sinA;
+            else if (sinA < -0.001) tTop = -currentY / sinA;
 
-          // Safety: ensure t is positive and finite
-          if (!isFinite(t) || t <= 0) t = 100;
+            let t = Math.min(tRight, tLeft, tBottom, tTop);
 
-          const endX = clamp(currentX + cosA * t, 0, this.width);
-          const endY = clamp(currentY + sinA * t, 0, this.height);
+            // Safety: ensure t is positive and finite
+            if (!isFinite(t) || t <= 0) t = 100;
 
-          // Check for enemy hits along this segment (piercing - hits all)
-          for (const target of this.agents) {
-            if (target === agent || !target.alive || hitTargets.has(target)) continue;
-            if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
+            const endX = clamp(currentX + cosA * t, 0, this.width);
+            const endY = clamp(currentY + sinA * t, 0, this.height);
 
-            // Point-to-line distance check
-            const dx = endX - currentX;
-            const dy = endY - currentY;
-            const len = Math.hypot(dx, dy);
-            if (len === 0) continue;
+            // Check for enemy hits along this segment (piercing - hits all)
+            for (const target of this.agents) {
+              if (!target || target === agent || !target.alive || hitTargets.has(target)) continue;
+              if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
 
-            const nx = -dy / len;
-            const ny = dx / len;
-            const px = target.x - currentX;
-            const py = target.y - currentY;
-            const dist = Math.abs(px * nx + py * ny);
-            const dot = px * (dx / len) + py * (dy / len);
+              // Point-to-line distance check
+              const dx = endX - currentX;
+              const dy = endY - currentY;
+              const len = Math.hypot(dx, dy);
+              if (len === 0) continue;
 
-            if (dist < target.radius + 10 && dot > 0 && dot < len) {
-              // Hit! (piercing - continue checking others)
-              hitTargets.add(target);
-              totalHits++;
+              const nx = -dy / len;
+              const ny = dx / len;
+              const px = target.x - currentX;
+              const py = target.y - currentY;
+              const dist = Math.abs(px * nx + py * ny);
+              const dot = px * (dx / len) + py * (dy / len);
 
-              if (target.team === agent.team) {
-                if (this.friendlyFireRicochet) {
-                  const killed = agent.takeDamage(999, agent, this);
-                  this.teamRicochets[agent.team]++;
-                  if (killed) {
-                    this.addEvent('🔄 ' + agent.name + ' LASER RICOCHET!', 'laser');
+              if (dist < target.radius + 10 && dot > 0 && dot < len) {
+                // Hit! (piercing - continue checking others)
+                hitTargets.add(target);
+                totalHits++;
+
+                if (target.team === agent.team) {
+                  if (this.friendlyFireRicochet) {
+                    const killed = agent.takeDamage(999, agent, this);
+                    this.teamRicochets[agent.team]++;
+                    if (killed) {
+                      this.addEvent('🔄 ' + agent.name + ' LASER RICOCHET!', 'laser');
+                    }
+                  } else if (this.friendlyFire) {
+                    const killed = target.takeDamage(999, agent, this);
+                    if (killed) {
+                      this.teamRicochets[agent.team]++;
+                      this.addEvent('⚡ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'laser');
+                    }
                   }
-                } else if (this.friendlyFire) {
+                } else {
                   const killed = target.takeDamage(999, agent, this);
                   if (killed) {
-                    this.teamRicochets[agent.team]++;
-                    this.addEvent('⚡ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'laser');
+                    agent.kills++;
+                    agent.totalKills++;
+                    this.teamKills[agent.team]++;
+                    this.teamRawKills[agent.team]++;
+                    killCount++;
                   }
                 }
-              } else {
-                const killed = target.takeDamage(999, agent, this);
-                if (killed) {
-                  agent.kills++;
-                  agent.totalKills++;
-                  this.teamKills[agent.team]++;
-                  this.teamRawKills[agent.team]++;
-                  killCount++;
+
+                // Check for 4th hit explosion
+                if (totalHits === 4) {
+                  this.createLaserExplosion(target.x, target.y, explosionRadius, explosionDamage, agent);
                 }
               }
-
-              // Check for 4th hit explosion
-              if (totalHits === 4) {
-                this.createLaserExplosion(target.x, target.y, explosionRadius, explosionDamage, agent);
-              }
             }
+
+            // Store segment for visualization
+            beamSegments.push({ startX: currentX, startY: currentY, endX, endY });
+
+            // Count bounce
+            totalHits++;
+
+            // Check for 4th hit explosion at wall
+            if (totalHits === 4) {
+              this.createLaserExplosion(endX, endY, explosionRadius, explosionDamage, agent);
+            }
+
+            // Stop if we've done max bounces
+            if (bounce >= maxBounces) break;
+
+            // Calculate bounce direction
+            const hitRight = Math.abs(endX - this.width) < 1;
+            const hitLeft = Math.abs(endX) < 1;
+            const hitBottom = Math.abs(endY - this.height) < 1;
+            const hitTop = Math.abs(endY) < 1;
+
+            if (hitRight || hitLeft) {
+              angle = Math.PI - angle; // Reflect horizontally
+            }
+            if (hitBottom || hitTop) {
+              angle = -angle; // Reflect vertically
+            }
+
+            // Move to bounce point (slightly inward to avoid edge issues)
+            currentX = clamp(endX, 2, this.width - 2);
+            currentY = clamp(endY, 2, this.height - 2);
           }
 
-          // Store segment for visualization
-          beamSegments.push({ startX: currentX, startY: currentY, endX, endY });
-
-          // Count bounce
-          totalHits++;
-
-          // Check for 4th hit explosion at wall
-          if (totalHits === 4) {
-            this.createLaserExplosion(endX, endY, explosionRadius, explosionDamage, agent);
+          // Event messages
+          if (killCount > 0) {
+            let msg;
+            if (killCount >= 3) {
+              msg = '⚡ ' + agent.name + ' LASER DEVASTATION x' + killCount + '!';
+            } else if (killCount >= 2) {
+              msg = '⚡ ' + agent.name + ' LASER PIERCE x' + killCount + '!';
+            } else {
+              msg = '⚡ ' + agent.name + ' LASER KILL!';
+            }
+            this.addEvent(msg, 'laser');
           }
 
-          // Stop if we've done max bounces
-          if (bounce >= maxBounces) break;
-
-          // Calculate bounce direction
-          const hitRight = Math.abs(endX - this.width) < 1;
-          const hitLeft = Math.abs(endX) < 1;
-          const hitBottom = Math.abs(endY - this.height) < 1;
-          const hitTop = Math.abs(endY) < 1;
-
-          if (hitRight || hitLeft) {
-            angle = Math.PI - angle; // Reflect horizontally
+          // Add beam animation with all segments
+          if (beamSegments.length > 0) {
+            this.laserBeams.push({
+              segments: beamSegments,
+              team: agent.team,
+              timer: 0,
+              maxTime: 1.5
+            });
           }
-          if (hitBottom || hitTop) {
-            angle = -angle; // Reflect vertically
-          }
-
-          // Move to bounce point (slightly inward to avoid edge issues)
-          currentX = clamp(endX, 2, this.width - 2);
-          currentY = clamp(endY, 2, this.height - 2);
+        } catch (e) {
+          console.error('Laser error:', e);
         }
-
-        // Event messages
-        if (killCount > 0) {
-          let msg;
-          if (killCount >= 3) {
-            msg = '⚡ ' + agent.name + ' LASER DEVASTATION x' + killCount + '!';
-          } else if (killCount >= 2) {
-            msg = '⚡ ' + agent.name + ' LASER PIERCE x' + killCount + '!';
-          } else {
-            msg = '⚡ ' + agent.name + ' LASER KILL!';
-          }
-          this.addEvent(msg, 'laser');
-        }
-
-        // Add beam animation with all segments
-        this.laserBeams.push({
-          segments: beamSegments,
-          team: agent.team,
-          timer: 0,
-          maxTime: 1.5
-        });
       }
 
       createLaserExplosion(x, y, radius, damage, owner) {
@@ -4584,6 +4592,7 @@ button.secondary:hover {
         
         // Laser beams (epic team-colored with bounce support)
         for (const beam of this.world.laserBeams) {
+          if (!beam || !beam.segments) continue;
           const progress = beam.timer / beam.maxTime;
 
           // Team colors
