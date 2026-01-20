@@ -1530,6 +1530,13 @@ button.secondary:hover {
             if (dist < closestDist) { closestDist = dist; closestType = 0.25; }
           }
 
+          // Check enemy rockets (type 0.75)
+          for (const rocket of world.rockets) {
+            if (rocket.owner && rocket.owner.team === this.team) continue; // Ignore own team's rockets
+            const dist = this.raycastCircle(angle, closestDist, rocket.x, rocket.y, 8); // 8 = rocket radius
+            if (dist < closestDist) { closestDist = dist; closestType = 0.75; }
+          }
+
           for (const other of nearCandidates) {
             if (other === this || !other.alive) continue;
             const dist = this.raycastCircle(angle, closestDist, other.x, other.y, other.radius);
