@@ -748,7 +748,7 @@ button.secondary:hover {
         <label>⚡ Laser Drops</label>
         <div class="toggle active" id="toggle-laser"></div>
       </div>
-      <div class="toggle-row" title="Energy swords spawn at map center. Instant lunge attack with max range. One-hit kill.">
+      <div class="toggle-row" title="Energy swords spawn at map center. Hold to aim (instant max charge), release to lunge. One-hit kill.">
         <label>🗡️ Sword Drops</label>
         <div class="toggle active" id="toggle-sword"></div>
       </div>
@@ -3391,9 +3391,10 @@ button.secondary:hover {
                 }
               }
             } else if (a.weapon === 'sword') {
-              // Instant full-power lunge on fire
+              // Hold to aim - instantly max charged
               if (a.weaponCooldown <= 0 && !a.swordLunging) {
-                this.executeSwordLunge(a, 2.0); // Always max charge
+                a.swordCharging = true;
+                a.swordCharge = 2.0; // Instant max charge
               }
             }
           } else {
@@ -3401,6 +3402,12 @@ button.secondary:hover {
             if (a.weapon === 'laser' && a.laserCharging) {
               a.laserCharge = 0;
               a.laserCharging = false;
+            }
+            // Execute sword lunge when releasing
+            if (a.weapon === 'sword' && a.swordCharging) {
+              this.executeSwordLunge(a, a.swordCharge);
+              a.swordCharge = 0;
+              a.swordCharging = false;
             }
           }
         }
