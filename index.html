@@ -1408,10 +1408,10 @@ button.secondary:hover {
         // Weapon kill stats (lifetime)
         this.totalWeaponKills = { rocket: 0, laser: 0, sword: 0 };
 
-        // Network: 52 inputs → 16 hidden → 5 outputs
-        // Inputs: 42 raycast (21 rays × 2) + 10 state (health, cooldown, velocity, weapon type, etc)
+        // Network: 54 inputs → 16 hidden → 5 outputs
+        // Inputs: 42 raycast (21 rays × 2) + 12 state (health, cooldown, velocity, weapon type, rocket awareness, etc)
         // Outputs: turn, move speed, shoot, strafe, dash
-        this.brain = brain || new NeuralNetwork(52, 16, 5);
+        this.brain = brain || new NeuralNetwork(54, 16, 5);
 
         // Track if agent has picked up a special weapon this round (can only pick up once)
         this.hasPickedUpWeapon = false;
@@ -1530,6 +1530,13 @@ button.secondary:hover {
             if (dist < closestDist) { closestDist = dist; closestType = 0.25; }
           }
 
+          // Check enemy rockets (type 0.75)
+          for (const rocket of world.rockets) {
+            if (rocket.owner && rocket.owner.team === this.team) continue; // Ignore own team's rockets
+            const dist = this.raycastCircle(angle, closestDist, rocket.x, rocket.y, 8); // 8 = rocket radius
+            if (dist < closestDist) { closestDist = dist; closestType = 0.75; }
+          }
+
           for (const other of nearCandidates) {
             if (other === this || !other.alive) continue;
             const dist = this.raycastCircle(angle, closestDist, other.x, other.y, other.radius);
@@ -1630,13 +1637,30 @@ button.secondary:hover {
           }
         }
 
+        // Find nearest enemy rocket (to dodge)
+        let nearestRocketDist = 1;
+        let nearestRocketAngle = 0;
+        for (const rocket of world.rockets) {
+          if (rocket.owner && rocket.owner.team === this.team) continue; // Ignore own team's rockets
+          const dx = rocket.x - this.x, dy = rocket.y - this.y;
+          const dist = Math.hypot(dx, dy);
+          const nDist = Math.min(1, dist / 500); // Normalize to 500 units
+          if (nDist < nearestRocketDist) {
+            nearestRocketDist = nDist;
+            let a = Math.atan2(dy, dx) - this.rotation;
+            while (a > Math.PI) a -= Math.PI * 2;
+            while (a < -Math.PI) a += Math.PI * 2;
+            nearestRocketAngle = a / Math.PI;
+          }
+        }
+
         const speedNorm = clamp(Math.hypot(this.vx, this.vy) / 200, 0, 1);
         const weaponReady = this.weaponCooldown <= 0 ? 1 : 0;
         const hasLaser = this.weapon === 'laser' ? 1 : 0;
         const hasSword = this.weapon === 'sword' ? 1 : 0;
         const dodgeReady = this.dodgeCooldown <= 0 ? 1 : 0;
 
-        // Inputs: 26 total (16 rays + 10 internal)
+        // Inputs: 54 total (42 rays + 12 internal)
         const internal = [
           this.health / this.maxHealth,
           speedNorm,
@@ -1645,6 +1669,8 @@ button.secondary:hover {
           nearestEnemyDist,
           nearestAllyAngle,
           nearestAllyDist,
+          nearestRocketAngle,
+          nearestRocketDist,
           this.team,
           hasLaser,
           hasSword
@@ -1667,7 +1693,9 @@ button.secondary:hover {
           enemyDist: nearestEnemyDist,
           enemyAngle: nearestEnemyAngle,
           allyDist: nearestAllyDist,
-          allyAngle: nearestAllyAngle
+          allyAngle: nearestAllyAngle,
+          rocketDist: nearestRocketDist,
+          rocketAngle: nearestRocketAngle
         };
 
         return decision;
