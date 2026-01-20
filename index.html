@@ -1152,10 +1152,13 @@ button.secondary:hover {
         this.totalDeaths = 0;
         this.roundsPlayed = 0;
 
-        // Network: 29 inputs → 16 hidden → 5 outputs
-        // Inputs: 16 raycast distances/types + 13 state (health, cooldown, velocity, weapon info, etc)
-        // Outputs: turn, move speed, shoot, strafe, pickup
-        this.brain = brain || new NeuralNetwork(29, 16, 5);
+        // Network: 24 inputs → 16 hidden → 4 outputs
+        // Inputs: 16 raycast distances/types + 8 state (health, cooldown, velocity, etc)
+        // Outputs: turn, move speed, shoot, strafe
+        this.brain = brain || new NeuralNetwork(24, 16, 4);
+
+        // Track if agent has picked up a special weapon this round (can only pick up once)
+        this.hasPickedUpWeapon = false;
 
         this.radius = 16;
         this.color = team === 0 ? '#ff4444' : '#4488ff';
@@ -1171,6 +1174,7 @@ button.secondary:hover {
         this.attackRecovery = 0;
         this.weaponCooldown = 0;
         this.weapon = 'rocket';
+        this.hasPickedUpWeapon = false; // Can pick up one special weapon per round
         this.laserCharge = 0;
         this.laserCharging = false;
         this.swordCharge = 0;
@@ -1351,51 +1355,10 @@ button.secondary:hover {
           }
         }
 
-        // Find nearest special weapon (laser or sword) from pickups and dropped weapons
-        let nearestWeaponDist = 1;
-        let nearestWeaponAngle = 0;
-        let nearestWeaponIsLaser = 0;
-        let nearestWeaponIsSword = 0;
-
-        // Check regular pickups
-        for (const p of world.pickups) {
-          if (p.type !== 'laser' && p.type !== 'sword') continue;
-          const dx = p.x - this.x, dy = p.y - this.y;
-          const dist = Math.hypot(dx, dy);
-          const nDist = Math.min(1, dist / 800);
-          if (nDist < nearestWeaponDist) {
-            nearestWeaponDist = nDist;
-            let a = Math.atan2(dy, dx) - this.rotation;
-            while (a > Math.PI) a -= Math.PI * 2;
-            while (a < -Math.PI) a += Math.PI * 2;
-            nearestWeaponAngle = a / Math.PI;
-            nearestWeaponIsLaser = p.type === 'laser' ? 1 : 0;
-            nearestWeaponIsSword = p.type === 'sword' ? 1 : 0;
-          }
-        }
-
-        // Check dropped weapons
-        for (const w of world.droppedWeapons) {
-          const dx = w.x - this.x, dy = w.y - this.y;
-          const dist = Math.hypot(dx, dy);
-          const nDist = Math.min(1, dist / 800);
-          if (nDist < nearestWeaponDist) {
-            nearestWeaponDist = nDist;
-            let a = Math.atan2(dy, dx) - this.rotation;
-            while (a > Math.PI) a -= Math.PI * 2;
-            while (a < -Math.PI) a += Math.PI * 2;
-            nearestWeaponAngle = a / Math.PI;
-            nearestWeaponIsLaser = w.type === 'laser' ? 1 : 0;
-            nearestWeaponIsSword = w.type === 'sword' ? 1 : 0;
-          }
-        }
-
-        const hasSpecialWeapon = this.weapon !== 'rocket' ? 1 : 0;
-
         const speedNorm = clamp(Math.hypot(this.vx, this.vy) / 200, 0, 1);
         const weaponReady = this.weaponCooldown <= 0 ? 1 : 0;
 
-        // Inputs: 29 total (16 rays + 13 internal)
+        // Inputs: 24 total (16 rays + 8 internal)
         const internal = [
           this.health / this.maxHealth,
           speedNorm,
@@ -1404,12 +1367,7 @@ button.secondary:hover {
           nearestEnemyDist,
           nearestAllyAngle,
           nearestAllyDist,
-          this.team,
-          nearestWeaponDist,
-          nearestWeaponAngle,
-          nearestWeaponIsLaser,
-          nearestWeaponIsSword,
-          hasSpecialWeapon
+          this.team
         ];
 
         const outputs = this.brain.forward(rayData.concat(internal));
@@ -1418,8 +1376,7 @@ button.secondary:hover {
           turnAmount: outputs[0],
           speedAmount: (outputs[1] + 1) / 2,
           wantsShoot: outputs[2] > 0,
-          strafe: outputs[3],
-          wantsPickup: outputs[4] > 0
+          strafe: outputs[3]
         };
       }
 
@@ -2242,21 +2199,23 @@ button.secondary:hover {
                   this.pickups.splice(i, 1);
                 }
               } else if (p.type === 'laser') {
-                // Only pick up if agent wants to and doesn't already have a special weapon
-                if (agent.wantsPickup && agent.weapon === 'rocket') {
+                // Auto pickup on walk-over, but only once per round
+                if (!agent.hasPickedUpWeapon) {
                   agent.weapon = 'laser';
                   agent.laserCharge = 0;
                   agent.weaponCooldown = 0;
+                  agent.hasPickedUpWeapon = true;
                   this.addEvent('⚡ ' + agent.name + ' GOT THE LASER!', 'laser');
                   this.pickups.splice(i, 1);
                 }
               } else if (p.type === 'sword') {
-                // Only pick up if agent wants to and doesn't already have a special weapon
-                if (agent.wantsPickup && agent.weapon === 'rocket') {
+                // Auto pickup on walk-over, but only once per round
+                if (!agent.hasPickedUpWeapon) {
                   agent.weapon = 'sword';
                   agent.swordCharge = 0;
                   agent.swordCharging = false;
                   agent.weaponCooldown = 0;
+                  agent.hasPickedUpWeapon = true;
                   this.addEvent('🗡️ ' + agent.name + ' GOT THE ENERGY SWORD!', 'sword');
                   this.pickups.splice(i, 1);
                 }
@@ -2265,11 +2224,11 @@ button.secondary:hover {
           }
         }
 
-        // Check for dropped weapon pickups (only if agent wants to and doesn't have a special weapon)
+        // Check for dropped weapon pickups (auto pickup, but only once per round)
         for (const agent of this.agents) {
           if (!agent.alive) continue;
-          // Only pick up if agent wants to and doesn't already have a special weapon
-          if (!agent.wantsPickup || agent.weapon !== 'rocket') continue;
+          // Only pick up if agent hasn't picked up a weapon this round
+          if (agent.hasPickedUpWeapon) continue;
 
           for (let i = this.droppedWeapons.length - 1; i >= 0; i--) {
             const w = this.droppedWeapons[i];
@@ -2280,6 +2239,7 @@ button.secondary:hover {
                 agent.weapon = 'laser';
                 agent.laserCharge = 0;
                 agent.weaponCooldown = 0;
+                agent.hasPickedUpWeapon = true;
                 this.addEvent('⚡ ' + agent.name + ' PICKED UP DROPPED LASER!', 'laser');
                 this.droppedWeapons.splice(i, 1);
               } else if (w.type === 'sword') {
@@ -2287,6 +2247,7 @@ button.secondary:hover {
                 agent.swordCharge = 0;
                 agent.swordCharging = false;
                 agent.weaponCooldown = 0;
+                agent.hasPickedUpWeapon = true;
                 this.addEvent('🗡️ ' + agent.name + ' PICKED UP DROPPED SWORD!', 'sword');
                 this.droppedWeapons.splice(i, 1);
               }
@@ -2474,8 +2435,6 @@ button.secondary:hover {
         for (let i = 0; i < this.agents.length; i++) {
           const a = this.agents[i];
           const d = decisions[i];
-          // Store pickup decision on agent for use in pickup collection
-          a.wantsPickup = d && d.wantsPickup;
           a.update(d, dt, this, this.obstacles);
 
           // Handle shooting based on weapon type
