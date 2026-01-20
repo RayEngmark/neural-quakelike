@@ -1605,50 +1605,64 @@ button.secondary:hover {
 
       spawnLaserPickups() {
         if (this.laserSpawned || !this.laserSpawnsEnabled) return;
-        
-        // Spawn 2 lasers at center of map
-        const cx = this.width / 2;
-        const cy = this.height / 2;
-        
-        this.pickups.push({
-          x: cx - 50,
-          y: cy,
-          type: 'laser',
-          radius: 18
-        });
-        this.pickups.push({
-          x: cx + 50,
-          y: cy,
-          type: 'laser',
-          radius: 18
-        });
-        
+
+        // Spawn 5 lasers near each team's spawn point (10 total)
+        const spawnAreas = [
+          { baseX: 80, dir: 1 },           // Red team (left side, spawn forward)
+          { baseX: this.width - 80, dir: -1 }  // Blue team (right side, spawn forward)
+        ];
+
+        for (const area of spawnAreas) {
+          for (let i = 0; i < 5; i++) {
+            // Spread vertically near spawn, slightly forward from spawn
+            const offsetX = 80 + Math.random() * 60; // 80-140 units forward from spawn
+            const spreadY = (i - 2) * 90 + (Math.random() - 0.5) * 40; // Spread vertically
+
+            const x = area.baseX + offsetX * area.dir;
+            const y = clamp(this.height / 2 + spreadY, 80, this.height - 80);
+
+            this.pickups.push({
+              x: x,
+              y: y,
+              type: 'laser',
+              radius: 18
+            });
+          }
+        }
+
         this.laserSpawned = true;
-        this.addEvent('⚡ LASER WEAPONS SPAWNED!', 'laser');
+        this.addEvent('⚡ LASER WEAPONS SPAWNED AT BASES!', 'laser');
       }
 
       spawnSwordPickups() {
         if (this.swordSpawned || !this.swordSpawnsEnabled) return;
-        
-        // Spawn 2 swords at center of map (offset from laser)
-        const cx = this.width / 2;
-        const cy = this.height / 2;
-        
-        this.pickups.push({
-          x: cx,
-          y: cy - 80,
-          type: 'sword',
-          radius: 18
-        });
-        this.pickups.push({
-          x: cx,
-          y: cy + 80,
-          type: 'sword',
-          radius: 18
-        });
-        
+
+        // Spawn 5 swords near each team's spawn point (10 total)
+        const spawnAreas = [
+          { baseX: 80, dir: 1 },           // Red team (left side, spawn forward)
+          { baseX: this.width - 80, dir: -1 }  // Blue team (right side, spawn forward)
+        ];
+
+        for (const area of spawnAreas) {
+          for (let i = 0; i < 5; i++) {
+            // Spread vertically, closer to spawn than lasers (swords are melee)
+            const offsetX = 50 + Math.random() * 50; // 50-100 units forward from spawn
+            const spreadY = (i - 2) * 90 + (Math.random() - 0.5) * 40; // Spread vertically
+
+            const x = area.baseX + offsetX * area.dir;
+            const y = clamp(this.height / 2 + spreadY, 80, this.height - 80);
+
+            this.pickups.push({
+              x: x,
+              y: y,
+              type: 'sword',
+              radius: 18
+            });
+          }
+        }
+
         this.swordSpawned = true;
-        this.addEvent('🗡️ ENERGY SWORDS SPAWNED!', 'sword');
+        this.addEvent('🗡️ ENERGY SWORDS SPAWNED AT BASES!', 'sword');
       }
 
       spawnPickups() {
@@ -2112,6 +2126,10 @@ button.secondary:hover {
           agent.rotation = agent.team === 0 ? 0 : Math.PI;
           agent.resetForRound();
         }
+
+        // Spawn weapons at round start (near team spawns)
+        this.spawnLaserPickups();
+        this.spawnSwordPickups();
       }
 
       // Keep for compatibility
@@ -2129,27 +2147,11 @@ button.secondary:hover {
 
         this.timeLeft -= dt;
 
-        // Pickup spawning
+        // Pickup spawning (health/armor only - weapons spawn at round start)
         this.pickupTimer += dt;
         if (this.pickupTimer >= this.pickupInterval) {
           this.pickupTimer = 0;
           this.spawnPickups();
-        }
-        
-        // Laser spawn check - spawn 10 seconds after round start
-        if (!this.laserSpawned && this.laserSpawnsEnabled) {
-          const timePassed = this.roundTime - this.timeLeft;
-          if (timePassed >= 10) {
-            this.spawnLaserPickups();
-          }
-        }
-        
-        // Sword spawn check - spawn 15 seconds after round start
-        if (!this.swordSpawned && this.swordSpawnsEnabled) {
-          const timePassed = this.roundTime - this.timeLeft;
-          if (timePassed >= 15) {
-            this.spawnSwordPickups();
-          }
         }
 
         // Pickup collection
