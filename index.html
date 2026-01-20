@@ -2123,93 +2123,180 @@ button.secondary:hover {
       }
 
       fireLaser(agent) {
-        // Calculate beam endpoint (extends to world edge)
-        const angle = agent.rotation;
-        const startX = agent.x + Math.cos(angle) * agent.radius;
-        const startY = agent.y + Math.sin(angle) * agent.radius;
-        
-        // Find where beam exits world
-        let endX, endY;
-        const cosA = Math.cos(angle);
-        const sinA = Math.sin(angle);
-        
-        // Calculate intersection with world boundaries
-        const tRight = cosA > 0 ? (this.width - startX) / cosA : Infinity;
-        const tLeft = cosA < 0 ? -startX / cosA : Infinity;
-        const tBottom = sinA > 0 ? (this.height - startY) / sinA : Infinity;
-        const tTop = sinA < 0 ? -startY / sinA : Infinity;
-        
-        const t = Math.min(tRight, tLeft, tBottom, tTop);
-        endX = startX + cosA * t;
-        endY = startY + sinA * t;
-        
-        // Check for hits on all agents in beam path
+        // Bouncing, piercing laser with explosion on 4th hit
+        const maxBounces = 4;
+        const explosionRadius = 80;
+        const explosionDamage = 60;
+
+        let currentX = agent.x + Math.cos(agent.rotation) * agent.radius;
+        let currentY = agent.y + Math.sin(agent.rotation) * agent.radius;
+        let angle = agent.rotation;
+
+        const beamSegments = []; // Store all segments for visualization
+        const hitTargets = new Set(); // Track already hit targets
+        let totalHits = 0; // Bounces + enemy hits combined
         let killCount = 0;
-        for (const target of this.agents) {
-          if (target === agent || !target.alive) continue;
-          
-          // Skip teammates unless FF is on
-          if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
-          
-          // Point-to-line distance check
-          const dx = endX - startX;
-          const dy = endY - startY;
-          const len = Math.hypot(dx, dy);
-          const nx = -dy / len;
-          const ny = dx / len;
-          
-          const px = target.x - startX;
-          const py = target.y - startY;
-          const dist = Math.abs(px * nx + py * ny);
-          
-          // Also check if target is in front of shooter
-          const dot = px * (dx / len) + py * (dy / len);
-          
-          if (dist < target.radius + 10 && dot > 0) {
-            // Hit!
-            if (target.team === agent.team) {
-              // Friendly fire
-              if (this.friendlyFireRicochet) {
-                // Ricochet damage to self
-                const killed = agent.takeDamage(999, agent, this);
-                this.teamRicochets[agent.team]++;
-                if (killed) {
-                  this.addEvent('🔄 ' + agent.name + ' LASER RICOCHET!', 'laser');
+
+        for (let bounce = 0; bounce <= maxBounces; bounce++) {
+          const cosA = Math.cos(angle);
+          const sinA = Math.sin(angle);
+
+          // Find where beam hits world boundary
+          const tRight = cosA > 0 ? (this.width - currentX) / cosA : Infinity;
+          const tLeft = cosA < 0 ? -currentX / cosA : Infinity;
+          const tBottom = sinA > 0 ? (this.height - currentY) / sinA : Infinity;
+          const tTop = sinA < 0 ? -currentY / sinA : Infinity;
+
+          const t = Math.min(tRight, tLeft, tBottom, tTop);
+          const endX = currentX + cosA * t;
+          const endY = currentY + sinA * t;
+
+          // Check for enemy hits along this segment (piercing - hits all)
+          for (const target of this.agents) {
+            if (target === agent || !target.alive || hitTargets.has(target)) continue;
+            if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
+
+            // Point-to-line distance check
+            const dx = endX - currentX;
+            const dy = endY - currentY;
+            const len = Math.hypot(dx, dy);
+            if (len === 0) continue;
+
+            const nx = -dy / len;
+            const ny = dx / len;
+            const px = target.x - currentX;
+            const py = target.y - currentY;
+            const dist = Math.abs(px * nx + py * ny);
+            const dot = px * (dx / len) + py * (dy / len);
+
+            if (dist < target.radius + 10 && dot > 0 && dot < len) {
+              // Hit! (piercing - continue checking others)
+              hitTargets.add(target);
+              totalHits++;
+
+              if (target.team === agent.team) {
+                if (this.friendlyFireRicochet) {
+                  const killed = agent.takeDamage(999, agent, this);
+                  this.teamRicochets[agent.team]++;
+                  if (killed) {
+                    this.addEvent('🔄 ' + agent.name + ' LASER RICOCHET!', 'laser');
+                  }
+                } else if (this.friendlyFire) {
+                  const killed = target.takeDamage(999, agent, this);
+                  if (killed) {
+                    this.teamRicochets[agent.team]++;
+                    this.addEvent('⚡ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'laser');
+                  }
                 }
-              } else if (this.friendlyFire) {
+              } else {
                 const killed = target.takeDamage(999, agent, this);
                 if (killed) {
-                  this.teamRicochets[agent.team]++;
-                  this.addEvent('⚡ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'laser');
+                  agent.kills++;
+                  agent.totalKills++;
+                  this.teamKills[agent.team]++;
+                  this.teamRawKills[agent.team]++;
+                  killCount++;
                 }
               }
+
+              // Check for 4th hit explosion
+              if (totalHits === 4) {
+                this.createLaserExplosion(target.x, target.y, explosionRadius, explosionDamage, agent);
+              }
+            }
+          }
+
+          // Store segment for visualization
+          beamSegments.push({ startX: currentX, startY: currentY, endX, endY });
+
+          // Count bounce
+          totalHits++;
+
+          // Check for 4th hit explosion at wall
+          if (totalHits === 4) {
+            this.createLaserExplosion(endX, endY, explosionRadius, explosionDamage, agent);
+          }
+
+          // Stop if we've done max bounces
+          if (bounce >= maxBounces) break;
+
+          // Calculate bounce direction
+          const hitRight = Math.abs(endX - this.width) < 1;
+          const hitLeft = Math.abs(endX) < 1;
+          const hitBottom = Math.abs(endY - this.height) < 1;
+          const hitTop = Math.abs(endY) < 1;
+
+          if (hitRight || hitLeft) {
+            angle = Math.PI - angle; // Reflect horizontally
+          }
+          if (hitBottom || hitTop) {
+            angle = -angle; // Reflect vertically
+          }
+
+          // Move to bounce point (slightly inward to avoid edge issues)
+          currentX = clamp(endX, 2, this.width - 2);
+          currentY = clamp(endY, 2, this.height - 2);
+        }
+
+        // Event messages
+        if (killCount > 0) {
+          let msg;
+          if (killCount >= 3) {
+            msg = '⚡ ' + agent.name + ' LASER DEVASTATION x' + killCount + '!';
+          } else if (killCount >= 2) {
+            msg = '⚡ ' + agent.name + ' LASER PIERCE x' + killCount + '!';
+          } else {
+            msg = '⚡ ' + agent.name + ' LASER KILL!';
+          }
+          this.addEvent(msg, 'laser');
+        }
+
+        // Add beam animation with all segments
+        this.laserBeams.push({
+          segments: beamSegments,
+          team: agent.team,
+          timer: 0,
+          maxTime: 1.5
+        });
+      }
+
+      createLaserExplosion(x, y, radius, damage, owner) {
+        // Deal splash damage to nearby enemies
+        for (const target of this.agents) {
+          if (target === owner || !target.alive) continue;
+          if (target.team === owner.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
+
+          const dist = Math.hypot(target.x - x, target.y - y);
+          if (dist < radius) {
+            const dmgFalloff = 1 - (dist / radius);
+            const actualDmg = Math.round(damage * dmgFalloff);
+
+            if (target.team === owner.team) {
+              if (this.friendlyFireRicochet) {
+                owner.takeDamage(actualDmg, owner, this);
+              } else if (this.friendlyFire) {
+                target.takeDamage(actualDmg, owner, this);
+              }
             } else {
-              // Enemy kill
-              const killed = target.takeDamage(999, agent, this);
+              const killed = target.takeDamage(actualDmg, owner, this);
               if (killed) {
-                agent.kills++;
-                agent.totalKills++;
-                this.teamKills[agent.team]++;
-                this.teamRawKills[agent.team]++;
-                killCount++;
+                owner.kills++;
+                owner.totalKills++;
+                this.teamKills[owner.team]++;
+                this.teamRawKills[owner.team]++;
+                this.addEvent('💥 ' + owner.name + ' LASER EXPLOSION KILL!', 'laser');
               }
             }
           }
         }
-        
-        if (killCount > 0) {
-          const msg = killCount > 1 
-            ? '⚡ ' + agent.name + ' LASER MULTI-KILL x' + killCount + '!'
-            : '⚡ ' + agent.name + ' LASER KILL!';
-          this.addEvent(msg, 'laser');
-        }
-        
-        // Add beam animation
-        this.laserBeams.push({
-          startX, startY, endX, endY,
-          team: agent.team,
+
+        // Add explosion visual effect
+        this.effects.push({
+          type: 'laser_explosion',
+          x, y, radius,
           timer: 0,
-          maxTime: 1.5
+          maxTime: 0.4,
+          team: owner.team
         });
       }
 
@@ -4479,11 +4566,9 @@ button.secondary:hover {
           ctx.fill();
         }
         
-        // Laser beams (epic team-colored)
+        // Laser beams (epic team-colored with bounce support)
         for (const beam of this.world.laserBeams) {
           const progress = beam.timer / beam.maxTime;
-          const sx = beam.startX * s, sy = beam.startY * s;
-          const ex = beam.endX * s, ey = beam.endY * s;
 
           // Team colors
           const isRed = beam.team === 0;
@@ -4491,96 +4576,94 @@ button.secondary:hover {
           const midRGB = isRed ? '255, 50, 150' : '50, 200, 255';
           const innerRGB = isRed ? '255, 150, 200' : '150, 220, 255';
 
-          // Phase 1: Expansion (0 - 0.1)
-          // Phase 2: Peak (0.1 - 0.4)
-          // Phase 3: Contraction (0.4 - 1.0)
-
+          // Phase animation
           let beamWidth, alpha;
           if (progress < 0.1) {
-            // Expanding
             beamWidth = (progress / 0.1) * 30;
             alpha = 1;
           } else if (progress < 0.4) {
-            // Peak - with slight pulse
             const pulse = 1 + Math.sin(progress * 50) * 0.1;
             beamWidth = 30 * pulse;
             alpha = 1;
           } else {
-            // Contracting
             const contractProgress = (progress - 0.4) / 0.6;
             beamWidth = 30 * (1 - contractProgress);
             alpha = 1 - contractProgress;
           }
 
-          // Calculate beam direction for effects
-          const dx = ex - sx, dy = ey - sy;
-          const len = Math.hypot(dx, dy);
-          const dirX = len > 0 ? dx / len : 1;
-          const dirY = len > 0 ? dy / len : 0;
-          const perpX = -dirY, perpY = dirX;
+          // Get segments (support both old single-segment and new multi-segment format)
+          const segments = beam.segments || [{ startX: beam.startX, startY: beam.startY, endX: beam.endX, endY: beam.endY }];
 
-          // Outer glow (widest)
-          ctx.shadowBlur = 30 * alpha;
-          ctx.shadowColor = isRed ? '#ff0066' : '#0088ff';
-          ctx.strokeStyle = `rgba(${outerRGB}, ${alpha * 0.3})`;
-          ctx.lineWidth = beamWidth * s * 4;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+          // Draw each segment
+          for (let segIdx = 0; segIdx < segments.length; segIdx++) {
+            const seg = segments[segIdx];
+            const sx = seg.startX * s, sy = seg.startY * s;
+            const ex = seg.endX * s, ey = seg.endY * s;
 
-          // Secondary glow
-          ctx.strokeStyle = `rgba(${outerRGB}, ${alpha * 0.5})`;
-          ctx.lineWidth = beamWidth * s * 2.5;
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+            const dx = ex - sx, dy = ey - sy;
+            const len = Math.hypot(dx, dy);
+            const dirX = len > 0 ? dx / len : 1;
+            const dirY = len > 0 ? dy / len : 0;
+            const perpX = -dirY, perpY = dirX;
 
-          // Middle glow
-          ctx.strokeStyle = `rgba(${midRGB}, ${alpha * 0.7})`;
-          ctx.lineWidth = beamWidth * s * 1.5;
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+            // Outer glow
+            ctx.shadowBlur = 30 * alpha;
+            ctx.shadowColor = isRed ? '#ff0066' : '#0088ff';
+            ctx.strokeStyle = `rgba(${outerRGB}, ${alpha * 0.3})`;
+            ctx.lineWidth = beamWidth * s * 4;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
 
-          // Inner bright layer
-          ctx.strokeStyle = `rgba(${innerRGB}, ${alpha * 0.9})`;
-          ctx.lineWidth = beamWidth * s * 0.8;
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+            // Secondary glow
+            ctx.strokeStyle = `rgba(${outerRGB}, ${alpha * 0.5})`;
+            ctx.lineWidth = beamWidth * s * 2.5;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
 
-          // Core beam (white hot)
-          ctx.shadowBlur = 0;
-          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
-          ctx.lineWidth = beamWidth * s * 0.3;
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(ex, ey);
-          ctx.stroke();
+            // Middle glow
+            ctx.strokeStyle = `rgba(${midRGB}, ${alpha * 0.7})`;
+            ctx.lineWidth = beamWidth * s * 1.5;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
 
-          // Energy particles along beam
-          if (alpha > 0.3) {
-            const particleCount = Math.floor(len / (40 * s));
-            for (let i = 0; i < particleCount; i++) {
-              const t = (i + 0.5) / particleCount;
-              const wobble = Math.sin(Date.now() / 50 + i * 2) * beamWidth * s * 0.3;
-              const px = sx + dx * t + perpX * wobble;
-              const py = sy + dy * t + perpY * wobble;
-              const pSize = (2 + Math.random() * 2) * s * alpha;
+            // Inner bright layer
+            ctx.strokeStyle = `rgba(${innerRGB}, ${alpha * 0.9})`;
+            ctx.lineWidth = beamWidth * s * 0.8;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
 
-              ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+            // Core beam (white hot)
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.lineWidth = beamWidth * s * 0.3;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+
+            // Bounce point flash (at segment junctions)
+            if (segIdx > 0 && progress < 0.5) {
+              const bounceAlpha = (1 - progress / 0.5) * alpha;
+              const bounceSize = 15 * s * bounceAlpha;
+              ctx.fillStyle = `rgba(255, 255, 255, ${bounceAlpha})`;
               ctx.beginPath();
-              ctx.arc(px, py, pSize, 0, Math.PI * 2);
+              ctx.arc(sx, sy, bounceSize, 0, Math.PI * 2);
               ctx.fill();
             }
           }
 
-          // Impact flash at end point
+          // Impact flash at final end point
+          const lastSeg = segments[segments.length - 1];
+          const finalX = lastSeg.endX * s, finalY = lastSeg.endY * s;
           if (progress < 0.3) {
             const flashAlpha = (1 - progress / 0.3) * alpha;
             const flashSize = (20 + progress * 30) * s;
@@ -4589,12 +4672,12 @@ button.secondary:hover {
             ctx.shadowColor = isRed ? '#ff0066' : '#0088ff';
             ctx.fillStyle = `rgba(${outerRGB}, ${flashAlpha * 0.5})`;
             ctx.beginPath();
-            ctx.arc(ex, ey, flashSize * 1.5, 0, Math.PI * 2);
+            ctx.arc(finalX, finalY, flashSize * 1.5, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha * 0.8})`;
             ctx.beginPath();
-            ctx.arc(ex, ey, flashSize * 0.5, 0, Math.PI * 2);
+            ctx.arc(finalX, finalY, flashSize * 0.5, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
           }
@@ -5134,6 +5217,42 @@ button.secondary:hover {
             ctx.beginPath();
             ctx.arc(x, y, 40 * s * collapse, 0, Math.PI * 2);
             ctx.stroke();
+
+          } else if (effect.type === 'laser_explosion') {
+            // Laser 4th hit explosion
+            const radius = (effect.radius || 80) * s;
+            const teamColor = effect.team === 0 ? [255, 0, 100] : [0, 150, 255];
+
+            // Expanding shockwave
+            const expandProgress = Math.min(1, progress * 2);
+            const shockwaveRadius = radius * expandProgress;
+            const shockwaveAlpha = (1 - progress) * 0.8;
+
+            ctx.strokeStyle = `rgba(${teamColor.join(',')}, ${shockwaveAlpha})`;
+            ctx.lineWidth = (8 - progress * 6) * s;
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = `rgb(${teamColor.join(',')})`;
+            ctx.beginPath();
+            ctx.arc(x, y, shockwaveRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner flash
+            if (progress < 0.3) {
+              const flashAlpha = (1 - progress / 0.3);
+              const innerRadius = radius * 0.6 * (1 - progress);
+
+              const grad = ctx.createRadialGradient(x, y, 0, x, y, innerRadius);
+              grad.addColorStop(0, `rgba(255, 255, 255, ${flashAlpha})`);
+              grad.addColorStop(0.4, `rgba(${teamColor.join(',')}, ${flashAlpha * 0.8})`);
+              grad.addColorStop(1, `rgba(${teamColor.join(',')}, 0)`);
+
+              ctx.fillStyle = grad;
+              ctx.beginPath();
+              ctx.arc(x, y, innerRadius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.shadowBlur = 0;
           }
 
           ctx.restore();
