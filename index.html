@@ -2606,6 +2606,17 @@ button.secondary:hover {
         this.resize();
       }
 
+      // Helper to get centering offset
+      getCenterOffset() {
+        const s = this.baseScale * this.zoom;
+        const worldW = this.world.width * s;
+        const worldH = this.world.height * s;
+        return {
+          x: Math.max(0, (this.cssW - worldW) / 2),
+          y: Math.max(0, (this.cssH - worldH) / 2)
+        };
+      }
+
       setupControls() {
         const onWheel = (e) => {
           e.preventDefault();
@@ -2613,14 +2624,24 @@ button.secondary:hover {
           const mouseX = e.clientX - rect.left;
           const mouseY = e.clientY - rect.top;
 
-          const worldX = this.cameraX + mouseX / (this.baseScale * this.zoom);
-          const worldY = this.cameraY + mouseY / (this.baseScale * this.zoom);
+          // Account for centering offset
+          const offset = this.getCenterOffset();
+          const adjustedMouseX = mouseX - offset.x;
+          const adjustedMouseY = mouseY - offset.y;
+
+          const worldX = this.cameraX + adjustedMouseX / (this.baseScale * this.zoom);
+          const worldY = this.cameraY + adjustedMouseY / (this.baseScale * this.zoom);
 
           const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
           this.zoom = clamp(this.zoom * zoomFactor, this.minZoom, this.maxZoom);
 
-          this.cameraX = worldX - mouseX / (this.baseScale * this.zoom);
-          this.cameraY = worldY - mouseY / (this.baseScale * this.zoom);
+          // Recalculate offset after zoom change
+          const newOffset = this.getCenterOffset();
+          const newAdjustedMouseX = mouseX - newOffset.x;
+          const newAdjustedMouseY = mouseY - newOffset.y;
+
+          this.cameraX = worldX - newAdjustedMouseX / (this.baseScale * this.zoom);
+          this.cameraY = worldY - newAdjustedMouseY / (this.baseScale * this.zoom);
 
           this.clampCamera();
         };
@@ -2708,8 +2729,14 @@ button.secondary:hover {
         ctx.fillStyle = '#050510';
         ctx.fillRect(0, 0, this.cssW, this.cssH);
 
+        // Calculate centering offset (center world in canvas when zoomed out)
+        const worldW = this.world.width * s;
+        const worldH = this.world.height * s;
+        const offsetX = Math.max(0, (this.cssW - worldW) / 2);
+        const offsetY = Math.max(0, (this.cssH - worldH) / 2);
+
         ctx.save();
-        ctx.translate(-this.cameraX * s, -this.cameraY * s);
+        ctx.translate(offsetX - this.cameraX * s, offsetY - this.cameraY * s);
 
         // Grid
         ctx.strokeStyle = '#151525';
