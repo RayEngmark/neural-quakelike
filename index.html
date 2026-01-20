@@ -4678,6 +4678,7 @@ button.secondary:hover {
           }
 
           // Impact flash at final end point
+          if (segments.length === 0) continue;
           const lastSeg = segments[segments.length - 1];
           const finalX = lastSeg.endX * s, finalY = lastSeg.endY * s;
           if (progress < 0.3) {
@@ -4698,12 +4699,15 @@ button.secondary:hover {
             ctx.shadowBlur = 0;
           }
 
-          // Muzzle flash at start
-          if (progress < 0.15) {
+          // Muzzle flash at start (use first segment)
+          if (progress < 0.15 && segments.length > 0) {
+            const firstSeg = segments[0];
+            const muzzleX = firstSeg.startX * s;
+            const muzzleY = firstSeg.startY * s;
             const muzzleAlpha = (1 - progress / 0.15);
             ctx.fillStyle = `rgba(255, 255, 255, ${muzzleAlpha * 0.9})`;
             ctx.beginPath();
-            ctx.arc(sx, sy, 15 * s * muzzleAlpha, 0, Math.PI * 2);
+            ctx.arc(muzzleX, muzzleY, 15 * s * muzzleAlpha, 0, Math.PI * 2);
             ctx.fill();
           }
         }
