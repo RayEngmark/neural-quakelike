@@ -1518,6 +1518,12 @@ button.secondary:hover {
         this.deaths++;
         this.totalDeaths++;
         this.respawnTimer = world ? world.respawnTime : 3; // Use world's respawn time
+
+        // Drop special weapon on death
+        if (world && (this.weapon === 'laser' || this.weapon === 'sword')) {
+          world.dropWeapon(this.x, this.y, this.weapon);
+        }
+
         return true;
       }
 
@@ -1561,6 +1567,9 @@ button.secondary:hover {
         this.swordSpawnsEnabled = true;
         this.swordSpawned = false;
         this.swordSlashes = []; // Active sword slash animations
+
+        // Dropped weapons (laser/sword dropped on death or weapon swap)
+        this.droppedWeapons = [];
 
         this.roundTime = 180; // 3 minutes
         this.timeLeft = this.roundTime;
@@ -2091,6 +2100,7 @@ button.secondary:hover {
         this.laserBeams = [];
         this.swordSpawned = false;
         this.swordSlashes = [];
+        this.droppedWeapons = []; // Weapons dropped by dead players or weapon swaps
         
         // Reset all agents for new round (but keep names and lifetime stats)
         for (const agent of this.agents) {
@@ -2167,18 +2177,60 @@ button.secondary:hover {
                   this.pickups.splice(i, 1);
                 }
               } else if (p.type === 'laser') {
+                // Drop current special weapon if holding one
+                if (agent.weapon === 'sword') {
+                  this.dropWeapon(agent.x, agent.y, 'sword');
+                }
                 agent.weapon = 'laser';
                 agent.laserCharge = 0;
                 agent.weaponCooldown = 0;
                 this.addEvent('⚡ ' + agent.name + ' GOT THE LASER!', 'laser');
                 this.pickups.splice(i, 1);
               } else if (p.type === 'sword') {
+                // Drop current special weapon if holding one
+                if (agent.weapon === 'laser') {
+                  this.dropWeapon(agent.x, agent.y, 'laser');
+                }
                 agent.weapon = 'sword';
                 agent.swordCharge = 0;
                 agent.swordCharging = false;
                 agent.weaponCooldown = 0;
                 this.addEvent('🗡️ ' + agent.name + ' GOT THE ENERGY SWORD!', 'sword');
                 this.pickups.splice(i, 1);
+              }
+            }
+          }
+        }
+
+        // Check for dropped weapon pickups
+        for (const agent of this.agents) {
+          if (!agent.alive) continue;
+          for (let i = this.droppedWeapons.length - 1; i >= 0; i--) {
+            const w = this.droppedWeapons[i];
+            const dx = agent.x - w.x;
+            const dy = agent.y - w.y;
+            if (dx * dx + dy * dy < (agent.radius + w.radius) * (agent.radius + w.radius)) {
+              if (w.type === 'laser') {
+                // Drop current special weapon if holding one
+                if (agent.weapon === 'sword') {
+                  this.dropWeapon(agent.x, agent.y, 'sword');
+                }
+                agent.weapon = 'laser';
+                agent.laserCharge = 0;
+                agent.weaponCooldown = 0;
+                this.addEvent('⚡ ' + agent.name + ' PICKED UP DROPPED LASER!', 'laser');
+                this.droppedWeapons.splice(i, 1);
+              } else if (w.type === 'sword') {
+                // Drop current special weapon if holding one
+                if (agent.weapon === 'laser') {
+                  this.dropWeapon(agent.x, agent.y, 'laser');
+                }
+                agent.weapon = 'sword';
+                agent.swordCharge = 0;
+                agent.swordCharging = false;
+                agent.weaponCooldown = 0;
+                this.addEvent('🗡️ ' + agent.name + ' PICKED UP DROPPED SWORD!', 'sword');
+                this.droppedWeapons.splice(i, 1);
               }
             }
           }
@@ -2501,6 +2553,21 @@ button.secondary:hover {
         this.spawnNextRound();
       }
 
+      // Drop a weapon on the ground (when player dies or swaps weapons)
+      dropWeapon(x, y, weaponType) {
+        if (weaponType !== 'laser' && weaponType !== 'sword') return;
+
+        this.droppedWeapons.push({
+          x: x,
+          y: y,
+          type: weaponType,
+          radius: 15,
+          spawnTime: Date.now()
+        });
+
+        this.addEvent('💫 ' + weaponType.toUpperCase() + ' DROPPED!', weaponType);
+      }
+
       addEvent(text, type) {
         this.events.unshift({ text, type, time: Date.now() });
         if (this.events.length > 80) this.events.pop();
@@ -2747,6 +2814,75 @@ button.secondary:hover {
             // Inner glow line
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          ctx.shadowBlur = 0;
+        }
+
+        // Dropped weapons (flashing to indicate they're dropped loot)
+        for (const w of this.world.droppedWeapons) {
+          const wx = w.x * s, wy = w.y * s, wr = w.radius * s;
+
+          // Faster pulse for dropped weapons + slight bounce effect
+          const pulse = Math.sin(Date.now() / 100) * 0.4 + 0.6;
+          const bounce = Math.abs(Math.sin(Date.now() / 300)) * 3 * s;
+
+          if (w.type === 'laser') {
+            // Dropped laser - cyan lightning bolt with flash effect
+            ctx.shadowBlur = 25 * pulse;
+            ctx.shadowColor = '#00ffff';
+            ctx.fillStyle = `rgba(0, 255, 255, ${0.7 + pulse * 0.3})`;
+
+            // Lightning bolt shape (slightly larger than pickup)
+            ctx.beginPath();
+            ctx.moveTo(wx + wr * 0.35, wy - bounce - wr * 1.4);
+            ctx.lineTo(wx - wr * 0.1, wy - bounce - wr * 0.25);
+            ctx.lineTo(wx + wr * 0.35, wy - bounce - wr * 0.25);
+            ctx.lineTo(wx - wr * 0.35, wy - bounce + wr * 1.4);
+            ctx.lineTo(wx + wr * 0.1, wy - bounce + wr * 0.25);
+            ctx.lineTo(wx - wr * 0.35, wy - bounce + wr * 0.25);
+            ctx.closePath();
+            ctx.fill();
+
+            // Bright core
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // "DROPPED" indicator ring
+            ctx.strokeStyle = `rgba(0, 255, 255, ${pulse * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(wx, wy - bounce, wr * 1.8, 0, Math.PI * 2);
+            ctx.stroke();
+
+          } else if (w.type === 'sword') {
+            // Dropped sword - magenta sword shape with flash effect
+            ctx.shadowBlur = 25 * pulse;
+            ctx.shadowColor = '#ff00ff';
+            ctx.fillStyle = `rgba(255, 0, 255, ${0.7 + pulse * 0.3})`;
+
+            // Sword blade shape (slightly larger than pickup)
+            ctx.beginPath();
+            ctx.moveTo(wx, wy - bounce - wr * 1.7);           // Tip
+            ctx.lineTo(wx + wr * 0.35, wy - bounce - wr * 0.6); // Right edge upper
+            ctx.lineTo(wx + wr * 0.25, wy - bounce + wr * 0.9); // Right edge lower
+            ctx.lineTo(wx, wy - bounce + wr * 1.4);             // Handle
+            ctx.lineTo(wx - wr * 0.25, wy - bounce + wr * 0.9); // Left edge lower
+            ctx.lineTo(wx - wr * 0.35, wy - bounce - wr * 0.6); // Left edge upper
+            ctx.closePath();
+            ctx.fill();
+
+            // Bright core
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // "DROPPED" indicator ring
+            ctx.strokeStyle = `rgba(255, 0, 255, ${pulse * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(wx, wy - bounce, wr * 1.8, 0, Math.PI * 2);
             ctx.stroke();
           }
           ctx.shadowBlur = 0;
