@@ -2794,30 +2794,160 @@ button.secondary:hover {
         ctx.save();
         ctx.translate(offsetX - this.cameraX * s, offsetY - this.cameraY * s);
 
-        // Grid
-        ctx.strokeStyle = '#151525';
-        ctx.lineWidth = 1;
-        const step = 100 * s;
         const maxX = this.world.width * s;
         const maxY = this.world.height * s;
-        for (let x = 0; x <= maxX; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, maxY); ctx.stroke(); }
-        for (let y = 0; y <= maxY; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(maxX, y); ctx.stroke(); }
 
-        // Border
+        // Arena floor - gradient base
+        const floorGrad = ctx.createRadialGradient(maxX / 2, maxY / 2, 0, maxX / 2, maxY / 2, maxX * 0.7);
+        floorGrad.addColorStop(0, '#0a0a18');
+        floorGrad.addColorStop(0.5, '#080812');
+        floorGrad.addColorStop(1, '#040408');
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, 0, maxX, maxY);
+
+        // Animated hex grid pattern
+        const hexSize = 60 * s;
+        const time = Date.now() / 3000;
+        ctx.strokeStyle = '#151528';
+        ctx.lineWidth = 1;
+        for (let row = 0; row < maxY / (hexSize * 0.866) + 1; row++) {
+          for (let col = 0; col < maxX / hexSize + 1; col++) {
+            const cx = col * hexSize * 1.5 + (row % 2) * hexSize * 0.75;
+            const cy = row * hexSize * 0.866;
+            if (cx > maxX + hexSize || cy > maxY + hexSize) continue;
+
+            // Subtle pulse based on position
+            const pulse = Math.sin(time + col * 0.3 + row * 0.2) * 0.3 + 0.7;
+            ctx.strokeStyle = `rgba(20, 25, 50, ${pulse * 0.6})`;
+
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+              const angle = i * Math.PI / 3 - Math.PI / 6;
+              const hx = cx + Math.cos(angle) * hexSize * 0.4;
+              const hy = cy + Math.sin(angle) * hexSize * 0.4;
+              if (i === 0) ctx.moveTo(hx, hy);
+              else ctx.lineTo(hx, hy);
+            }
+            ctx.closePath();
+            ctx.stroke();
+          }
+        }
+
+        // Center danger zone glow (where weapons spawn)
+        const centerGlow = ctx.createRadialGradient(maxX / 2, maxY / 2, 50 * s, maxX / 2, maxY / 2, 300 * s);
+        centerGlow.addColorStop(0, 'rgba(255, 50, 100, 0.08)');
+        centerGlow.addColorStop(0.5, 'rgba(255, 50, 100, 0.03)');
+        centerGlow.addColorStop(1, 'rgba(255, 50, 100, 0)');
+        ctx.fillStyle = centerGlow;
+        ctx.fillRect(0, 0, maxX, maxY);
+
+        // Team spawn zone hints
+        const redZone = ctx.createRadialGradient(80 * s, maxY / 2, 20 * s, 80 * s, maxY / 2, 200 * s);
+        redZone.addColorStop(0, 'rgba(255, 50, 50, 0.1)');
+        redZone.addColorStop(1, 'rgba(255, 50, 50, 0)');
+        ctx.fillStyle = redZone;
+        ctx.fillRect(0, 0, maxX, maxY);
+
+        const blueZone = ctx.createRadialGradient(maxX - 80 * s, maxY / 2, 20 * s, maxX - 80 * s, maxY / 2, 200 * s);
+        blueZone.addColorStop(0, 'rgba(50, 100, 255, 0.1)');
+        blueZone.addColorStop(1, 'rgba(50, 100, 255, 0)');
+        ctx.fillStyle = blueZone;
+        ctx.fillRect(0, 0, maxX, maxY);
+
+        // Border - glowing tech frame
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ff0055';
+        ctx.strokeStyle = '#ff0055';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(2, 2, maxX - 4, maxY - 4);
+        ctx.shadowBlur = 0;
+
+        // Corner accents
+        const cornerSize = 40 * s;
         ctx.strokeStyle = '#ff0055';
         ctx.lineWidth = 2;
-        ctx.strokeRect(0, 0, maxX, maxY);
+        // Top-left
+        ctx.beginPath(); ctx.moveTo(0, cornerSize); ctx.lineTo(0, 0); ctx.lineTo(cornerSize, 0); ctx.stroke();
+        // Top-right
+        ctx.beginPath(); ctx.moveTo(maxX - cornerSize, 0); ctx.lineTo(maxX, 0); ctx.lineTo(maxX, cornerSize); ctx.stroke();
+        // Bottom-left
+        ctx.beginPath(); ctx.moveTo(0, maxY - cornerSize); ctx.lineTo(0, maxY); ctx.lineTo(cornerSize, maxY); ctx.stroke();
+        // Bottom-right
+        ctx.beginPath(); ctx.moveTo(maxX - cornerSize, maxY); ctx.lineTo(maxX, maxY); ctx.lineTo(maxX, maxY - cornerSize); ctx.stroke();
 
-        // Buildings
+        // Buildings/Obstacles - sci-fi crates
         for (const b of this.world.buildings) {
           const x = b.x * s, y = b.y * s, w = b.w * s, h = b.h * s;
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.fillRect(x + 10, y + 10, w, h);
-          ctx.fillStyle = '#111';
+
+          // Shadow
+          ctx.fillStyle = 'rgba(0,0,0,0.4)';
+          ctx.fillRect(x + 6, y + 6, w, h);
+
+          // Main body gradient
+          const obstacleGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+          obstacleGrad.addColorStop(0, '#1a1a2e');
+          obstacleGrad.addColorStop(0.5, '#12121f');
+          obstacleGrad.addColorStop(1, '#0a0a15');
+          ctx.fillStyle = obstacleGrad;
           ctx.fillRect(x, y, w, h);
-          ctx.strokeStyle = '#334';
+
+          // Top highlight
+          ctx.fillStyle = 'rgba(255,255,255,0.05)';
+          ctx.fillRect(x, y, w, 3);
+          ctx.fillRect(x, y, 3, h);
+
+          // Bottom shadow edge
+          ctx.fillStyle = 'rgba(0,0,0,0.3)';
+          ctx.fillRect(x, y + h - 3, w, 3);
+          ctx.fillRect(x + w - 3, y, 3, h);
+
+          // Tech lines
+          ctx.strokeStyle = 'rgba(0, 255, 200, 0.15)';
+          ctx.lineWidth = 1;
+          // Horizontal line
+          ctx.beginPath();
+          ctx.moveTo(x + 5, y + h / 2);
+          ctx.lineTo(x + w - 5, y + h / 2);
+          ctx.stroke();
+          // Vertical line
+          ctx.beginPath();
+          ctx.moveTo(x + w / 2, y + 5);
+          ctx.lineTo(x + w / 2, y + h - 5);
+          ctx.stroke();
+
+          // Corner brackets
+          const bracketSize = Math.min(w, h) * 0.2;
+          ctx.strokeStyle = 'rgba(0, 255, 200, 0.3)';
           ctx.lineWidth = 2;
-          ctx.strokeRect(x, y, w, h);
+          // Top-left bracket
+          ctx.beginPath();
+          ctx.moveTo(x + bracketSize, y + 4);
+          ctx.lineTo(x + 4, y + 4);
+          ctx.lineTo(x + 4, y + bracketSize);
+          ctx.stroke();
+          // Top-right bracket
+          ctx.beginPath();
+          ctx.moveTo(x + w - bracketSize, y + 4);
+          ctx.lineTo(x + w - 4, y + 4);
+          ctx.lineTo(x + w - 4, y + bracketSize);
+          ctx.stroke();
+          // Bottom-left bracket
+          ctx.beginPath();
+          ctx.moveTo(x + bracketSize, y + h - 4);
+          ctx.lineTo(x + 4, y + h - 4);
+          ctx.lineTo(x + 4, y + h - bracketSize);
+          ctx.stroke();
+          // Bottom-right bracket
+          ctx.beginPath();
+          ctx.moveTo(x + w - bracketSize, y + h - 4);
+          ctx.lineTo(x + w - 4, y + h - 4);
+          ctx.lineTo(x + w - 4, y + h - bracketSize);
+          ctx.stroke();
+
+          // Outer glow
+          ctx.strokeStyle = 'rgba(0, 200, 255, 0.2)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
         }
 
         // Pickups
