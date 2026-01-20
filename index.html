@@ -1667,6 +1667,9 @@ button.secondary:hover {
         this.nextPickupType = 'health'; // Alternates between health and armor
         this.healthSpawnsEnabled = true;
         this.armorSpawnsEnabled = true;
+
+        // Pit spawn locations (enclosed areas for health/armor)
+        this.pickupPits = [];
         
         // Laser spawns
         this.laserSpawnsEnabled = true;
@@ -1770,36 +1773,40 @@ button.secondary:hover {
       }
 
       spawnPickups() {
-        // Determine which type to spawn
-        let typeToSpawn = this.nextPickupType;
-        
-        // Check if enabled, otherwise switch
-        if (typeToSpawn === 'health' && !this.healthSpawnsEnabled) {
-          typeToSpawn = this.armorSpawnsEnabled ? 'armor' : null;
-        } else if (typeToSpawn === 'armor' && !this.armorSpawnsEnabled) {
-          typeToSpawn = this.healthSpawnsEnabled ? 'health' : null;
-        }
-        
-        if (!typeToSpawn) return;
-        
-        // Spawn 5 pickups
-        for (let i = 0; i < 5; i++) {
-          // Random position avoiding edges
-          const x = 150 + Math.random() * (this.width - 300);
-          const y = 150 + Math.random() * (this.height - 300);
-          
+        // Spawn pickups in pits that don't have one
+        let spawnedHealth = false;
+        let spawnedArmor = false;
+
+        for (const pit of this.pickupPits) {
+          // Skip if pit already has a pickup
+          if (pit.hasPickup) continue;
+
+          // Check if this type is enabled
+          if (pit.type === 'health' && !this.healthSpawnsEnabled) continue;
+          if (pit.type === 'armor' && !this.armorSpawnsEnabled) continue;
+
+          // Spawn pickup at pit center
           this.pickups.push({
-            x, y,
-            type: typeToSpawn,
-            radius: 15
+            x: pit.x,
+            y: pit.y,
+            type: pit.type,
+            radius: 18,
+            pitRef: pit // Reference to parent pit
           });
+
+          pit.hasPickup = true;
+
+          if (pit.type === 'health') spawnedHealth = true;
+          if (pit.type === 'armor') spawnedArmor = true;
         }
-        
-        // Alternate for next spawn
-        this.nextPickupType = typeToSpawn === 'health' ? 'armor' : 'health';
-        
-        const icon = typeToSpawn === 'health' ? '🩹' : '🛡️';
-        this.addEvent(icon + ' ' + typeToSpawn.toUpperCase() + ' packs spawned!', 'pickup');
+
+        // Announce spawns
+        if (spawnedHealth) {
+          this.addEvent('🩹 HEALTH spawned in pits!', 'pickup');
+        }
+        if (spawnedArmor) {
+          this.addEvent('🛡️ ARMOR spawned in pits!', 'pickup');
+        }
       }
 
       fireLaser(agent) {
@@ -2100,6 +2107,79 @@ button.secondary:hover {
           const x = 300 + (i / 4) * (this.width - 600);
           addBuilding(x, this.height - 160 + Math.random() * 60, 80, 80);
         }
+
+        // =====================
+        // PICKUP PITS - Enclosed areas for health/armor (like Roshan pit)
+        // =====================
+        this.pickupPits = [];
+        const pitSize = 100; // Interior size
+        const wallThick = 20;
+
+        // Helper to create a pit with 3 walls (U-shape), opening facing inward
+        const createPit = (cx, cy, openingDir, type) => {
+          // openingDir: 'left', 'right', 'up', 'down' (which way the entrance faces)
+          const walls = [];
+
+          if (openingDir === 'right') {
+            // Opening faces right (toward center) - pit is in left edge
+            // Back wall (left)
+            walls.push({ x: cx - pitSize/2 - wallThick, y: cy - pitSize/2, w: wallThick, h: pitSize });
+            // Top wall
+            walls.push({ x: cx - pitSize/2 - wallThick, y: cy - pitSize/2 - wallThick, w: pitSize + wallThick, h: wallThick });
+            // Bottom wall
+            walls.push({ x: cx - pitSize/2 - wallThick, y: cy + pitSize/2, w: pitSize + wallThick, h: wallThick });
+          } else if (openingDir === 'left') {
+            // Opening faces left (toward center) - pit is in right edge
+            // Back wall (right)
+            walls.push({ x: cx + pitSize/2, y: cy - pitSize/2, w: wallThick, h: pitSize });
+            // Top wall
+            walls.push({ x: cx - pitSize/2, y: cy - pitSize/2 - wallThick, w: pitSize + wallThick, h: wallThick });
+            // Bottom wall
+            walls.push({ x: cx - pitSize/2, y: cy + pitSize/2, w: pitSize + wallThick, h: wallThick });
+          } else if (openingDir === 'down') {
+            // Opening faces down (toward center) - pit is in top edge
+            // Back wall (top)
+            walls.push({ x: cx - pitSize/2, y: cy - pitSize/2 - wallThick, w: pitSize, h: wallThick });
+            // Left wall
+            walls.push({ x: cx - pitSize/2 - wallThick, y: cy - pitSize/2 - wallThick, w: wallThick, h: pitSize + wallThick });
+            // Right wall
+            walls.push({ x: cx + pitSize/2, y: cy - pitSize/2 - wallThick, w: wallThick, h: pitSize + wallThick });
+          } else if (openingDir === 'up') {
+            // Opening faces up (toward center) - pit is in bottom edge
+            // Back wall (bottom)
+            walls.push({ x: cx - pitSize/2, y: cy + pitSize/2, w: pitSize, h: wallThick });
+            // Left wall
+            walls.push({ x: cx - pitSize/2 - wallThick, y: cy - pitSize/2, w: wallThick, h: pitSize + wallThick });
+            // Right wall
+            walls.push({ x: cx + pitSize/2, y: cy - pitSize/2, w: wallThick, h: pitSize + wallThick });
+          }
+
+          // Add walls to obstacles
+          for (const w of walls) {
+            this.obstacles.push(w);
+            this.buildings.push(w);
+          }
+
+          // Store pit info for spawning
+          this.pickupPits.push({
+            x: cx, y: cy,
+            type: type, // 'health' or 'armor'
+            hasPickup: false
+          });
+        };
+
+        // 4 pits in corners/edges
+        // Top-left corner: health pit (opening faces down-right toward center)
+        createPit(100, 150, 'down', 'health');
+
+        // Bottom-left corner: armor pit
+        createPit(100, this.height - 150, 'up', 'armor');
+
+        // Top-right corner: armor pit
+        createPit(this.width - 100, 150, 'down', 'armor');
+
+        // Bottom-right corner: health pit
+        createPit(this.width - 100, this.height - 150, 'up', 'health');
       }
 
       generateUniqueName() {
@@ -2137,6 +2217,11 @@ button.secondary:hover {
         this.swordSlashes = [];
         this.droppedWeapons = [];
         this.dodgeTrails = [];
+
+        // Reset pit spawn flags
+        for (const pit of this.pickupPits) {
+          pit.hasPickup = false;
+        }
 
         this.teamKills = [0, 0];
         this.teamRawKills = [0, 0];
@@ -2236,6 +2321,11 @@ button.secondary:hover {
         this.droppedWeapons = []; // Weapons dropped by dead players or weapon swaps
         this.dodgeTrails = [];
 
+        // Reset pit spawn flags
+        for (const pit of this.pickupPits) {
+          pit.hasPickup = false;
+        }
+
         // Reset all agents for new round (but keep names and lifetime stats)
         for (const agent of this.agents) {
           const clusterX = agent.team === 0 ? 80 : this.width - 80;
@@ -2290,12 +2380,16 @@ button.secondary:hover {
                 if (healed > 0) {
                   this.addEvent('🩹 ' + agent.name + ' +' + healed + 'hp', 'pickup');
                 }
+                // Reset pit spawn flag if this was a pit pickup
+                if (p.pitRef) p.pitRef.hasPickup = false;
                 this.pickups.splice(i, 1);
               } else if (p.type === 'armor') {
                 if (agent.armor < agent.maxArmor) {
                   const gained = Math.min(50, agent.maxArmor - agent.armor);
                   agent.armor = Math.min(agent.maxArmor, agent.armor + 50);
                   this.addEvent('🛡️ ' + agent.name + ' +' + gained + ' armor', 'pickup');
+                  // Reset pit spawn flag if this was a pit pickup
+                  if (p.pitRef) p.pitRef.hasPickup = false;
                   this.pickups.splice(i, 1);
                 }
               } else if (p.type === 'laser') {
