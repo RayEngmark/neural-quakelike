@@ -2160,8 +2160,8 @@ button.secondary:hover {
       fireLaser(agent) {
         if (!agent || !agent.alive) return;
 
-        // Bouncing, piercing laser with 4 bounces
-        var maxBounces = 4;
+        // Bouncing, piercing laser with 6 bounces
+        var maxBounces = 6;
         var beamSegments = [];
         var hitTargets = {};  // Track hit target IDs
         var killCount = 0;
