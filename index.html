@@ -2210,6 +2210,8 @@ button.secondary:hover {
           if (!agent.alive) continue;
           for (let i = this.droppedWeapons.length - 1; i >= 0; i--) {
             const w = this.droppedWeapons[i];
+            // Skip if weapon is still in pickup delay (prevents instant re-pickup after dropping)
+            if (w.pickupDelay && Date.now() - w.spawnTime < w.pickupDelay) continue;
             const dx = agent.x - w.x;
             const dy = agent.y - w.y;
             if (dx * dx + dy * dy < (agent.radius + w.radius) * (agent.radius + w.radius)) {
@@ -2565,7 +2567,8 @@ button.secondary:hover {
           y: y,
           type: weaponType,
           radius: 15,
-          spawnTime: Date.now()
+          spawnTime: Date.now(),
+          pickupDelay: 500 // Can't be picked up for 500ms after dropping
         });
 
         this.addEvent('💫 ' + weaponType.toUpperCase() + ' DROPPED!', weaponType);
