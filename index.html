@@ -116,6 +116,7 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  justify-content: center;
 }
 
 /* LEFT SIDEBAR - Stats & Controls */
@@ -3509,7 +3510,7 @@ button.secondary:hover {
     // Init
     // --------------------
     const canvas = document.getElementById('canvas');
-    const world = new World(2400, 2400);
+    const world = new World(3600, 2400); // 50% wider arena
     const renderer = new Renderer(canvas, world);
 
     let population = 100;
