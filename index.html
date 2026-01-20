@@ -1384,7 +1384,9 @@ button.secondary:hover {
 
         // Handle sword lunge movement
         if (this.swordLunging) {
-          this.lungeProgress += dt * 5; // Lunge takes 0.2 seconds
+          // Scale lunge speed with distance (500 units/sec for consistent visual speed)
+          const lungeSpeed = 500 / Math.max(50, this.lungeDist);
+          this.lungeProgress += dt * lungeSpeed;
           if (this.lungeProgress >= 1) {
             this.swordLunging = false;
             this.x = this.lungeEndX;
@@ -1779,6 +1781,7 @@ button.secondary:hover {
         agent.lungeEndX = clampedEndX;
         agent.lungeEndY = clampedEndY;
         agent.lungeProgress = 0;
+        agent.lungeDist = Math.hypot(clampedEndX - startX, clampedEndY - startY);
         agent.swordLunging = true;
         
         // Check for hits along the lunge path
@@ -1841,13 +1844,15 @@ button.secondary:hover {
           this.addEvent(msg, 'sword');
         }
         
-        // Add slash animation
+        // Add slash animation (scale duration with distance)
+        const actualDist = Math.hypot(clampedEndX - startX, clampedEndY - startY);
+        const slashDuration = 0.3 + (actualDist / 250) * 0.5; // 0.3s base + up to 0.5s for max range
         this.swordSlashes.push({
           startX, startY,
           endX: clampedEndX, endY: clampedEndY,
           team: agent.team,
           timer: 0,
-          maxTime: 0.6
+          maxTime: slashDuration
         });
       }
 
