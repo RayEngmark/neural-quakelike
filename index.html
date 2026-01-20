@@ -1166,6 +1166,12 @@ button.secondary:hover {
 
         // Dodge ability
         this.dodgeCooldown = 0;
+        this.isDodging = false;
+        this.dodgeProgress = 0;
+        this.dodgeStartX = 0;
+        this.dodgeStartY = 0;
+        this.dodgeEndX = 0;
+        this.dodgeEndY = 0;
 
         this.radius = 16;
         this.color = team === 0 ? '#ff4444' : '#4488ff';
@@ -1183,6 +1189,8 @@ button.secondary:hover {
         this.weapon = 'rocket';
         this.hasPickedUpWeapon = false; // Can pick up one special weapon per round
         this.dodgeCooldown = 0;
+        this.isDodging = false;
+        this.dodgeProgress = 0;
         this.laserCharge = 0;
         this.laserCharging = false;
         this.swordCharge = 0;
@@ -1420,10 +1428,30 @@ button.secondary:hover {
           return; // Skip normal movement during lunge
         }
 
+        // Handle dodge movement animation
+        if (this.isDodging) {
+          const dodgeSpeed = 8; // Complete dodge in ~0.125 seconds
+          this.dodgeProgress += dt * dodgeSpeed;
+
+          // Ease out for smooth deceleration
+          const easedProgress = 1 - Math.pow(1 - Math.min(1, this.dodgeProgress), 2);
+
+          if (this.dodgeProgress >= 1) {
+            this.isDodging = false;
+            this.x = this.dodgeEndX;
+            this.y = this.dodgeEndY;
+          } else {
+            // Interpolate position with easing
+            this.x = this.dodgeStartX + (this.dodgeEndX - this.dodgeStartX) * easedProgress;
+            this.y = this.dodgeStartY + (this.dodgeEndY - this.dodgeStartY) * easedProgress;
+          }
+          return; // Skip normal movement during dodge
+        }
+
         if (!decision) return;
 
-        // Handle dodge/dash (if enabled in world)
-        if (decision.wantsDash && this.dodgeCooldown <= 0 && world.dodgingEnabled) {
+        // Trigger dodge/dash (if enabled in world)
+        if (decision.wantsDash && this.dodgeCooldown <= 0 && world.dodgingEnabled && !this.isDodging) {
           const dashDistance = 70; // Short dash distance
 
           // Dash in movement direction, or facing direction if not moving
@@ -1452,9 +1480,25 @@ button.secondary:hover {
             if (col) { newX = col.x; newY = col.y; }
           }
 
-          this.x = newX;
-          this.y = newY;
+          // Set up dodge animation
+          this.dodgeStartX = this.x;
+          this.dodgeStartY = this.y;
+          this.dodgeEndX = newX;
+          this.dodgeEndY = newY;
+          this.dodgeProgress = 0;
+          this.isDodging = true;
           this.dodgeCooldown = 6.0; // 6 second cooldown
+
+          // Add dodge trail effect
+          world.dodgeTrails.push({
+            startX: this.x,
+            startY: this.y,
+            endX: newX,
+            endY: newY,
+            team: this.team,
+            timer: 0,
+            maxTime: 0.3
+          });
         }
 
         this.rotation += decision.turnAmount * 4 * dt; // Faster turning for dodging
@@ -1636,6 +1680,9 @@ button.secondary:hover {
 
         // Dropped weapons (laser/sword dropped on death or weapon swap)
         this.droppedWeapons = [];
+
+        // Dodge trail animations
+        this.dodgeTrails = [];
 
         this.roundTime = 180; // 3 minutes
         this.timeLeft = this.roundTime;
@@ -2089,6 +2136,7 @@ button.secondary:hover {
         this.swordSpawned = false;
         this.swordSlashes = [];
         this.droppedWeapons = [];
+        this.dodgeTrails = [];
 
         this.teamKills = [0, 0];
         this.teamRawKills = [0, 0];
@@ -2186,7 +2234,8 @@ button.secondary:hover {
         this.swordSpawned = false;
         this.swordSlashes = [];
         this.droppedWeapons = []; // Weapons dropped by dead players or weapon swaps
-        
+        this.dodgeTrails = [];
+
         // Reset all agents for new round (but keep names and lifetime stats)
         for (const agent of this.agents) {
           const clusterX = agent.team === 0 ? 80 : this.width - 80;
@@ -2546,6 +2595,12 @@ button.secondary:hover {
           slash.timer += dt;
         }
         this.swordSlashes = this.swordSlashes.filter(s => s.timer < s.maxTime);
+
+        // Update dodge trail animations
+        for (const trail of this.dodgeTrails) {
+          trail.timer += dt;
+        }
+        this.dodgeTrails = this.dodgeTrails.filter(t => t.timer < t.maxTime);
 
         // Agent-agent collision (push apart)
         const aliveAgents = this.agents.filter(a => a.alive);
@@ -3832,6 +3887,80 @@ button.secondary:hover {
             ctx.beginPath();
             ctx.arc(px, py, particleSize, 0, Math.PI * 2);
             ctx.fill();
+          }
+
+          ctx.shadowBlur = 0;
+        }
+
+        // Dodge trails - motion blur afterimage effect
+        for (const trail of this.world.dodgeTrails) {
+          const progress = trail.timer / trail.maxTime;
+          const alpha = 1 - progress;
+
+          const sx = trail.startX * s, sy = trail.startY * s;
+          const ex = trail.endX * s, ey = trail.endY * s;
+
+          // Direction vector
+          const dx = ex - sx;
+          const dy = ey - sy;
+          const len = Math.hypot(dx, dy);
+          if (len === 0) continue;
+
+          const dirX = dx / len;
+          const dirY = dy / len;
+          const nx = -dirY; // perpendicular
+          const ny = dirX;
+
+          // Team colors
+          const isRed = trail.team === 0;
+          const baseColor = isRed ? [255, 100, 100] : [100, 150, 255];
+          const glowColor = isRed ? '#ff6666' : '#6699ff';
+
+          ctx.shadowBlur = 20 * alpha;
+          ctx.shadowColor = glowColor;
+
+          // Draw multiple afterimage circles along the path
+          const numGhosts = 8;
+          for (let i = 0; i < numGhosts; i++) {
+            const t = i / (numGhosts - 1);
+            // Ghosts fade out from start to end
+            const ghostAlpha = alpha * (1 - t * 0.7) * 0.5;
+            const ghostX = sx + dx * t;
+            const ghostY = sy + dy * t;
+            const ghostRadius = (15 - i * 0.8) * s * (1 - progress * 0.3);
+
+            // Ghost circle
+            const gradient = ctx.createRadialGradient(
+              ghostX, ghostY, 0,
+              ghostX, ghostY, ghostRadius
+            );
+            gradient.addColorStop(0, `rgba(${baseColor.join(',')}, ${ghostAlpha})`);
+            gradient.addColorStop(0.5, `rgba(${baseColor.join(',')}, ${ghostAlpha * 0.5})`);
+            gradient.addColorStop(1, `rgba(${baseColor.join(',')}, 0)`);
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(ghostX, ghostY, ghostRadius, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Speed lines along the path
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+          ctx.lineWidth = 2 * (1 - progress);
+
+          const lineSpacing = 20 * s;
+          const numLines = Math.floor(len / lineSpacing);
+          for (let i = 0; i < numLines; i++) {
+            const t = (i + 0.5) / numLines;
+            const lineX = sx + dx * t;
+            const lineY = sy + dy * t;
+            const lineLen = 8 * s * (1 - progress);
+            const offset = (Math.sin(i * 1.5) * 8) * s;
+
+            ctx.beginPath();
+            ctx.moveTo(lineX + nx * offset, lineY + ny * offset);
+            ctx.lineTo(lineX + nx * offset - dirX * lineLen, lineY + ny * offset - dirY * lineLen);
+            ctx.stroke();
           }
 
           ctx.shadowBlur = 0;
