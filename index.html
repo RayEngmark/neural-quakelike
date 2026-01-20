@@ -1849,7 +1849,7 @@ button.secondary:hover {
       executeSwordLunge(agent, chargeTime) {
         // Calculate lunge distance based on charge time (0.5s min charge, 2s max)
         const minDist = 50;
-        const maxDist = 250;
+        const maxDist = 500; // Doubled range for longer lunges
         const chargeRatio = Math.min(1, Math.max(0, (chargeTime - 0.3) / 1.7)); // 0.3s to 2s
         const lungeDist = minDist + chargeRatio * (maxDist - minDist);
         
@@ -1939,7 +1939,7 @@ button.secondary:hover {
         const swordOffset = agent.radius * 1.35; // center of blade (avg of 0.5 and 2.2)
 
         const actualDist = Math.hypot(clampedEndX - startX, clampedEndY - startY);
-        const slashDuration = 0.3 + (actualDist / 250) * 0.5; // 0.3s base + up to 0.5s for max range
+        const slashDuration = 0.3 + (actualDist / 500) * 0.7; // 0.3s base + up to 0.7s for max range (500 units)
         this.swordSlashes.push({
           // Trail follows the sword position (offset to the right of agent path)
           startX: startX + perpX * swordOffset,
