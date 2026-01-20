@@ -1,507 +1,628 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEURAL TEAM DEATHMATCH // V1.0</title>
+  <title>NEURAL QUAKE ARENA // V3.0</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-dark: #050510;
-      --panel-bg: rgba(13, 13, 25, 0.85);
+      --panel-bg: rgba(13, 13, 25, 0.95);
       --neon-blue: #00f3ff;
       --neon-pink: #ff0055;
       --neon-green: #00ff9d;
       --neon-yellow: #ffd700;
+      --laser-blue: #00aaff;
       --text-main: #e0e6ed;
       --border-color: rgba(255, 255, 255, 0.1);
     }
 
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      scrollbar-width: thin;
-      scrollbar-color: var(--neon-blue) var(--bg-dark);
-    }
+```
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Rajdhani', sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
 
-    body {
-      background: var(--bg-dark);
-      color: var(--text-main);
-      font-family: 'Rajdhani', sans-serif;
-      overflow: hidden;
-      height: 100vh;
-      width: 100vw;
-    }
+/* === NEW LAYOUT: Top bar + Game + Right sidebar === */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #000; }
-    ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }
+/* TOP BAR - Scores */
+#top-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 15px;
+  background: var(--panel-bg);
+  border-bottom: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
 
-    #container {
-      display: flex;
-      height: 100vh;
-      position: relative;
-    }
+.team-block {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.team-block.red { flex-direction: row; }
+.team-block.blue { flex-direction: row; }
 
-    #canvas-container {
-      flex: 1;
-      position: relative;
-      background: radial-gradient(circle at center, #1a1a2e 0%, #050510 100%);
-      overflow: hidden;
-      touch-action: none;
-    }
+.team-score {
+  text-align: center;
+}
+.team-score .score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-shadow: 0 0 20px currentColor;
+  line-height: 1;
+}
+.team-score .label {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+.team-block.red .team-score { color: #ff4444; }
+.team-block.blue .team-score { color: #4488ff; }
 
-    canvas {
-      display: block;
-      outline: none;
-      width: 100%;
-      height: 100%;
-    }
+.team-wins {
+  text-align: center;
+  padding: 5px 12px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+.team-wins .wins {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+.team-wins .label {
+  font-size: 0.6rem;
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+.team-block.red .team-wins { color: #ff6666; }
+.team-block.blue .team-wins { color: #6699ff; }
 
-    #headless-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(circle at center, rgba(26, 26, 46, 0.95) 0%, rgba(5, 5, 16, 0.98) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 5;
-    }
+#center-info {
+  text-align: center;
+  padding: 0 30px;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+}
+#center-info .big {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.8rem;
+  color: var(--neon-green);
+  font-weight: bold;
+}
+#center-info .sub {
+  font-size: 0.65rem;
+  color: #666;
+  text-transform: uppercase;
+}
 
-    #headless-overlay.hidden {
-      display: none;
-    }
+/* MAIN AREA - Canvas + Sidebars */
+#main-area {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
 
-    .headless-content {
-      text-align: center;
-      color: #888;
-      max-width: 500px;
-      padding: 40px;
-    }
+/* LEFT SIDEBAR - Stats & Controls */
+#left-sidebar {
+  width: 250px;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
 
-    .headless-icon {
-      font-size: 4rem;
-      margin-bottom: 20px;
-      opacity: 0.7;
-    }
+/* CANVAS */
+#canvas-container {
+  flex: 1;
+  position: relative;
+  background: radial-gradient(circle at center, #1a1a2e 0%, #050510 100%);
+  overflow: hidden;
+  margin: 5px 0;
+}
+canvas { display: block; width: 100%; height: 100%; }
 
-    .headless-content h2 {
-      color: #0f0;
-      font-size: 1.5rem;
-      margin-bottom: 16px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
-    }
+/* RIGHT SIDEBAR - Game Modifiers */
+#right-sidebar {
+  width: 200px;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border-color);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
 
-    .headless-content p {
-      font-size: 1rem;
-      line-height: 1.6;
-      margin-bottom: 12px;
-    }
+/* PANELS */
+.panel {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 10px;
+  position: relative;
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px;
+  width: 8px; height: 8px;
+  border-top: 2px solid var(--neon-blue);
+  border-left: 2px solid var(--neon-blue);
+}
+.panel::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 8px; height: 8px;
+  border-bottom: 2px solid var(--neon-blue);
+  border-right: 2px solid var(--neon-blue);
+}
+.panel h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  color: #667;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
 
-    .headless-hint {
-      margin-top: 24px;
-      padding: 16px;
-      background: rgba(0, 255, 0, 0.1);
-      border: 1px solid rgba(0, 255, 0, 0.3);
-      border-radius: 8px;
-      color: #aaa;
-    }
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+.stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--neon-green);
+  font-weight: bold;
+}
 
-    .headless-hint strong {
-      color: #0f0;
-    }
+/* TOGGLES */
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+.toggle-row label {
+  font-size: 0.8rem;
+  color: #adb5bd;
+}
+.toggle {
+  width: 38px;
+  height: 20px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.3s;
+}
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  background: #888;
+  border-radius: 50%;
+  transition: all 0.3s;
+}
+.toggle.active { background: var(--neon-green); }
+.toggle.active::after { 
+  transform: translateX(18px); 
+  background: #fff;
+}
+.toggle.disabled { opacity: 0.3; cursor: not-allowed; }
 
-    #sidebar {
-      width: 360px;
-      background: var(--panel-bg);
-      backdrop-filter: blur(12px);
-      border-left: 1px solid var(--border-color);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      overflow-y: auto;
-      z-index: 10;
-      box-shadow: -10px 0 30px rgba(0,0,0,0.5);
-    }
+/* SLIDERS */
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.control-row label {
+  width: 40px;
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #adb5bd;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  flex: 1;
+  min-width: 60px;
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 14px;
+  width: 14px;
+  border-radius: 50%;
+  background: var(--neon-blue);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--neon-blue);
+}
+.control-row .value {
+  min-width: 35px;
+  width: 35px;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--neon-blue);
+}
 
-    h1 {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 1.2rem;
-      color: var(--neon-blue);
-      text-align: center;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid var(--border-color);
-      text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
-    }
+/* BUTTONS */
+button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: rgba(0, 243, 255, 0.1);
+  border: 1px solid var(--neon-blue);
+  color: var(--neon-blue);
+  padding: 10px 16px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: bold;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+button:hover {
+  background: var(--neon-blue);
+  color: #000;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
+}
+button.secondary {
+  border-color: #666;
+  color: #aaa;
+  background: transparent;
+}
+button.secondary:hover {
+  border-color: #fff;
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  box-shadow: none;
+}
+.btn-row {
+  display: flex;
+  gap: 10px;
+}
+.btn-row button { flex: 1; }
 
-    .panel {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 16px;
-      position: relative;
-    }
+/* SCROLLBARS */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--neon-blue);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-green);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
 
-    .panel::before {
-      content: '';
-      position: absolute;
-      top: -1px; left: -1px;
-      width: 10px; height: 10px;
-      border-top: 2px solid var(--neon-blue);
-      border-left: 2px solid var(--neon-blue);
-    }
+/* LEADERBOARD */
+#leaderboard, #alltime-leaderboard {
+  max-height: 140px;
+  overflow-y: auto;
+}
+.leader-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 6px;
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 2px;
+}
+.leader-entry .name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.leader-entry .score {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: bold;
+}
+.leader-entry.dead { opacity: 0.3; }
 
-    .panel::after {
-      content: '';
-      position: absolute;
-      bottom: -1px; right: -1px;
-      width: 10px; height: 10px;
-      border-bottom: 2px solid var(--neon-blue);
-      border-right: 2px solid var(--neon-blue);
-    }
+/* EVENT LOG */
+#event-log {
+  max-height: 100px;
+  overflow-y: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+}
+.event { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+.event .kill { color: var(--neon-pink); }
+.event .damage { color: var(--neon-yellow); }
+.event .pickup { color: var(--neon-green); }
+.event .laser { color: var(--laser-blue); }
 
-    .panel h2 {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: #8899ac;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+#load-file { display: none; }
 
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 0;
-      font-size: 1rem;
-      border-bottom: 1px dashed rgba(255,255,255,0.05);
-    }
+/* HEADLESS OVERLAY */
+#headless-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(5, 5, 16, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+#headless-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#headless-overlay .icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+#headless-overlay h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.5rem;
+  color: var(--neon-green);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  margin-bottom: 10px;
+  text-shadow: 0 0 20px rgba(0, 255, 157, 0.5);
+}
+#headless-overlay p {
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 25px;
+}
+#headless-overlay .hint {
+  background: rgba(0, 255, 157, 0.1);
+  border: 1px solid rgba(0, 255, 157, 0.3);
+  border-radius: 6px;
+  padding: 15px 25px;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+#headless-overlay .hint strong {
+  color: var(--neon-green);
+}
+```
 
-    .stat-value {
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--neon-green);
-      font-weight: bold;
-      text-shadow: 0 0 8px rgba(0, 255, 157, 0.3);
-    }
-
-    .controls {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .control-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .control-row label {
-      flex: 1;
-      font-size: 0.9rem;
-      color: #adb5bd;
-    }
-
-    input[type="range"] {
-      -webkit-appearance: none;
-      flex: 2;
-      background: transparent;
-    }
-
-    input[type="range"]::-webkit-slider-runnable-track {
-      width: 100%;
-      height: 4px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      height: 16px;
-      width: 16px;
-      border-radius: 50%;
-      background: var(--neon-blue);
-      margin-top: -6px;
-      box-shadow: 0 0 10px var(--neon-blue);
-      cursor: pointer;
-      transition: transform 0.1s;
-    }
-
-    input[type="range"]::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-    }
-
-    .control-row .value {
-      width: 45px;
-      text-align: right;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
-      color: var(--neon-blue);
-    }
-
-    button {
-      background: rgba(0, 243, 255, 0.1);
-      border: 1px solid var(--neon-blue);
-      color: var(--neon-blue);
-      padding: 10px 16px;
-      border-radius: 2px;
-      cursor: pointer;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: bold;
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-    }
-
-    button:hover {
-      background: var(--neon-blue);
-      color: #000;
-      box-shadow: 0 0 15px rgba(0, 243, 255, 0.5);
-    }
-
-    button.secondary {
-      border-color: #666;
-      color: #aaa;
-      background: transparent;
-    }
-
-    button.secondary:hover {
-      border-color: #fff;
-      color: #fff;
-      background: rgba(255,255,255,0.1);
-      box-shadow: none;
-    }
-
-    .btn-row {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn-row button { flex: 1; }
-
-    #leaderboard {
-      max-height: 220px;
-      overflow-y: auto;
-    }
-
-    .leader-entry {
-      display: flex;
-      justify-content: space-between;
-      padding: 6px 8px;
-      font-size: 0.9rem;
-      margin-bottom: 4px;
-      background: rgba(255,255,255,0.02);
-      border-radius: 2px;
-      transition: transform 0.2s;
-    }
-
-    .leader-entry:hover {
-      background: rgba(255,255,255,0.05);
-      transform: translateX(4px);
-    }
-
-    .leader-entry:nth-child(1) { color: var(--neon-yellow); border-left: 2px solid var(--neon-yellow); }
-    .leader-entry:nth-child(2) { color: #c0c0c0; border-left: 2px solid #c0c0c0; }
-    .leader-entry:nth-child(3) { color: #cd7f32; border-left: 2px solid #cd7f32; }
-
-    .leader-entry .name {
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-right: 10px;
-    }
-
-    .leader-entry .score {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: bold;
-    }
-
-    .leader-entry.dead {
-      opacity: 0.3;
-      text-decoration: line-through;
-    }
-
-    #event-log {
-      max-height: 150px;
-      overflow-y: auto;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      display: flex;
-      flex-direction: column-reverse;
-    }
-
-    .event {
-      padding: 3px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.03);
-      opacity: 0.8;
-    }
-
-    .event .kill { color: var(--neon-pink); text-shadow: 0 0 5px rgba(255,0,85,0.3); }
-    .event .damage { color: var(--neon-yellow); }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="canvas-container">
-      <canvas id="canvas"></canvas>
-      <div id="headless-overlay">
-        <div class="headless-content">
-          <div class="headless-icon">🖥️</div>
-          <h2>Simulation Running in Headless Mode</h2>
-          <p>Rendering is disabled for faster simulation speed.</p>
-          <p class="headless-hint">Toggle <strong>🖥️ HEADLESS MODE</strong> in the Parameters panel to view the battle.</p>
+  <div id="app">
+    <!-- TOP BAR: Scores & Match Info -->
+    <div id="top-bar">
+      <div class="team-block red">
+        <div class="team-wins">
+          <div class="wins" id="red-wins">0</div>
+          <div class="label">wins</div>
         </div>
+        <div class="team-score">
+          <div class="score" id="red-score">0</div>
+          <div class="label">🔴 RED</div>
+        </div>
+      </div>
+
+```
+  <div id="center-info">
+    <div class="big" id="kill-limit-display">50</div>
+    <div class="sub">first to</div>
+  </div>
+
+  <div class="team-block blue">
+    <div class="team-score">
+      <div class="score" id="blue-score">0</div>
+      <div class="label">BLUE 🔵</div>
+    </div>
+    <div class="team-wins">
+      <div class="wins" id="blue-wins">0</div>
+      <div class="label">wins</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN AREA -->
+<div id="main-area">
+  <!-- LEFT SIDEBAR: Stats & Controls -->
+  <div id="left-sidebar">
+    <div class="panel">
+      <h2>// Status</h2>
+      <div class="stat-row">
+        <span>Generation</span>
+        <span class="stat-value" id="generation">1</span>
+      </div>
+      <div class="stat-row">
+        <span>Alive</span>
+        <span class="stat-value" id="alive">100</span>
+      </div>
+      <div class="stat-row">
+        <span>Time</span>
+        <span class="stat-value" id="time-left">60s</span>
+      </div>
+      <div class="stat-row">
+        <span>UPS</span>
+        <span class="stat-value" id="ups">60</span>
       </div>
     </div>
 
-    <div id="sidebar">
-      <h1>⚔️ Neural Team Deathmatch <span style="font-size:0.6em; vertical-align:top; color:#666">v1.0</span></h1>
-
-      <div class="panel">
-        <h2>// TEAM SCORES</h2>
-        <div class="stat-row" style="font-size: 1.5rem;">
-          <span style="color: #ff4444;">🔴 RED</span>
-          <span class="stat-value" id="red-kills" style="color: #ff4444; font-size: 2rem;">0</span>
-        </div>
-        <div class="stat-row" style="font-size: 0.7rem; opacity: 0.7; margin-top: -5px;">
-          <span style="color: #ff4444;">Kills: <span id="red-raw-kills">0</span> | Ricochet: <span id="red-ricochets">0</span></span>
-        </div>
-        <div class="stat-row" style="font-size: 1.5rem; margin-top: 10px;">
-          <span style="color: #4488ff;">🔵 BLUE</span>
-          <span class="stat-value" id="blue-kills" style="color: #4488ff; font-size: 2rem;">0</span>
-        </div>
-        <div class="stat-row" style="font-size: 0.7rem; opacity: 0.7; margin-top: -5px;">
-          <span style="color: #4488ff;">Kills: <span id="blue-raw-kills">0</span> | Ricochet: <span id="blue-ricochets">0</span></span>
-        </div>
-        <div class="stat-row" style="border-top: 1px solid #333; margin-top: 10px; padding-top: 10px;">
-          <span>FIRST TO</span>
-          <span class="stat-value" id="kill-limit-display">50</span>
-        </div>
-        <div class="stat-row" style="border-top: 1px solid #333; margin-top: 10px; padding-top: 10px;">
-          <span style="color: #ff4444;">🏆 RED WINS</span>
-          <span class="stat-value" id="red-wins" style="color: #ff4444;">0</span>
-        </div>
-        <div class="stat-row">
-          <span style="color: #4488ff;">🏆 BLUE WINS</span>
-          <span class="stat-value" id="blue-wins" style="color: #4488ff;">0</span>
-        </div>
+    <div class="panel">
+      <h2>// Parameters</h2>
+      <div class="control-row">
+        <label>Zoom</label>
+        <input type="range" id="zoom" min="25" max="300" value="100" />
+        <span class="value" id="zoom-value">1.0x</span>
       </div>
-
-      <div class="panel">
-        <h2>// SYSTEM STATUS</h2>
-        <div class="stat-row">
-          <span>GENERATION</span>
-          <span class="stat-value" id="generation">1</span>
-        </div>
-        <div class="stat-row">
-          <span>ACTIVE UNITS</span>
-          <span class="stat-value" id="alive">100</span>
-        </div>
-        <div class="stat-row">
-          <span>T-MINUS</span>
-          <span class="stat-value" id="time-left">120s</span>
-        </div>
-        <div class="stat-row">
-          <span>UPS</span>
-          <span class="stat-value" id="ups" style="color: #00ff9d;">60</span>
-        </div>
+      <div class="control-row">
+        <label>Speed</label>
+        <input type="range" id="speed" min="1" max="20" value="1" />
+        <span class="value" id="speed-value">1x</span>
       </div>
-
-      <div class="panel">
-        <h2>// QUAKE MODE 🚀</h2>
-        <div class="stat-row">
-          <span style="color: #ff6600;">WEAPON</span>
-          <span class="stat-value">ROCKET LAUNCHER</span>
-        </div>
-        <div class="stat-row">
-          <span>DAMAGE</span>
-          <span class="stat-value">90</span>
-        </div>
-        <div class="stat-row">
-          <span>SPLASH</span>
-          <span class="stat-value">120 radius</span>
-        </div>
+      <div class="control-row">
+        <label>Pop</label>
+        <input type="range" id="population" min="20" max="200" value="100" step="10" />
+        <span class="value" id="population-value">100</span>
       </div>
-
-      <div class="panel controls">
-        <h2>// PARAMETERS</h2>
-        <div class="control-row">
-          <label>Zoom</label>
-          <input type="range" id="zoom" min="25" max="300" value="100" />
-          <span class="value" id="zoom-value">1.0x</span>
-        </div>
-        <div class="control-row">
-          <label>Sim Speed</label>
-          <input type="range" id="speed" min="1" max="20" value="1" />
-          <span class="value" id="speed-value">1x</span>
-        </div>
-        <div class="control-row">
-          <label>Population</label>
-          <input type="range" id="population" min="20" max="200" value="100" step="10" />
-          <span class="value" id="population-value">100</span>
-        </div>
-        <div class="control-row">
-          <label>Duration (m)</label>
-          <input type="range" id="round-time" min="1" max="10" value="1" step="1" />
-          <span class="value" id="round-time-value">1</span>
-        </div>
-        <div class="control-row">
-          <label>Kill Limit</label>
-          <input type="range" id="kill-limit" min="10" max="100" value="50" step="5" />
-          <span class="value" id="kill-limit-value">50</span>
-        </div>
-
-        <div class="btn-row" style="margin-top:10px;">
-          <button id="pause-btn">PAUSE</button>
-          <button id="restart-btn" class="secondary">RESET</button>
-        </div>
-        <div class="btn-row">
-          <button id="fullscreen-btn" style="background: rgba(0, 255, 157, 0.1); border-color: #00ff9d; color: #00ff9d;">⛶ FULLSCREEN</button>
-        </div>
-        <div class="btn-row" style="margin-top:10px;">
-          <button id="highlight-round-btn" style="background: rgba(255, 200, 0, 0.1); border-color: #ffc800; color: #ffc800;">👑 TOP ROUND</button>
-          <button id="highlight-alltime-btn" style="background: rgba(255, 100, 0, 0.1); border-color: #ff6400; color: #ff6400;">🏆 TOP LEGEND</button>
-        </div>
-        <div class="btn-row" style="margin-top:10px;">
-          <button id="save-btn" style="background: rgba(0, 200, 255, 0.1); border-color: #00c8ff; color: #00c8ff;">💾 SAVE</button>
-          <button id="load-btn" style="background: rgba(200, 0, 255, 0.1); border-color: #c800ff; color: #c800ff;">📂 LOAD</button>
-        </div>
-        <div class="btn-row" style="margin-top:10px;">
-          <button id="headless-btn" style="background: rgba(100, 100, 100, 0.1); border-color: #888; color: #888; width: 100%;">🖥️ HEADLESS MODE (OFF)</button>
-        </div>
+      <div class="control-row">
+        <label>Time</label>
+        <input type="range" id="round-time" min="1" max="10" value="1" step="1" />
+        <span class="value" id="round-time-value">1m</span>
       </div>
-
-      <div class="panel">
-        <h2>// THIS ROUND</h2>
-        <div id="leaderboard"></div>
+      <div class="control-row">
+        <label>Kills</label>
+        <input type="range" id="kill-limit" min="10" max="100" value="50" step="5" />
+        <span class="value" id="kill-limit-value">50</span>
       </div>
-
-      <div class="panel">
-        <h2>// ALL-TIME LEGENDS 🏆</h2>
-        <div id="alltime-leaderboard"></div>
-      </div>
-
-      <div class="panel">
-        <h2>// COMBAT LOG</h2>
-        <div id="event-log"></div>
+      <div class="control-row">
+        <label>Respawn</label>
+        <input type="range" id="respawn-time" min="1" max="10" value="3" step="1" />
+        <span class="value" id="respawn-time-value">3s</span>
       </div>
     </div>
+
+    <div class="panel">
+      <h2>// Controls</h2>
+      <div class="btn-row">
+        <button id="pause-btn">PAUSE</button>
+        <button id="restart-btn" class="secondary">RESET</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button id="save-btn" style="background: rgba(0, 200, 255, 0.1); border-color: #00c8ff; color: #00c8ff;">💾 SAVE</button>
+        <button id="load-btn" style="background: rgba(200, 0, 255, 0.1); border-color: #c800ff; color: #c800ff;">📂 LOAD</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
+        <button id="headless-btn" style="background: rgba(0, 255, 0, 0.3); border-color: #0f0; color: #0f0; width: 100%;">🖥️ HEADLESS MODE (ON)</button>
+      </div>
+      <input type="file" id="load-file" accept=".json" />
+    </div>
+
+    <div class="panel">
+      <h2>// Legends 🏆</h2>
+      <div id="alltime-leaderboard"></div>
+    </div>
+
+    <div class="panel">
+      <h2>// Leaderboard</h2>
+      <div id="leaderboard"></div>
+    </div>
+
+    <div class="panel">
+      <h2>// Combat Log</h2>
+      <div id="event-log"></div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="canvas-container">
+    <canvas id="canvas"></canvas>
+    <div id="headless-overlay">
+      <div class="icon">🖥️</div>
+      <h2>Simulation Running in Headless Mode</h2>
+      <p>Rendering is disabled for faster simulation speed.</p>
+      <div class="hint">Toggle <strong>🖥️ HEADLESS</strong> in Controls to view the battle.</div>
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR: Game Modifiers -->
+  <div id="right-sidebar">
+    <div class="panel">
+      <h2>// Game Modifiers</h2>
+      <div class="toggle-row" title="Spawns health packs every 10s. Instant 50HP + 50HP regen over 5s.">
+        <label>🩹 Health Spawns</label>
+        <div class="toggle active" id="toggle-health"></div>
+      </div>
+      <div class="toggle-row" title="Spawns armor pickups every 10s. +50 armor per pickup, max 100.">
+        <label>🛡️ Armor Spawns</label>
+        <div class="toggle active" id="toggle-armor"></div>
+      </div>
+      <div class="toggle-row" title="Laser weapons spawn at map center when half kills/time reached. 3s charge, instant kill beam.">
+        <label>⚡ Laser Drops</label>
+        <div class="toggle active" id="toggle-laser"></div>
+      </div>
+      <div class="toggle-row" title="Energy swords spawn at map center. Hold to charge, release to lunge. Instant kill.">
+        <label>🗡️ Sword Drops</label>
+        <div class="toggle active" id="toggle-sword"></div>
+      </div>
+      <div class="toggle-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;" title="Rockets damage teammates directly.">
+        <label>💥 Friendly Fire</label>
+        <div class="toggle" id="toggle-ff"></div>
+      </div>
+      <div class="toggle-row" title="Teammate damage reflects back to shooter.">
+        <label>🔄 FF Ricochet</label>
+        <div class="toggle" id="toggle-ricochet"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>// Field Items</h2>
+      <div id="field-items-list">
+        <div class="stat-row" style="opacity: 0.5; font-size: 0.75rem;">No active spawns</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>// Weapons</h2>
+      <div class="stat-row" title="4s cooldown, 90 damage, 120 radius splash">
+        <span>🚀 Rocket</span>
+        <span class="stat-value">90 dmg</span>
+      </div>
+      <div class="stat-row" title="3s charge time, infinite range beam, instant kill">
+        <span style="color: var(--neon-blue);">⚡ Laser</span>
+        <span class="stat-value" style="color: var(--neon-blue);">∞ dmg</span>
+      </div>
+      <div class="stat-row" title="Hold to charge (0.3-2s), release to lunge. Team colored.">
+        <span style="color: #ff00ff;">🗡️ Sword</span>
+        <span class="stat-value" style="color: #ff00ff;">∞ dmg</span>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
   </div>
 
   <script>
@@ -992,6 +1113,7 @@
         this.vx = 0; this.vy = 0;
 
         this.health = 100; this.maxHealth = 100;
+        this.armor = 0; this.maxArmor = 100; // 2 armor packs = 100
         this.stamina = 100; this.maxStamina = 100;
 
         this.alive = true;
@@ -1002,8 +1124,21 @@
         this.respawnTimer = 0;
         this.deaths = 0;
 
-        // Weapon cooldown
+        // Weapon system
         this.weaponCooldown = 0;
+        this.weapon = 'rocket'; // 'rocket', 'laser', or 'sword'
+        this.laserCharge = 0; // 0-3 seconds
+        this.laserCharging = false;
+        
+        // Sword mechanics
+        this.swordCharge = 0; // 0-2 seconds max
+        this.swordCharging = false;
+        this.swordLunging = false;
+        this.lungeStartX = 0;
+        this.lungeStartY = 0;
+        this.lungeEndX = 0;
+        this.lungeEndY = 0;
+        this.lungeProgress = 0;
 
         this.damageDealt = 0;
         this.damageTaken = 0;
@@ -1034,7 +1169,12 @@
         this.attackCooldown = 0;
         this.attackRecovery = 0;
         this.weaponCooldown = 0;
-        this.weaponCooldown = 0;
+        this.weapon = 'rocket';
+        this.laserCharge = 0;
+        this.laserCharging = false;
+        this.swordCharge = 0;
+        this.swordCharging = false;
+        this.swordLunging = false;
         this.lastHitBy = null;
         
         // Reset round stats but not lifetime stats
@@ -1046,12 +1186,14 @@
         this.roundsPlayed++;
         
         this.health = this.maxHealth;
+        this.armor = 0;
         this.stamina = this.maxStamina;
       }
       
       // Respawn after death
       respawn(world) {
         this.health = this.maxHealth;
+        this.armor = 0;
         this.stamina = this.maxStamina;
         this.alive = true;
         this.respawnTimer = 0;
@@ -1060,6 +1202,12 @@
         this.attackCooldown = 0;
         this.attackRecovery = 0;
         this.weaponCooldown = 0;
+        this.weapon = 'rocket'; // Lose special weapons on death
+        this.laserCharge = 0;
+        this.laserCharging = false;
+        this.swordCharge = 0;
+        this.swordCharging = false;
+        this.swordLunging = false;
         this.lastHitBy = null;
         
         // Spawn at back of team's side
@@ -1234,6 +1382,22 @@
         this.attackRecovery = Math.max(0, this.attackRecovery - dt);
         this.weaponCooldown = Math.max(0, this.weaponCooldown - dt);
 
+        // Handle sword lunge movement
+        if (this.swordLunging) {
+          this.lungeProgress += dt * 5; // Lunge takes 0.2 seconds
+          if (this.lungeProgress >= 1) {
+            this.swordLunging = false;
+            this.x = this.lungeEndX;
+            this.y = this.lungeEndY;
+            this.weaponCooldown = 1.0; // 1 second cooldown after lunge
+          } else {
+            // Interpolate position
+            this.x = this.lungeStartX + (this.lungeEndX - this.lungeStartX) * this.lungeProgress;
+            this.y = this.lungeStartY + (this.lungeEndY - this.lungeStartY) * this.lungeProgress;
+          }
+          return; // Skip normal movement during lunge
+        }
+
         if (!decision) return;
 
         this.rotation += decision.turnAmount * 4 * dt; // Faster turning for dodging
@@ -1241,8 +1405,24 @@
         // Forward/backward movement
         let targetSpeed = decision.speedAmount * 150; // Faster base speed
         
+        // 50% movement speed while charging laser
+        if (this.laserCharging) {
+          targetSpeed *= 0.5;
+        }
+        
+        // 80% movement slow while charging sword (20% speed)
+        if (this.swordCharging) {
+          targetSpeed *= 0.2;
+        }
+        
         // Strafing (perpendicular movement)
-        const strafeSpeed = (decision.strafe || 0) * 100;
+        let strafeSpeed = (decision.strafe || 0) * 100;
+        if (this.laserCharging) {
+          strafeSpeed *= 0.5;
+        }
+        if (this.swordCharging) {
+          strafeSpeed *= 0.2;
+        }
 
         const tvx = Math.cos(this.rotation) * targetSpeed + Math.cos(this.rotation + Math.PI/2) * strafeSpeed;
         const tvy = Math.sin(this.rotation) * targetSpeed + Math.sin(this.rotation + Math.PI/2) * strafeSpeed;
@@ -1304,6 +1484,13 @@
       }
 
       takeDamage(amount, attacker, world) {
+        // Armor absorbs damage first
+        if (this.armor > 0) {
+          const armorDamage = Math.min(this.armor, amount);
+          this.armor -= armorDamage;
+          amount -= armorDamage;
+        }
+        
         this.health -= amount;
         this.damageTaken += amount;
 
@@ -1321,7 +1508,7 @@
         this.alive = false;
         this.deaths++;
         this.totalDeaths++;
-        this.respawnTimer = 5.0; // 5 seconds to respawn
+        this.respawnTimer = world ? world.respawnTime : 3; // Use world's respawn time
         return true;
       }
 
@@ -1348,6 +1535,24 @@
         this.explosions = [];
         this.smokeParticles = []; // Smoke trail particles
 
+        // Pickups
+        this.pickups = [];
+        this.pickupTimer = 0;
+        this.pickupInterval = 20; // Spawn every 20 seconds
+        this.nextPickupType = 'health'; // Alternates between health and armor
+        this.healthSpawnsEnabled = true;
+        this.armorSpawnsEnabled = true;
+        
+        // Laser spawns
+        this.laserSpawnsEnabled = true;
+        this.laserSpawned = false; // Only spawn once per round
+        this.laserBeams = []; // Active laser beam animations
+        
+        // Sword spawns
+        this.swordSpawnsEnabled = true;
+        this.swordSpawned = false;
+        this.swordSlashes = []; // Active sword slash animations
+
         this.roundTime = 180; // 3 minutes
         this.timeLeft = this.roundTime;
 
@@ -1367,12 +1572,283 @@
         this.winningTeam = null;
         this.teamWins = [0, 0]; // Track total wins per team
         
+        // Game modifiers
+        this.friendlyFire = false;
+        this.friendlyFireRicochet = false;
+        this.respawnTime = 3; // seconds
+        
         // Team brains (evolved separately)
         this.teamBrains = [null, null];
 
         this.spatialAgents = new SpatialHash(120);
 
         this.generateObstacles();
+      }
+
+      spawnLaserPickups() {
+        if (this.laserSpawned || !this.laserSpawnsEnabled) return;
+        
+        // Spawn 2 lasers at center of map
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+        
+        this.pickups.push({
+          x: cx - 50,
+          y: cy,
+          type: 'laser',
+          radius: 18
+        });
+        this.pickups.push({
+          x: cx + 50,
+          y: cy,
+          type: 'laser',
+          radius: 18
+        });
+        
+        this.laserSpawned = true;
+        this.addEvent('⚡ LASER WEAPONS SPAWNED!', 'laser');
+      }
+
+      spawnSwordPickups() {
+        if (this.swordSpawned || !this.swordSpawnsEnabled) return;
+        
+        // Spawn 2 swords at center of map (offset from laser)
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+        
+        this.pickups.push({
+          x: cx,
+          y: cy - 80,
+          type: 'sword',
+          radius: 18
+        });
+        this.pickups.push({
+          x: cx,
+          y: cy + 80,
+          type: 'sword',
+          radius: 18
+        });
+        
+        this.swordSpawned = true;
+        this.addEvent('🗡️ ENERGY SWORDS SPAWNED!', 'sword');
+      }
+
+      spawnPickups() {
+        // Determine which type to spawn
+        let typeToSpawn = this.nextPickupType;
+        
+        // Check if enabled, otherwise switch
+        if (typeToSpawn === 'health' && !this.healthSpawnsEnabled) {
+          typeToSpawn = this.armorSpawnsEnabled ? 'armor' : null;
+        } else if (typeToSpawn === 'armor' && !this.armorSpawnsEnabled) {
+          typeToSpawn = this.healthSpawnsEnabled ? 'health' : null;
+        }
+        
+        if (!typeToSpawn) return;
+        
+        // Spawn 5 pickups
+        for (let i = 0; i < 5; i++) {
+          // Random position avoiding edges
+          const x = 150 + Math.random() * (this.width - 300);
+          const y = 150 + Math.random() * (this.height - 300);
+          
+          this.pickups.push({
+            x, y,
+            type: typeToSpawn,
+            radius: 15
+          });
+        }
+        
+        // Alternate for next spawn
+        this.nextPickupType = typeToSpawn === 'health' ? 'armor' : 'health';
+        
+        const icon = typeToSpawn === 'health' ? '🩹' : '🛡️';
+        this.addEvent(icon + ' ' + typeToSpawn.toUpperCase() + ' packs spawned!', 'pickup');
+      }
+
+      fireLaser(agent) {
+        // Calculate beam endpoint (extends to world edge)
+        const angle = agent.rotation;
+        const startX = agent.x + Math.cos(angle) * agent.radius;
+        const startY = agent.y + Math.sin(angle) * agent.radius;
+        
+        // Find where beam exits world
+        let endX, endY;
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+        
+        // Calculate intersection with world boundaries
+        const tRight = cosA > 0 ? (this.width - startX) / cosA : Infinity;
+        const tLeft = cosA < 0 ? -startX / cosA : Infinity;
+        const tBottom = sinA > 0 ? (this.height - startY) / sinA : Infinity;
+        const tTop = sinA < 0 ? -startY / sinA : Infinity;
+        
+        const t = Math.min(tRight, tLeft, tBottom, tTop);
+        endX = startX + cosA * t;
+        endY = startY + sinA * t;
+        
+        // Check for hits on all agents in beam path
+        let killCount = 0;
+        for (const target of this.agents) {
+          if (target === agent || !target.alive) continue;
+          
+          // Skip teammates unless FF is on
+          if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
+          
+          // Point-to-line distance check
+          const dx = endX - startX;
+          const dy = endY - startY;
+          const len = Math.hypot(dx, dy);
+          const nx = -dy / len;
+          const ny = dx / len;
+          
+          const px = target.x - startX;
+          const py = target.y - startY;
+          const dist = Math.abs(px * nx + py * ny);
+          
+          // Also check if target is in front of shooter
+          const dot = px * (dx / len) + py * (dy / len);
+          
+          if (dist < target.radius + 10 && dot > 0) {
+            // Hit!
+            if (target.team === agent.team) {
+              // Friendly fire
+              if (this.friendlyFireRicochet) {
+                // Ricochet damage to self
+                const killed = agent.takeDamage(999, agent, this);
+                this.teamRicochets[agent.team]++;
+                if (killed) {
+                  this.addEvent('🔄 ' + agent.name + ' LASER RICOCHET!', 'laser');
+                }
+              } else if (this.friendlyFire) {
+                const killed = target.takeDamage(999, agent, this);
+                if (killed) {
+                  this.teamRicochets[agent.team]++;
+                  this.addEvent('⚡ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'laser');
+                }
+              }
+            } else {
+              // Enemy kill
+              const killed = target.takeDamage(999, agent, this);
+              if (killed) {
+                agent.kills++;
+                agent.totalKills++;
+                this.teamKills[agent.team]++;
+                this.teamRawKills[agent.team]++;
+                killCount++;
+              }
+            }
+          }
+        }
+        
+        if (killCount > 0) {
+          const msg = killCount > 1 
+            ? '⚡ ' + agent.name + ' LASER MULTI-KILL x' + killCount + '!'
+            : '⚡ ' + agent.name + ' LASER KILL!';
+          this.addEvent(msg, 'laser');
+        }
+        
+        // Add beam animation
+        this.laserBeams.push({
+          startX, startY, endX, endY,
+          team: agent.team,
+          timer: 0,
+          maxTime: 1.5
+        });
+      }
+
+      executeSwordLunge(agent, chargeTime) {
+        // Calculate lunge distance based on charge time (0.5s min charge, 2s max)
+        const minDist = 50;
+        const maxDist = 250;
+        const chargeRatio = Math.min(1, Math.max(0, (chargeTime - 0.3) / 1.7)); // 0.3s to 2s
+        const lungeDist = minDist + chargeRatio * (maxDist - minDist);
+        
+        const startX = agent.x;
+        const startY = agent.y;
+        const endX = agent.x + Math.cos(agent.rotation) * lungeDist;
+        const endY = agent.y + Math.sin(agent.rotation) * lungeDist;
+        
+        // Clamp to world bounds
+        const clampedEndX = clamp(endX, agent.radius, this.width - agent.radius);
+        const clampedEndY = clamp(endY, agent.radius, this.height - agent.radius);
+        
+        // Set up lunge
+        agent.lungeStartX = startX;
+        agent.lungeStartY = startY;
+        agent.lungeEndX = clampedEndX;
+        agent.lungeEndY = clampedEndY;
+        agent.lungeProgress = 0;
+        agent.swordLunging = true;
+        
+        // Check for hits along the lunge path
+        let killCount = 0;
+        for (const target of this.agents) {
+          if (target === agent || !target.alive) continue;
+          
+          // Skip teammates unless FF is on
+          if (target.team === agent.team && !this.friendlyFire && !this.friendlyFireRicochet) continue;
+          
+          // Point-to-line distance check
+          const dx = clampedEndX - startX;
+          const dy = clampedEndY - startY;
+          const len = Math.hypot(dx, dy);
+          if (len === 0) continue;
+          
+          const nx = -dy / len;
+          const ny = dx / len;
+          
+          const px = target.x - startX;
+          const py = target.y - startY;
+          const dist = Math.abs(px * nx + py * ny);
+          
+          // Check if target is along the path
+          const dot = px * (dx / len) + py * (dy / len);
+          
+          if (dist < target.radius + 20 && dot > 0 && dot < len) {
+            // Hit!
+            if (target.team === agent.team) {
+              if (this.friendlyFireRicochet) {
+                const killed = agent.takeDamage(999, agent, this);
+                this.teamRicochets[agent.team]++;
+                if (killed) {
+                  this.addEvent('🔄 ' + agent.name + ' SWORD RICOCHET!', 'sword');
+                }
+              } else if (this.friendlyFire) {
+                const killed = target.takeDamage(999, agent, this);
+                if (killed) {
+                  this.teamRicochets[agent.team]++;
+                  this.addEvent('🗡️ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'sword');
+                }
+              }
+            } else {
+              const killed = target.takeDamage(999, agent, this);
+              if (killed) {
+                agent.kills++;
+                agent.totalKills++;
+                this.teamKills[agent.team]++;
+                this.teamRawKills[agent.team]++;
+                killCount++;
+              }
+            }
+          }
+        }
+        
+        if (killCount > 0) {
+          const msg = killCount > 1 
+            ? '🗡️ ' + agent.name + ' SWORD MULTI-KILL x' + killCount + '!'
+            : '🗡️ ' + agent.name + ' SWORD KILL!';
+          this.addEvent(msg, 'sword');
+        }
+        
+        // Add slash animation
+        this.swordSlashes.push({
+          startX, startY,
+          endX: clampedEndX, endY: clampedEndY,
+          team: agent.team,
+          timer: 0,
+          maxTime: 0.6
+        });
       }
 
       setRoundTimeSeconds(sec) {
@@ -1586,6 +2062,13 @@
         this.rockets = [];
         this.explosions = [];
         this.smokeParticles = [];
+        this.pickups = [];
+        this.pickupTimer = 0;
+        this.nextPickupType = 'health';
+        this.laserSpawned = false;
+        this.laserBeams = [];
+        this.swordSpawned = false;
+        this.swordSlashes = [];
         
         // Reset all agents for new round (but keep names and lifetime stats)
         for (const agent of this.agents) {
@@ -1613,6 +2096,71 @@
         if (this.paused) return;
 
         this.timeLeft -= dt;
+
+        // Pickup spawning
+        this.pickupTimer += dt;
+        if (this.pickupTimer >= this.pickupInterval) {
+          this.pickupTimer = 0;
+          this.spawnPickups();
+        }
+        
+        // Laser spawn check - spawn 10 seconds after round start
+        if (!this.laserSpawned && this.laserSpawnsEnabled) {
+          const timePassed = this.roundTime - this.timeLeft;
+          if (timePassed >= 10) {
+            this.spawnLaserPickups();
+          }
+        }
+        
+        // Sword spawn check - spawn 15 seconds after round start
+        if (!this.swordSpawned && this.swordSpawnsEnabled) {
+          const timePassed = this.roundTime - this.timeLeft;
+          if (timePassed >= 15) {
+            this.spawnSwordPickups();
+          }
+        }
+
+        // Pickup collection
+        for (const agent of this.agents) {
+          if (!agent.alive) continue;
+          
+          for (let i = this.pickups.length - 1; i >= 0; i--) {
+            const p = this.pickups[i];
+            const dist = Math.hypot(agent.x - p.x, agent.y - p.y);
+            
+            if (dist < agent.radius + p.radius) {
+              // Collect pickup
+              if (p.type === 'health') {
+                const healed = Math.min(50, agent.maxHealth - agent.health);
+                agent.health = Math.min(agent.maxHealth, agent.health + 50);
+                if (healed > 0) {
+                  this.addEvent('🩹 ' + agent.name + ' +' + healed + 'hp', 'pickup');
+                }
+                this.pickups.splice(i, 1);
+              } else if (p.type === 'armor') {
+                if (agent.armor < agent.maxArmor) {
+                  const gained = Math.min(50, agent.maxArmor - agent.armor);
+                  agent.armor = Math.min(agent.maxArmor, agent.armor + 50);
+                  this.addEvent('🛡️ ' + agent.name + ' +' + gained + ' armor', 'pickup');
+                  this.pickups.splice(i, 1);
+                }
+              } else if (p.type === 'laser') {
+                agent.weapon = 'laser';
+                agent.laserCharge = 0;
+                agent.weaponCooldown = 0;
+                this.addEvent('⚡ ' + agent.name + ' GOT THE LASER!', 'laser');
+                this.pickups.splice(i, 1);
+              } else if (p.type === 'sword') {
+                agent.weapon = 'sword';
+                agent.swordCharge = 0;
+                agent.swordCharging = false;
+                agent.weaponCooldown = 0;
+                this.addEvent('🗡️ ' + agent.name + ' GOT THE ENERGY SWORD!', 'sword');
+                this.pickups.splice(i, 1);
+              }
+            }
+          }
+        }
 
         // Update alive count + spatial hash
         let alive = 0;
@@ -1722,7 +2270,7 @@
         }
         this.smokeParticles = this.smokeParticles.filter(p => p.life > 0);
 
-        // Update explosions - SPLASH DAMAGE (no friendly fire)
+        // Update explosions - SPLASH DAMAGE
         for (const e of this.explosions) {
           e.timer += dt;
           
@@ -1746,8 +2294,25 @@
                   this.addEvent('💀 ' + e.owner.name + ' ROCKET JUMPED TOO HARD!', 'kill');
                 }
               } else if (e.owner && agent.team === e.owner.team) {
-                // NO FRIENDLY FIRE - skip teammates
-                continue;
+                // Teammate hit
+                if (this.friendlyFire) {
+                  // Direct friendly fire - damage teammate
+                  const killed = agent.takeDamage(dmg, e.owner, this);
+                  if (killed) {
+                    this.teamRicochets[e.owner.team]++;
+                    this.addEvent('💀 ' + e.owner.name + ' TEAMKILLED ' + agent.name + '!', 'kill');
+                  }
+                } else if (this.friendlyFireRicochet) {
+                  // Ricochet - damage reflects to shooter
+                  const killed = e.owner.takeDamage(dmg, e.owner, this);
+                  this.teamRicochets[e.owner.team]++;
+                  if (killed) {
+                    this.addEvent('🔄 ' + e.owner.name + ' DIED FROM RICOCHET!', 'kill');
+                  } else {
+                    this.addEvent('🔄 ' + e.owner.name + ' ricochet -' + dmg + 'hp', 'damage');
+                  }
+                }
+                // Else: no friendly fire, skip
               } else {
                 // Enemy damage
                 const killed = agent.takeDamage(dmg, e.owner, this);
@@ -1779,14 +2344,64 @@
           const d = decisions[i];
           a.update(d, dt, this, this.obstacles);
 
-          // Handle shooting
+          // Handle shooting based on weapon type
           if (d && d.wantsShoot) {
-            const rocket = a.tryShoot(this);
-            if (rocket) {
-              this.rockets.push(rocket);
+            if (a.weapon === 'rocket') {
+              const rocket = a.tryShoot(this);
+              if (rocket) {
+                this.rockets.push(rocket);
+              }
+            } else if (a.weapon === 'laser') {
+              // Laser charging
+              if (a.weaponCooldown <= 0) {
+                a.laserCharging = true;
+                a.laserCharge += dt;
+                
+                // Fire when fully charged
+                if (a.laserCharge >= 3.0) {
+                  this.fireLaser(a);
+                  a.laserCharge = 0;
+                  a.laserCharging = false;
+                  a.weaponCooldown = 1.0; // 1 second cooldown
+                }
+              }
+            } else if (a.weapon === 'sword') {
+              // Sword charging (ready stance)
+              if (a.weaponCooldown <= 0 && !a.swordLunging) {
+                a.swordCharging = true;
+                a.swordCharge = Math.min(2.0, a.swordCharge + dt); // Max 2 seconds charge
+              }
+            }
+          } else {
+            // Reset laser charge if not holding shoot
+            if (a.weapon === 'laser' && a.laserCharging) {
+              a.laserCharge = 0;
+              a.laserCharging = false;
+            }
+            // Execute sword lunge when releasing
+            if (a.weapon === 'sword' && a.swordCharging && a.swordCharge >= 0.3) {
+              this.executeSwordLunge(a, a.swordCharge);
+              a.swordCharge = 0;
+              a.swordCharging = false;
+            } else if (a.weapon === 'sword' && a.swordCharging) {
+              // Not enough charge, just reset
+              a.swordCharge = 0;
+              a.swordCharging = false;
             }
           }
         }
+        
+        // Update laser beams animation
+        for (const beam of this.laserBeams) {
+          beam.timer += dt;
+        }
+        this.laserBeams = this.laserBeams.filter(b => b.timer < b.maxTime);
+        
+        // Update sword slash animations
+        for (const slash of this.swordSlashes) {
+          slash.timer += dt;
+        }
+        this.swordSlashes = this.swordSlashes.filter(s => s.timer < s.maxTime);
 
         // Agent-agent collision (push apart)
         const aliveAgents = this.agents.filter(a => a.alive);
@@ -1991,27 +2606,9 @@
         this.clampCamera();
       }
 
-      render(highlightTopRound = false, highlightTopAlltime = false) {
+      render() {
         const ctx = this.ctx;
         const s = this.baseScale * this.zoom;
-
-        // Find top agents for highlighting
-        let topRoundAgent = null;
-        let topAlltimeAgent = null;
-        
-        if (highlightTopRound) {
-          const alive = this.world.agents.filter(a => a.alive);
-          if (alive.length > 0) {
-            topRoundAgent = alive.reduce((best, a) => a.score > best.score ? a : best, alive[0]);
-          }
-        }
-        
-        if (highlightTopAlltime) {
-          const alive = this.world.agents.filter(a => a.alive);
-          if (alive.length > 0) {
-            topAlltimeAgent = alive.reduce((best, a) => (a.totalKills || 0) > (best.totalKills || 0) ? a : best, alive[0]);
-          }
-        }
 
         // Draw in CSS pixels, with DPR scaling handled by transform.
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -2048,57 +2645,98 @@
           ctx.strokeRect(x, y, w, h);
         }
 
+        // Pickups
+        for (const p of this.world.pickups) {
+          const px = p.x * s, py = p.y * s, pr = p.radius * s;
+          
+          // Glow effect
+          const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+          
+          if (p.type === 'health') {
+            // Health pack - green cross shape
+            ctx.shadowBlur = 15 * pulse;
+            ctx.shadowColor = '#00ff9d';
+            ctx.fillStyle = '#00ff9d';
+            
+            // Horizontal bar of cross
+            ctx.fillRect(px - pr, py - pr * 0.3, pr * 2, pr * 0.6);
+            // Vertical bar of cross
+            ctx.fillRect(px - pr * 0.3, py - pr, pr * 0.6, pr * 2);
+            
+          } else if (p.type === 'armor') {
+            // Armor pack - blue kite shield
+            ctx.shadowBlur = 15 * pulse;
+            ctx.shadowColor = '#00aaff';
+            ctx.fillStyle = '#00aaff';
+            
+            // Kite shield shape (wider at top, pointed at bottom)
+            ctx.beginPath();
+            ctx.moveTo(px, py - pr * 1.1);           // Top center
+            ctx.lineTo(px + pr * 0.8, py - pr * 0.3); // Top right
+            ctx.lineTo(px + pr * 0.6, py + pr * 0.4); // Mid right
+            ctx.lineTo(px, py + pr * 1.1);            // Bottom point
+            ctx.lineTo(px - pr * 0.6, py + pr * 0.4); // Mid left
+            ctx.lineTo(px - pr * 0.8, py - pr * 0.3); // Top left
+            ctx.closePath();
+            ctx.fill();
+            
+            // Inner highlight
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else if (p.type === 'laser') {
+            // Laser pickup - electric bolt shape
+            ctx.shadowBlur = 20 * pulse;
+            ctx.shadowColor = '#00ffff';
+            ctx.fillStyle = '#00ffff';
+            
+            // Lightning bolt shape
+            ctx.beginPath();
+            ctx.moveTo(px + pr * 0.3, py - pr * 1.2);
+            ctx.lineTo(px - pr * 0.1, py - pr * 0.2);
+            ctx.lineTo(px + pr * 0.3, py - pr * 0.2);
+            ctx.lineTo(px - pr * 0.3, py + pr * 1.2);
+            ctx.lineTo(px + pr * 0.1, py + pr * 0.2);
+            ctx.lineTo(px - pr * 0.3, py + pr * 0.2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Inner glow
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else if (p.type === 'sword') {
+            // Sword pickup - energy sword shape (neutral purple until picked up)
+            ctx.shadowBlur = 20 * pulse;
+            ctx.shadowColor = '#ff00ff';
+            ctx.fillStyle = '#ff00ff';
+            
+            // Sword blade shape
+            ctx.beginPath();
+            ctx.moveTo(px, py - pr * 1.5);           // Tip
+            ctx.lineTo(px + pr * 0.3, py - pr * 0.5); // Right edge upper
+            ctx.lineTo(px + pr * 0.2, py + pr * 0.8); // Right edge lower
+            ctx.lineTo(px, py + pr * 1.2);            // Handle
+            ctx.lineTo(px - pr * 0.2, py + pr * 0.8); // Left edge lower
+            ctx.lineTo(px - pr * 0.3, py - pr * 0.5); // Left edge upper
+            ctx.closePath();
+            ctx.fill();
+            
+            // Inner glow line
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          ctx.shadowBlur = 0;
+        }
+
         // Agents with class-based rendering
         for (const agent of this.world.agents) {
           if (!agent.alive) continue;
           const x = agent.x * s, y = agent.y * s, r = agent.radius * s;
 
-          // Check if this agent should be highlighted
-          const isTopRound = agent === topRoundAgent;
-          const isTopAlltime = agent === topAlltimeAgent;
-
           ctx.save();
           ctx.translate(x, y);
-          
-          // Highlight rings (before rotation)
-          if (isTopRound || isTopAlltime) {
-            // Pulsing effect
-            const pulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
-            
-            if (isTopAlltime) {
-              // Orange glow for all-time legend
-              ctx.strokeStyle = `rgba(255, 100, 0, ${pulse})`;
-              ctx.lineWidth = 4;
-              ctx.beginPath();
-              ctx.arc(0, 0, r + 12 * s, 0, Math.PI * 2);
-              ctx.stroke();
-              
-              // Crown icon above
-              ctx.fillStyle = '#ff6400';
-              ctx.font = 'bold ' + (20 * s) + 'px serif';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText('🏆', 0, -r - 25 * s);
-            }
-            
-            if (isTopRound) {
-              // Gold glow for top this round
-              ctx.strokeStyle = `rgba(255, 200, 0, ${pulse})`;
-              ctx.lineWidth = 3;
-              ctx.beginPath();
-              ctx.arc(0, 0, r + 8 * s, 0, Math.PI * 2);
-              ctx.stroke();
-              
-              // Crown icon (offset if both)
-              ctx.fillStyle = '#ffc800';
-              ctx.font = 'bold ' + (18 * s) + 'px serif';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              const crownY = isTopAlltime ? -r - 45 * s : -r - 25 * s;
-              ctx.fillText('👑', 0, crownY);
-            }
-          }
-          
           ctx.rotate(agent.rotation);
 
           // Vision cone
@@ -2113,135 +2751,115 @@
           ctx.arc(0, 0, viewDist, -fov / 2, fov / 2);
           ctx.fill();
 
-          // Quake-style soldier (TRUE top-down view - looking from above)
-          ctx.shadowBlur = isTopRound || isTopAlltime ? 20 : 10;
-          ctx.shadowColor = isTopAlltime ? '#ff6400' : (isTopRound ? '#ffc800' : agent.color);
-
-          // Team colors - military olive/khaki style
-          const teamDark = agent.team === 0 ? '#5c4a3a' : '#3a4a5c';
-          const teamMid = agent.team === 0 ? '#6b5a42' : '#425a6b';
-          const teamLight = agent.team === 0 ? '#8a7a5a' : '#5a7a8a';
-          const skinTone = '#d4a574';
-          const hairColor = '#4a3020';
-
-          // Feet/boots (behind body, slightly visible)
-          ctx.fillStyle = '#2a2a2a';
-          ctx.beginPath();
-          ctx.ellipse(-r * 0.5, -r * 0.25, r * 0.18, r * 0.25, -0.3, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(-r * 0.5, r * 0.25, r * 0.18, r * 0.25, 0.3, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Body/torso (oval from above)
-          ctx.fillStyle = teamDark;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, r * 0.65, r * 0.8, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Backpack/gear on back
-          ctx.fillStyle = '#3a3a2a';
-          ctx.beginPath();
-          ctx.ellipse(-r * 0.4, 0, r * 0.25, r * 0.45, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Vest/armor overlay
-          ctx.fillStyle = teamMid;
-          ctx.beginPath();
-          ctx.ellipse(r * 0.05, 0, r * 0.5, r * 0.6, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Left shoulder (top of view)
-          ctx.fillStyle = teamDark;
-          ctx.beginPath();
-          ctx.ellipse(r * 0.1, -r * 0.7, r * 0.3, r * 0.25, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Right shoulder (bottom of view)
-          ctx.fillStyle = teamDark;
-          ctx.beginPath();
-          ctx.ellipse(r * 0.1, r * 0.7, r * 0.3, r * 0.25, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Left arm extending to weapon
-          ctx.fillStyle = teamMid;
-          ctx.beginPath();
-          ctx.moveTo(r * 0.1, -r * 0.55);
-          ctx.quadraticCurveTo(r * 0.6, -r * 0.5, r * 0.8, -r * 0.25);
-          ctx.lineTo(r * 0.65, -r * 0.15);
-          ctx.quadraticCurveTo(r * 0.45, -r * 0.35, r * 0.1, -r * 0.4);
-          ctx.closePath();
-          ctx.fill();
-
-          // Right arm extending to weapon
-          ctx.fillStyle = teamMid;
-          ctx.beginPath();
-          ctx.moveTo(r * 0.1, r * 0.55);
-          ctx.quadraticCurveTo(r * 0.5, r * 0.45, r * 0.7, r * 0.2);
-          ctx.lineTo(r * 0.55, r * 0.1);
-          ctx.quadraticCurveTo(r * 0.35, r * 0.3, r * 0.1, r * 0.4);
-          ctx.closePath();
-          ctx.fill();
-
-          // Hands
-          ctx.fillStyle = skinTone;
-          ctx.beginPath();
-          ctx.arc(r * 0.75, -r * 0.2, r * 0.12, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(r * 0.6, r * 0.15, r * 0.12, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Rocket launcher (pointing forward)
-          // Main tube
-          ctx.fillStyle = '#4a5040';
-          ctx.beginPath();
-          ctx.roundRect(r * 0.5, -r * 0.18, r * 1.2, r * 0.36, r * 0.1);
-          ctx.fill();
-          // Top highlight
-          ctx.fillStyle = '#5a6050';
-          ctx.fillRect(r * 0.5, -r * 0.18, r * 1.2, r * 0.12);
-          // Muzzle
-          ctx.fillStyle = '#2a2a2a';
-          ctx.beginPath();
-          ctx.arc(r * 1.7, 0, r * 0.16, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#111';
-          ctx.beginPath();
-          ctx.arc(r * 1.7, 0, r * 0.1, 0, Math.PI * 2);
-          ctx.fill();
-          // Red band
-          ctx.fillStyle = '#993333';
-          ctx.fillRect(r * 1.45, -r * 0.18, r * 0.1, r * 0.36);
-          // Grip
-          ctx.fillStyle = '#2a2a2a';
-          ctx.fillRect(r * 0.55, r * 0.15, r * 0.15, r * 0.2);
-
-          // Head (top of head viewed from above)
-          ctx.fillStyle = hairColor;
-          ctx.beginPath();
-          ctx.arc(r * 0.35, 0, r * 0.38, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Hair highlight/parting
-          ctx.fillStyle = '#5a4030';
-          ctx.beginPath();
-          ctx.ellipse(r * 0.45, 0, r * 0.15, r * 0.25, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Skin visible at front of head (forehead/face edge)
-          ctx.fillStyle = skinTone;
-          ctx.beginPath();
-          ctx.arc(r * 0.6, 0, r * 0.18, -Math.PI * 0.4, Math.PI * 0.4);
-          ctx.fill();
-
-          // Team colored band/bandana
-          ctx.fillStyle = agent.team === 0 ? '#cc4444' : '#4444cc';
-          ctx.lineWidth = r * 0.08;
-          ctx.strokeStyle = agent.team === 0 ? '#cc4444' : '#4444cc';
-          ctx.beginPath();
-          ctx.arc(r * 0.35, 0, r * 0.32, Math.PI * 0.6, Math.PI * 1.4);
+          // Body
+          ctx.shadowBlur = 15;
+          const swordColor = agent.team === 0 ? '#ff4444' : '#4488ff';
+          ctx.shadowColor = agent.weapon === 'laser' ? '#00ffff' : (agent.weapon === 'sword' ? swordColor : agent.color);
+          ctx.fillStyle = '#000';
+          ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = agent.weapon === 'laser' ? '#00ffff' : (agent.weapon === 'sword' ? swordColor : agent.color);
+          ctx.lineWidth = 2;
           ctx.stroke();
+
+          if (agent.weapon === 'rocket') {
+            // Rocket launcher icon
+            ctx.fillStyle = '#ff6600';
+            ctx.font = 'bold ' + (r * 0.7) + 'px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🚀', 0, 0);
+
+            // Rocket launcher weapon
+            ctx.strokeStyle = '#ff6600';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(r * 0.3, 0);
+            ctx.lineTo(r * 1.6, 0);
+            ctx.stroke();
+            // Launcher tip
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.arc(r * 1.6, 0, 4 * s, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (agent.weapon === 'laser') {
+            // Laser weapon icon
+            ctx.fillStyle = '#00ffff';
+            ctx.font = 'bold ' + (r * 0.7) + 'px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚡', 0, 0);
+
+            // Laser weapon barrel
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(r * 0.3, 0);
+            ctx.lineTo(r * 1.8, 0);
+            ctx.stroke();
+            
+            // Charging glow
+            if (agent.laserCharging && agent.laserCharge > 0) {
+              const chargeProgress = agent.laserCharge / 3.0;
+              const glowSize = 8 + chargeProgress * 15;
+              const glowAlpha = 0.3 + chargeProgress * 0.7;
+              
+              ctx.shadowBlur = glowSize * s;
+              ctx.shadowColor = '#00ffff';
+              ctx.fillStyle = `rgba(0, 255, 255, ${glowAlpha})`;
+              ctx.beginPath();
+              ctx.arc(r * 1.8, 0, (4 + chargeProgress * 8) * s, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.shadowBlur = 0;
+            }
+          } else if (agent.weapon === 'sword') {
+            // Energy sword - color based on team
+            ctx.fillStyle = swordColor;
+            ctx.font = 'bold ' + (r * 0.7) + 'px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🗡️', 0, 0);
+            
+            // Sword blade
+            ctx.save();
+            if (agent.swordCharging) {
+              // Ready stance - sword to the right
+              ctx.rotate(Math.PI / 2);
+            }
+            
+            // Draw sword blade
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = swordColor;
+            ctx.strokeStyle = swordColor;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(r * 0.5, 0);
+            ctx.lineTo(r * 2.2, 0);
+            ctx.stroke();
+            
+            // Blade glow tip
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(r * 2.2, 0);
+            ctx.lineTo(r * 1.8, -4 * s);
+            ctx.lineTo(r * 1.8, 4 * s);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+            
+            // Charging indicator
+            if (agent.swordCharging && agent.swordCharge > 0) {
+              const chargeProgress = agent.swordCharge / 2.0;
+              ctx.shadowBlur = 20 * chargeProgress;
+              ctx.shadowColor = swordColor;
+              ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 + chargeProgress * 0.5})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(0, 0, r * (1.2 + chargeProgress * 0.5), 0, Math.PI * 2 * chargeProgress);
+              ctx.stroke();
+              ctx.shadowBlur = 0;
+            }
+          }
 
           ctx.restore();
           ctx.shadowBlur = 0;
@@ -2254,11 +2872,20 @@
           ctx.fillStyle = agent.health > 50 ? '#00ff9d' : '#ff0055';
           ctx.fillRect(x - barW / 2, y - r - 12 * s, barW * (agent.health / agent.maxHealth), barH);
           
+          // Armor bar (blue, below health bar)
+          if (agent.armor > 0) {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(x - barW / 2, y - r - 7 * s, barW, barH);
+            ctx.fillStyle = '#00aaff';
+            ctx.fillRect(x - barW / 2, y - r - 7 * s, barW * (agent.armor / agent.maxArmor), barH);
+          }
+          
           // Weapon cooldown indicator
           if (agent.weaponCooldown > 0) {
             const cooldownPct = agent.weaponCooldown / ROCKET.fireRate;
+            const cooldownY = agent.armor > 0 ? y - r - 2 * s : y - r - 6 * s;
             ctx.fillStyle = 'rgba(255, 100, 0, 0.5)';
-            ctx.fillRect(x - barW / 2, y - r - 6 * s, barW * cooldownPct, 2 * s);
+            ctx.fillRect(x - barW / 2, cooldownY, barW * cooldownPct, 2 * s);
           }
         }
 
@@ -2363,6 +2990,105 @@
           ctx.arc(ex, ey, currentRadius * 0.8, 0, Math.PI * 2);
           ctx.fill();
         }
+        
+        // Laser beams (anime style)
+        for (const beam of this.world.laserBeams) {
+          const progress = beam.timer / beam.maxTime;
+          const sx = beam.startX * s, sy = beam.startY * s;
+          const ex = beam.endX * s, ey = beam.endY * s;
+          
+          // Phase 1: Expansion (0 - 0.1)
+          // Phase 2: Peak (0.1 - 0.4)
+          // Phase 3: Contraction (0.4 - 1.0)
+          
+          let beamWidth, alpha;
+          if (progress < 0.1) {
+            // Expanding
+            beamWidth = (progress / 0.1) * 25;
+            alpha = 1;
+          } else if (progress < 0.4) {
+            // Peak
+            beamWidth = 25;
+            alpha = 1;
+          } else {
+            // Contracting
+            const contractProgress = (progress - 0.4) / 0.6;
+            beamWidth = 25 * (1 - contractProgress);
+            alpha = 1 - contractProgress;
+          }
+          
+          // Outer glow
+          ctx.strokeStyle = `rgba(0, 255, 255, ${alpha * 0.3})`;
+          ctx.lineWidth = beamWidth * s * 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+          
+          // Middle glow
+          ctx.strokeStyle = `rgba(100, 255, 255, ${alpha * 0.6})`;
+          ctx.lineWidth = beamWidth * s * 1.5;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+          
+          // Core beam
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+          ctx.lineWidth = beamWidth * s * 0.5;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+        }
+        
+        // Sword slashes
+        for (const slash of this.world.swordSlashes) {
+          const progress = slash.timer / slash.maxTime;
+          const sx = slash.startX * s, sy = slash.startY * s;
+          const ex = slash.endX * s, ey = slash.endY * s;
+          
+          const alpha = 1 - progress;
+          const slashColor = slash.team === 0 ? 
+            `rgba(255, 68, 68, ${alpha})` : 
+            `rgba(68, 136, 255, ${alpha})`;
+          const glowColor = slash.team === 0 ? '#ff4444' : '#4488ff';
+          
+          // Calculate perpendicular for slash width
+          const dx = ex - sx;
+          const dy = ey - sy;
+          const len = Math.hypot(dx, dy);
+          if (len === 0) continue;
+          
+          const nx = -dy / len;
+          const ny = dx / len;
+          const slashWidth = (30 - progress * 25) * s;
+          
+          // Draw arc slash effect
+          ctx.beginPath();
+          ctx.moveTo(sx + nx * slashWidth, sy + ny * slashWidth);
+          ctx.lineTo(ex + nx * slashWidth * 0.3, ey + ny * slashWidth * 0.3);
+          ctx.lineTo(ex - nx * slashWidth * 0.3, ey - ny * slashWidth * 0.3);
+          ctx.lineTo(sx - nx * slashWidth, sy - ny * slashWidth);
+          ctx.closePath();
+          
+          // Glow
+          ctx.shadowBlur = 20 * alpha;
+          ctx.shadowColor = glowColor;
+          ctx.fillStyle = slashColor;
+          ctx.fill();
+          
+          // Core white line
+          ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+          ctx.lineWidth = 3 * (1 - progress * 0.5);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(ex, ey);
+          ctx.stroke();
+          
+          ctx.shadowBlur = 0;
+        }
 
         ctx.globalCompositeOperation = 'source-over';
         ctx.shadowBlur = 0;
@@ -2403,76 +3129,105 @@
       killLimitValue: document.getElementById('kill-limit-value'),
       killLimitDisplay: document.getElementById('kill-limit-display'),
 
-      // Team score elements
-      redKills: document.getElementById('red-kills'),
-      blueKills: document.getElementById('blue-kills'),
-      redRawKills: document.getElementById('red-raw-kills'),
-      blueRawKills: document.getElementById('blue-raw-kills'),
-      redRicochets: document.getElementById('red-ricochets'),
-      blueRicochets: document.getElementById('blue-ricochets'),
+      // Team score elements (new layout)
+      redScore: document.getElementById('red-score'),
+      blueScore: document.getElementById('blue-score'),
       redWins: document.getElementById('red-wins'),
       blueWins: document.getElementById('blue-wins'),
 
+      // Toggles
+      toggleHealth: document.getElementById('toggle-health'),
+      toggleArmor: document.getElementById('toggle-armor'),
+      toggleLaser: document.getElementById('toggle-laser'),
+      toggleSword: document.getElementById('toggle-sword'),
+      toggleFf: document.getElementById('toggle-ff'),
+      toggleRicochet: document.getElementById('toggle-ricochet'),
+
+      // Field item counts
+      fieldItemsList: document.getElementById('field-items-list'),
+
+      // Respawn time slider
+      respawnTime: document.getElementById('respawn-time'),
+      respawnTimeValue: document.getElementById('respawn-time-value'),
+
       pauseBtn: document.getElementById('pause-btn'),
       restartBtn: document.getElementById('restart-btn'),
-      fullscreenBtn: document.getElementById('fullscreen-btn'),
-      highlightRoundBtn: document.getElementById('highlight-round-btn'),
-      highlightAlltimeBtn: document.getElementById('highlight-alltime-btn'),
       saveBtn: document.getElementById('save-btn'),
       loadBtn: document.getElementById('load-btn'),
+      loadFile: document.getElementById('load-file'),
       headlessBtn: document.getElementById('headless-btn'),
+      headlessOverlay: document.getElementById('headless-overlay'),
       ups: document.getElementById('ups'),
     };
 
     // Headless mode
     let headlessMode = true;
-    const headlessOverlay = document.getElementById('headless-overlay');
-
-    // Set initial headless button state
-    ui.headlessBtn.textContent = '🖥️ HEADLESS MODE (ON)';
-    ui.headlessBtn.style.background = 'rgba(0, 255, 0, 0.3)';
-    ui.headlessBtn.style.borderColor = '#0f0';
-    ui.headlessBtn.style.color = '#0f0';
-
+    ui.headlessOverlay.classList.add('visible');
+    
     ui.headlessBtn.addEventListener('click', () => {
       headlessMode = !headlessMode;
       ui.headlessBtn.textContent = headlessMode ? '🖥️ HEADLESS MODE (ON)' : '🖥️ HEADLESS MODE (OFF)';
       ui.headlessBtn.style.background = headlessMode ? 'rgba(0, 255, 0, 0.3)' : 'rgba(100, 100, 100, 0.1)';
       ui.headlessBtn.style.borderColor = headlessMode ? '#0f0' : '#888';
       ui.headlessBtn.style.color = headlessMode ? '#0f0' : '#888';
-      headlessOverlay.classList.toggle('hidden', !headlessMode);
+      ui.headlessOverlay.classList.toggle('visible', headlessMode);
     });
 
-    // Highlight toggles
-    let highlightTopRound = false;
-    let highlightTopAlltime = false;
-
-    ui.highlightRoundBtn.addEventListener('click', () => {
-      highlightTopRound = !highlightTopRound;
-      ui.highlightRoundBtn.style.background = highlightTopRound ? 'rgba(255, 200, 0, 0.4)' : 'rgba(255, 200, 0, 0.1)';
+    // Toggle handlers - connect to world
+    ui.toggleFf.addEventListener('click', () => {
+      if (ui.toggleFf.classList.contains('disabled')) return;
+      ui.toggleFf.classList.toggle('active');
+      world.friendlyFire = ui.toggleFf.classList.contains('active');
+      // Mutual exclusion
+      if (world.friendlyFire) {
+        ui.toggleRicochet.classList.add('disabled');
+        ui.toggleRicochet.classList.remove('active');
+        world.friendlyFireRicochet = false;
+      } else {
+        ui.toggleRicochet.classList.remove('disabled');
+      }
     });
 
-    ui.highlightAlltimeBtn.addEventListener('click', () => {
-      highlightTopAlltime = !highlightTopAlltime;
-      ui.highlightAlltimeBtn.style.background = highlightTopAlltime ? 'rgba(255, 100, 0, 0.4)' : 'rgba(255, 100, 0, 0.1)';
+    ui.toggleRicochet.addEventListener('click', () => {
+      if (ui.toggleRicochet.classList.contains('disabled')) return;
+      ui.toggleRicochet.classList.toggle('active');
+      world.friendlyFireRicochet = ui.toggleRicochet.classList.contains('active');
+      // Mutual exclusion
+      if (world.friendlyFireRicochet) {
+        ui.toggleFf.classList.add('disabled');
+        ui.toggleFf.classList.remove('active');
+        world.friendlyFire = false;
+      } else {
+        ui.toggleFf.classList.remove('disabled');
+      }
     });
 
-    // Fullscreen
-    ui.fullscreenBtn.addEventListener('click', () => {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) elem.requestFullscreen();
-      else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-      else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+    // Respawn time slider
+    ui.respawnTime.addEventListener('input', (e) => {
+      const seconds = parseInt(e.target.value, 10);
+      world.respawnTime = seconds;
+      ui.respawnTimeValue.textContent = seconds + 's';
     });
-    
-    // Auto-resize and reset zoom on fullscreen change
-    document.addEventListener('fullscreenchange', () => {
-      setTimeout(() => {
-        renderer.zoom = 1;
-        renderer.resize();
-        ui.zoom.value = 100;
-        ui.zoomValue.textContent = '1.0x';
-      }, 100); // Small delay to let browser finish fullscreen transition
+
+    // Health/Armor toggle handlers
+    ui.toggleHealth.addEventListener('click', () => {
+      ui.toggleHealth.classList.toggle('active');
+      world.healthSpawnsEnabled = ui.toggleHealth.classList.contains('active');
+    });
+
+    ui.toggleArmor.addEventListener('click', () => {
+      ui.toggleArmor.classList.toggle('active');
+      world.armorSpawnsEnabled = ui.toggleArmor.classList.contains('active');
+    });
+
+    ui.toggleLaser.addEventListener('click', () => {
+      ui.toggleLaser.classList.toggle('active');
+      world.laserSpawnsEnabled = ui.toggleLaser.classList.contains('active');
+    });
+
+    ui.toggleSword.addEventListener('click', () => {
+      ui.toggleSword.classList.toggle('active');
+      world.swordSpawnsEnabled = ui.toggleSword.classList.contains('active');
     });
 
     // Sliders
@@ -2515,6 +3270,13 @@
       world.generation = 1;
       world.events = [];
       world.teamBrains = [null, null];
+      world.pickups = [];
+      world.pickupTimer = 0;
+      world.nextPickupType = 'health';
+      world.laserSpawned = false;
+      world.laserBeams = [];
+      world.swordSpawned = false;
+      world.swordSlashes = [];
       world.spawnAgents(population);
     });
 
@@ -2625,47 +3387,65 @@
       // UPS display with color coding
       ui.ups.textContent = currentUps;
       if (currentUps >= 55) {
-        ui.ups.style.color = '#00ff9d'; // Green - good
+        ui.ups.style.color = '#00ff9d';
       } else if (currentUps >= 30) {
-        ui.ups.style.color = '#ffc800'; // Yellow - ok
+        ui.ups.style.color = '#ffc800';
       } else {
-        ui.ups.style.color = '#ff4444'; // Red - lagging
+        ui.ups.style.color = '#ff4444';
       }
       
-      // Team scores
-      ui.redKills.textContent = world.teamKills[0];
-      ui.blueKills.textContent = world.teamKills[1];
-      ui.redRawKills.textContent = world.teamRawKills[0];
-      ui.blueRawKills.textContent = world.teamRawKills[1];
-      ui.redRicochets.textContent = world.teamRicochets[0];
-      ui.blueRicochets.textContent = world.teamRicochets[1];
+      // Team scores (new layout)
+      ui.redScore.textContent = world.teamKills[0];
+      ui.blueScore.textContent = world.teamKills[1];
       ui.redWins.textContent = world.teamWins[0];
       ui.blueWins.textContent = world.teamWins[1];
+
+      // Field items (dynamic based on active toggles with actual counts)
+      const healthCount = world.pickups.filter(p => p.type === 'health').length;
+      const armorCount = world.pickups.filter(p => p.type === 'armor').length;
+      const laserCount = world.pickups.filter(p => p.type === 'laser').length;
+      const swordCount = world.pickups.filter(p => p.type === 'sword').length;
+      
+      let fieldItemsHtml = '';
+      if (ui.toggleHealth.classList.contains('active')) {
+        fieldItemsHtml += '<div class="stat-row" title="Heals 50HP instantly"><span>🩹 Health</span><span class="stat-value">' + healthCount + '</span></div>';
+      }
+      if (ui.toggleArmor.classList.contains('active')) {
+        fieldItemsHtml += '<div class="stat-row" title="+50 armor per pickup, max 100"><span>🛡️ Armor</span><span class="stat-value">' + armorCount + '</span></div>';
+      }
+      if (ui.toggleLaser.classList.contains('active')) {
+        fieldItemsHtml += '<div class="stat-row" title="3s charge, instant kill beam"><span>⚡ Laser</span><span class="stat-value">' + laserCount + '</span></div>';
+      }
+      if (ui.toggleSword.classList.contains('active')) {
+        fieldItemsHtml += '<div class="stat-row" title="Hold to charge, release to lunge"><span>🗡️ Sword</span><span class="stat-value">' + swordCount + '</span></div>';
+      }
+      if (!fieldItemsHtml) {
+        fieldItemsHtml = '<div class="stat-row" style="opacity: 0.5; font-size: 0.75rem;">No active spawns</div>';
+      }
+      ui.fieldItemsList.innerHTML = fieldItemsHtml;
 
       // This round leaderboard
       ui.leaderboard.innerHTML = world.getLeaderboard().map((a, i) => {
         const status = a.alive ? '' : (a.respawnTimer > 0 ? ' (' + Math.ceil(a.respawnTimer) + 's)' : '');
         const kd = a.kills + '/' + a.deaths;
-        return '<div class="leader-entry ' + (a.alive ? '' : 'dead') + '" style="border-left-color: ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
-          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">🚀 ' + a.name + status + '</span>' +
-          '<span class="score" title="K/D: ' + kd + '">' + a.score + ' <small style="opacity:0.6">(' + kd + ')</small></span>' +
+        return '<div class="leader-entry ' + (a.alive ? '' : 'dead') + '" style="border-left: 2px solid ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
+          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + a.name + status + '</span>' +
+          '<span class="score">' + a.score + '</span>' +
         '</div>';
       }).join('');
 
       // All-time legends leaderboard
-      const allTimeSorted = [...world.agents].sort((a, b) => b.totalKills - a.totalKills).slice(0, 10);
+      const allTimeSorted = [...world.agents].sort((a, b) => b.totalKills - a.totalKills).slice(0, 5);
       ui.alltimeLeaderboard.innerHTML = allTimeSorted.map((a, i) => {
         const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
-        const kd = a.totalKills + '/' + a.totalDeaths;
-        const kdr = a.totalDeaths > 0 ? (a.totalKills / a.totalDeaths).toFixed(2) : a.totalKills.toFixed(2);
-        return '<div class="leader-entry" style="border-left-color: ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
-          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + medal + '🚀 ' + a.name + '</span>' +
-          '<span class="score" title="Total K/D: ' + kd + '">' + a.totalKills + 'K <small style="opacity:0.6">(' + kdr + ' KDR)</small></span>' +
+        return '<div class="leader-entry" style="border-left: 2px solid ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
+          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + medal + ' ' + a.name + '</span>' +
+          '<span class="score">' + a.totalKills + 'K</span>' +
         '</div>';
       }).join('');
 
-      ui.log.innerHTML = world.events.slice(0, 15).map(e =>
-        '<div class="event"><span class="' + e.type + '">[' + new Date(e.time).toLocaleTimeString().split(' ')[0] + '] ' + e.text + '</span></div>'
+      ui.log.innerHTML = world.events.slice(0, 10).map(e =>
+        '<div class="event"><span class="' + e.type + '">' + e.text + '</span></div>'
       ).join('');
     }
 
@@ -2698,7 +3478,7 @@
 
       // Only render if not headless
       if (!headlessMode) {
-        renderer.render(highlightTopRound, highlightTopAlltime);
+        renderer.render();
       }
       drawUI(realDt);
 
@@ -2715,5 +3495,6 @@
     requestAnimationFrame(gameLoop);
   })();
   </script>
+
 </body>
 </html>
