@@ -2318,6 +2318,7 @@ button.secondary:hover {
           this.teleporterActiveTimer -= dt;
           if (this.teleporterActiveTimer <= 0) {
             this.teleporterActive = false;
+            this.teleporterNextActivation = -1; // Prevent reactivation this round
             this.addEvent('🌀 Teleporters deactivated', 'teleporter');
 
             // Add deactivation effects
@@ -4373,77 +4374,78 @@ button.secondary:hover {
             ctx.fill();
 
           } else {
-            // ACTIVE STATE - Glowing, spinning, ready to use!
-            const spinAngle = time * 3;
-            const pulse = 0.8 + Math.sin(time * 8) * 0.2;
+            // ACTIVE STATE - Clean glowing portal
+            const spinAngle = time * 2;
+            const pulse = 0.85 + Math.sin(time * 6) * 0.15;
             const timeRemaining = world.teleporterActiveTimer;
-            const urgency = timeRemaining < 10 ? (1 + Math.sin(time * 15) * 0.3) : 1;
+            const urgency = timeRemaining < 10 ? (1 + Math.sin(time * 12) * 0.2) : 1;
 
-            // Glow effect
-            ctx.shadowBlur = 25 * pulse * urgency;
-            ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
+            // Strong glow effect
+            ctx.shadowBlur = 30 * pulse * urgency;
+            ctx.shadowColor = 'rgba(0, 255, 255, 0.9)';
 
-            // Outer spinning ring
-            ctx.strokeStyle = `rgba(0, 255, 255, ${0.8 * urgency})`;
-            ctx.lineWidth = 4;
+            // Outer ring
+            ctx.strokeStyle = `rgba(0, 255, 255, ${0.9 * urgency})`;
+            ctx.lineWidth = 5;
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Spinning arc segments
+            // Inner rotating ring with team accent colors
             ctx.lineWidth = 3;
-            for (let j = 0; j < 4; j++) {
-              const arcStart = spinAngle + (j * Math.PI / 2);
-              const arcEnd = arcStart + Math.PI / 4;
-              ctx.strokeStyle = j % 2 === 0
-                ? `rgba(255, 100, 150, ${0.7 * pulse})` // Slight red accent
-                : `rgba(100, 150, 255, ${0.7 * pulse})`; // Slight blue accent
+            const innerR = r * 0.75;
+            for (let j = 0; j < 2; j++) {
+              const arcStart = spinAngle + j * Math.PI;
+              const arcEnd = arcStart + Math.PI * 0.8;
+              ctx.strokeStyle = j === 0
+                ? `rgba(255, 120, 120, ${0.6 * pulse})` // Red accent
+                : `rgba(120, 160, 255, ${0.6 * pulse})`; // Blue accent
               ctx.beginPath();
-              ctx.arc(x, y, r * 0.85, arcStart, arcEnd);
+              ctx.arc(x, y, innerR, arcStart, arcEnd);
               ctx.stroke();
             }
 
-            // Inner vortex gradient
-            const vortexGrad = ctx.createRadialGradient(x, y, 0, x, y, r * 0.75);
-            vortexGrad.addColorStop(0, `rgba(255, 255, 255, ${0.9 * pulse})`);
-            vortexGrad.addColorStop(0.3, `rgba(0, 255, 255, ${0.7 * pulse})`);
-            vortexGrad.addColorStop(0.6, `rgba(100, 0, 200, ${0.5 * pulse})`);
-            vortexGrad.addColorStop(1, 'rgba(0, 50, 100, 0.2)');
-            ctx.fillStyle = vortexGrad;
+            // Core gradient - deep to bright
+            const coreGrad = ctx.createRadialGradient(x, y, 0, x, y, r * 0.65);
+            coreGrad.addColorStop(0, `rgba(255, 255, 255, ${0.95 * pulse})`);
+            coreGrad.addColorStop(0.2, `rgba(150, 255, 255, ${0.8 * pulse})`);
+            coreGrad.addColorStop(0.5, `rgba(0, 200, 255, ${0.6 * pulse})`);
+            coreGrad.addColorStop(0.8, `rgba(80, 0, 180, ${0.4 * pulse})`);
+            coreGrad.addColorStop(1, 'rgba(20, 0, 60, 0.2)');
+            ctx.fillStyle = coreGrad;
             ctx.beginPath();
-            ctx.arc(x, y, r * 0.75, 0, Math.PI * 2);
+            ctx.arc(x, y, r * 0.65, 0, Math.PI * 2);
             ctx.fill();
 
-            // Spiral lines
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 * pulse})`;
-            ctx.lineWidth = 2;
-            for (let j = 0; j < 3; j++) {
+            // Pulsing inner rings
+            ctx.strokeStyle = `rgba(200, 255, 255, ${0.4 * pulse})`;
+            ctx.lineWidth = 1.5;
+            for (let j = 1; j <= 3; j++) {
+              const ringPulse = (time * 2 + j * 0.3) % 1;
+              const ringR = r * 0.15 + r * 0.45 * ringPulse;
+              const ringAlpha = 0.5 * (1 - ringPulse);
+              ctx.strokeStyle = `rgba(200, 255, 255, ${ringAlpha * pulse})`;
               ctx.beginPath();
-              for (let t = 0; t <= 1; t += 0.05) {
-                const spiralR = r * 0.1 + r * 0.6 * t;
-                const spiralAngle = spinAngle + t * Math.PI * 2 + (j * Math.PI * 2 / 3);
-                const px = x + Math.cos(spiralAngle) * spiralR;
-                const py = y + Math.sin(spiralAngle) * spiralR;
-                if (t === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
-              }
+              ctx.arc(x, y, ringR, 0, Math.PI * 2);
               ctx.stroke();
             }
 
-            // Center bright spot
+            // Bright center
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
             ctx.fillStyle = `rgba(255, 255, 255, ${pulse})`;
             ctx.beginPath();
-            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.arc(x, y, 5, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.shadowBlur = 0;
 
-            // Timer indicator when low
+            // Timer when running low
             if (timeRemaining < 10) {
-              ctx.fillStyle = `rgba(255, 200, 0, ${urgency * 0.8})`;
-              ctx.font = `bold ${12 * s}px monospace`;
+              ctx.fillStyle = `rgba(255, 220, 100, ${urgency * 0.9})`;
+              ctx.font = `bold ${14 * s}px monospace`;
               ctx.textAlign = 'center';
-              ctx.fillText(Math.ceil(timeRemaining) + 's', x, y + r + 20);
+              ctx.fillText(Math.ceil(timeRemaining) + 's', x, y + r + 22);
             }
           }
 
