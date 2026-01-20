@@ -4461,62 +4461,62 @@ button.secondary:hover {
           ctx.save();
 
           if (effect.type === 'warp_out') {
-            // Shrinking spiral effect
+            // Quick implosion flash - agent disappearing
             const shrink = 1 - progress;
             const teamColor = effect.team === 0 ? [255, 100, 100] : [100, 150, 255];
 
+            // Bright flash that shrinks to nothing
+            ctx.shadowBlur = 20 * shrink;
+            ctx.shadowColor = `rgb(${teamColor.join(',')})`;
+
+            // Single shrinking ring
             ctx.globalAlpha = shrink;
             ctx.strokeStyle = `rgb(${teamColor.join(',')})`;
-            ctx.lineWidth = 3 * shrink;
+            ctx.lineWidth = 4 * shrink;
+            ctx.beginPath();
+            ctx.arc(x, y, 30 * s * shrink, 0, Math.PI * 2);
+            ctx.stroke();
 
-            // Imploding circles
-            for (let i = 0; i < 3; i++) {
-              const circleR = (40 - i * 10) * s * shrink;
-              ctx.beginPath();
-              ctx.arc(x, y, circleR, 0, Math.PI * 2);
-              ctx.stroke();
-            }
+            // Bright center that implodes
+            const flashGrad = ctx.createRadialGradient(x, y, 0, x, y, 25 * s * shrink);
+            flashGrad.addColorStop(0, `rgba(255, 255, 255, ${shrink})`);
+            flashGrad.addColorStop(0.4, `rgba(${teamColor.join(',')}, ${shrink * 0.8})`);
+            flashGrad.addColorStop(1, `rgba(${teamColor.join(',')}, 0)`);
+            ctx.fillStyle = flashGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, 25 * s * shrink, 0, Math.PI * 2);
+            ctx.fill();
 
-            // Converging lines
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 8; i++) {
-              const angle = (i / 8) * Math.PI * 2 + progress * Math.PI * 4;
-              const innerR = 5 * s;
-              const outerR = 50 * s * shrink;
-              ctx.beginPath();
-              ctx.moveTo(x + Math.cos(angle) * innerR, y + Math.sin(angle) * innerR);
-              ctx.lineTo(x + Math.cos(angle) * outerR, y + Math.sin(angle) * outerR);
-              ctx.stroke();
-            }
+            ctx.shadowBlur = 0;
 
           } else if (effect.type === 'warp_in') {
-            // Expanding burst effect
+            // Pop-in burst - agent appearing
             const expand = progress;
+            const pop = Math.sin(progress * Math.PI); // peaks at middle
             const teamColor = effect.team === 0 ? [255, 100, 100] : [100, 150, 255];
 
+            ctx.shadowBlur = 25 * pop;
+            ctx.shadowColor = `rgb(${teamColor.join(',')})`;
+
+            // Expanding ring that fades
             ctx.globalAlpha = 1 - progress;
             ctx.strokeStyle = `rgb(${teamColor.join(',')})`;
             ctx.lineWidth = 3 * (1 - progress);
+            ctx.beginPath();
+            ctx.arc(x, y, (15 + expand * 35) * s, 0, Math.PI * 2);
+            ctx.stroke();
 
-            // Expanding circles
-            for (let i = 0; i < 3; i++) {
-              const circleR = (10 + i * 15 + expand * 30) * s;
-              ctx.beginPath();
-              ctx.arc(x, y, circleR, 0, Math.PI * 2);
-              ctx.stroke();
-            }
+            // Bright flash at arrival
+            const flashGrad = ctx.createRadialGradient(x, y, 0, x, y, 35 * s * pop);
+            flashGrad.addColorStop(0, `rgba(255, 255, 255, ${pop * 0.9})`);
+            flashGrad.addColorStop(0.5, `rgba(${teamColor.join(',')}, ${pop * 0.6})`);
+            flashGrad.addColorStop(1, `rgba(${teamColor.join(',')}, 0)`);
+            ctx.fillStyle = flashGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, 35 * s * pop, 0, Math.PI * 2);
+            ctx.fill();
 
-            // Radiating lines
-            ctx.lineWidth = 2;
-            for (let i = 0; i < 8; i++) {
-              const angle = (i / 8) * Math.PI * 2;
-              const innerR = 10 * s * expand;
-              const outerR = (30 + expand * 40) * s;
-              ctx.beginPath();
-              ctx.moveTo(x + Math.cos(angle) * innerR, y + Math.sin(angle) * innerR);
-              ctx.lineTo(x + Math.cos(angle) * outerR, y + Math.sin(angle) * outerR);
-              ctx.stroke();
-            }
+            ctx.shadowBlur = 0;
 
           } else if (effect.type === 'activate') {
             // Portal activation burst
