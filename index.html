@@ -1454,19 +1454,30 @@ button.secondary:hover {
 
         // Forward/backward movement
         let targetSpeed = decision.speedAmount * 150; // Faster base speed
-        
+
+        // 2x movement speed while holding sword (not charging)
+        if (this.weapon === 'sword' && !this.swordCharging) {
+          targetSpeed *= 2;
+        }
+
         // 50% movement speed while charging laser
         if (this.laserCharging) {
           targetSpeed *= 0.5;
         }
-        
+
         // 80% movement slow while charging sword (20% speed)
         if (this.swordCharging) {
           targetSpeed *= 0.2;
         }
-        
+
         // Strafing (perpendicular movement)
         let strafeSpeed = (decision.strafe || 0) * 100;
+
+        // 2x strafe speed while holding sword (not charging)
+        if (this.weapon === 'sword' && !this.swordCharging) {
+          strafeSpeed *= 2;
+        }
+
         if (this.laserCharging) {
           strafeSpeed *= 0.5;
         }
