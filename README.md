@@ -8,7 +8,9 @@ https://rayengmark.github.io/neural-quakelike/
 
 ## What It Does
 
-50 red agents vs 50 blue agents. Each agent has a small neural network brain (26 inputs, 16 hidden neurons, 5 outputs) that controls movement, aiming, shooting, and abilities. After each round, the best performers pass their brains to the next generation with mutations. Over time, agents develop strategies for combat, dodging, weapon usage, and map control.
+Red team vs blue team. Each agent has a small neural network brain (26 inputs, 16 hidden neurons, 5 outputs) that controls movement, aiming, and shooting. After each round, the best performers pass their brains to the next generation with mutations. Over time, agents develop combat strategies.
+
+Population size is adjustable.
 
 ### Inputs
 
@@ -18,7 +20,7 @@ Each agent perceives the world through:
 - Weapon cooldown status
 - Nearest enemy angle and distance
 - Nearest ally angle and distance
-- Current weapon type (rocket launcher, laser, sword)
+- Current weapon type
 
 ### Outputs
 
@@ -31,26 +33,32 @@ The network decides:
 
 ## Weapons
 
-- **Rocket Launcher** - Default weapon. Explosive projectiles with splash damage.
+All agents spawn with a rocket launcher (explosive projectiles with splash damage).
+
+Optional pickups can be enabled:
 - **Laser** - Instant hitscan beam. One-shot kill.
 - **Energy Sword** - Charge-up melee lunge attack. Longer charge = longer range.
 
-Lasers and swords spawn in a circle at map center at the start of each round. Agents can only pick up one special weapon per round.
+When enabled, lasers and swords spawn in a circle at map center. Agents can only pick up one special weapon per round.
 
-## Map Features
+## Optional Features
 
-- **Pickup Pits** - Enclosed areas in the corners containing health and armor. Respawn on random timers (15-25 seconds).
-- **Teleporters** - Two portals (bottom-left and top-right) that activate at a random point during the round for 30 seconds.
-- **Cover** - Buildings scattered across the map, denser near spawns, sparser in the middle.
+These can be toggled on/off in the sidebar:
+- **Dodging** - Agents can dash in any direction. 6 second cooldown.
+- **Teleporters** - Two portals that activate at a random point during the round for 30 seconds.
+- **Laser/Sword spawns** - Special weapons at map center.
+- **Health/Armor spawns** - Pickups in enclosed pits near the corners. Random respawn timers.
+- **Friendly Fire** - Rockets damage teammates.
+- **Ricochet** - Friendly fire reflects back to the shooter.
 
 ## Controls
 
 The sidebar has controls for:
-- Simulation speed (1x to 10x)
+- Simulation speed
 - Population size
 - Round time and kill limit
-- Toggle switches for weapons, dodging, teleporters, friendly fire
-- Zoom and camera controls (drag to pan, scroll to zoom)
+- Toggle switches for all optional features
+- Zoom and camera (drag to pan, scroll to zoom)
 
 Click on any agent to follow them and see their stats.
 
