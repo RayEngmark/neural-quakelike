@@ -1845,11 +1845,21 @@ button.secondary:hover {
         }
         
         // Add slash animation (scale duration with distance)
+        // Sword is held to the right side - calculate perpendicular offset
+        const perpX = Math.cos(agent.rotation + Math.PI / 2); // perpendicular right
+        const perpY = Math.sin(agent.rotation + Math.PI / 2);
+        const bladeLength = agent.radius * 1.7; // blade from r*0.5 to r*2.2
+        const swordOffset = agent.radius * 1.35; // center of blade (avg of 0.5 and 2.2)
+
         const actualDist = Math.hypot(clampedEndX - startX, clampedEndY - startY);
         const slashDuration = 0.3 + (actualDist / 250) * 0.5; // 0.3s base + up to 0.5s for max range
         this.swordSlashes.push({
-          startX, startY,
-          endX: clampedEndX, endY: clampedEndY,
+          // Trail follows the sword position (offset to the right of agent path)
+          startX: startX + perpX * swordOffset,
+          startY: startY + perpY * swordOffset,
+          endX: clampedEndX + perpX * swordOffset,
+          endY: clampedEndY + perpY * swordOffset,
+          bladeLength: bladeLength, // trail width = blade length
           team: agent.team,
           timer: 0,
           maxTime: slashDuration
@@ -2827,8 +2837,8 @@ button.secondary:hover {
             // Sword blade
             ctx.save();
             if (agent.swordCharging) {
-              // Ready stance - sword to the right
-              ctx.rotate(Math.PI / 2);
+              // Ready stance - sword held to right side with backward angle (samurai style)
+              ctx.rotate(Math.PI / 2 + Math.PI / 6); // 90° + 30° = sword angled back-right
             }
             
             // Draw sword blade
@@ -3048,50 +3058,52 @@ button.secondary:hover {
           ctx.stroke();
         }
         
-        // Sword slashes
+        // Sword slashes - blade sweep trail
         for (const slash of this.world.swordSlashes) {
           const progress = slash.timer / slash.maxTime;
           const sx = slash.startX * s, sy = slash.startY * s;
           const ex = slash.endX * s, ey = slash.endY * s;
-          
+
           const alpha = 1 - progress;
-          const slashColor = slash.team === 0 ? 
-            `rgba(255, 68, 68, ${alpha})` : 
+          const slashColor = slash.team === 0 ?
+            `rgba(255, 68, 68, ${alpha})` :
             `rgba(68, 136, 255, ${alpha})`;
           const glowColor = slash.team === 0 ? '#ff4444' : '#4488ff';
-          
-          // Calculate perpendicular for slash width
+
+          // Calculate perpendicular for slash width (blade sweeps sideways)
           const dx = ex - sx;
           const dy = ey - sy;
           const len = Math.hypot(dx, dy);
           if (len === 0) continue;
-          
+
           const nx = -dy / len;
           const ny = dx / len;
-          const slashWidth = (30 - progress * 25) * s;
-          
-          // Draw arc slash effect
+          // Trail width = blade length (sword held sideways creates wide sweep)
+          const bladeWidth = (slash.bladeLength || 30) * s;
+          const slashWidth = bladeWidth * (1 - progress * 0.3); // slight fade
+
+          // Draw blade sweep trail (full blade width on both ends)
           ctx.beginPath();
           ctx.moveTo(sx + nx * slashWidth, sy + ny * slashWidth);
-          ctx.lineTo(ex + nx * slashWidth * 0.3, ey + ny * slashWidth * 0.3);
-          ctx.lineTo(ex - nx * slashWidth * 0.3, ey - ny * slashWidth * 0.3);
+          ctx.lineTo(ex + nx * slashWidth, ey + ny * slashWidth);
+          ctx.lineTo(ex - nx * slashWidth, ey - ny * slashWidth);
           ctx.lineTo(sx - nx * slashWidth, sy - ny * slashWidth);
           ctx.closePath();
-          
+
           // Glow
           ctx.shadowBlur = 20 * alpha;
           ctx.shadowColor = glowColor;
           ctx.fillStyle = slashColor;
           ctx.fill();
-          
-          // Core white line
+
+          // Core blade line (center of the sweep)
           ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
           ctx.lineWidth = 3 * (1 - progress * 0.5);
           ctx.beginPath();
           ctx.moveTo(sx, sy);
           ctx.lineTo(ex, ey);
           ctx.stroke();
-          
+
           ctx.shadowBlur = 0;
         }
 
