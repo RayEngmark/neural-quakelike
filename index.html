@@ -2168,18 +2168,22 @@ button.secondary:hover {
           });
         };
 
-        // 4 pits in corners/edges
-        // Top-left corner: health pit (opening faces down-right toward center)
-        createPit(100, 150, 'down', 'health');
+        // 4 pits moved toward middle, entrances facing walls
+        // ~20% from edges along length, bumped inward on height
+        const pitOffsetX = this.width * 0.2;  // 20% from edges
+        const pitOffsetY = 300;  // Inward from top/bottom
 
-        // Bottom-left corner: armor pit
-        createPit(100, this.height - 150, 'up', 'armor');
+        // Top-left area: health pit (opening faces UP toward wall)
+        createPit(pitOffsetX, pitOffsetY, 'up', 'health');
 
-        // Top-right corner: armor pit
-        createPit(this.width - 100, 150, 'down', 'armor');
+        // Bottom-left area: armor pit (opening faces DOWN toward wall)
+        createPit(pitOffsetX, this.height - pitOffsetY, 'down', 'armor');
 
-        // Bottom-right corner: health pit
-        createPit(this.width - 100, this.height - 150, 'up', 'health');
+        // Top-right area: armor pit (opening faces UP toward wall)
+        createPit(this.width - pitOffsetX, pitOffsetY, 'up', 'armor');
+
+        // Bottom-right area: health pit (opening faces DOWN toward wall)
+        createPit(this.width - pitOffsetX, this.height - pitOffsetY, 'down', 'health');
       }
 
       generateUniqueName() {
