@@ -2071,37 +2071,51 @@ button.secondary:hover {
         this.explosions = [];
         this.smokeParticles = [];
 
+        // Reset pickups and weapon state
+        this.pickups = [];
+        this.pickupTimer = 0;
+        this.nextPickupType = 'health';
+        this.laserSpawned = false;
+        this.laserBeams = [];
+        this.swordSpawned = false;
+        this.swordSlashes = [];
+        this.droppedWeapons = [];
+
         this.teamKills = [0, 0];
         this.teamRawKills = [0, 0];
         this.teamRicochets = [0, 0];
         this.winningTeam = null;
 
         const perTeam = Math.floor(count / 2);
-        
+
         // Create persistent soldiers for each team
         for (let team = 0; team < 2; team++) {
           const clusterX = team === 0 ? 80 : this.width - 80;
           const clusterY = this.height / 2;
-          
+
           for (let i = 0; i < perTeam; i++) {
             let x = clusterX + (Math.random() - 0.5) * 150;
             let y = clusterY + (Math.random() - 0.5) * (this.height - 200);
             x = clamp(x, 40, this.width - 40);
             y = clamp(y, 40, this.height - 40);
-            
+
             const brain = this.teamBrains[team]?.clone() || null;
             const agent = new Agent(x, y, this.generateUniqueName(), brain, team);
             agent.rotation = team === 0 ? 0 : Math.PI;
-            
+
             if (this.teamBrains[team] && i > 0) {
               agent.brain.mutate(0.1, 0.3);
             }
-            
+
             this.agents.push(agent);
           }
         }
 
         this.timeLeft = this.roundTime;
+
+        // Spawn weapons at round start
+        this.spawnLaserPickups();
+        this.spawnSwordPickups();
       }
 
       spawnNextRound() {
@@ -3751,13 +3765,6 @@ button.secondary:hover {
       world.generation = 1;
       world.events = [];
       world.teamBrains = [null, null];
-      world.pickups = [];
-      world.pickupTimer = 0;
-      world.nextPickupType = 'health';
-      world.laserSpawned = false;
-      world.laserBeams = [];
-      world.swordSpawned = false;
-      world.swordSlashes = [];
       world.spawnAgents(population);
     });
 
