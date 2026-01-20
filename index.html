@@ -1772,41 +1772,57 @@ button.secondary:hover {
         this.addEvent('🗡️ ENERGY SWORDS SPAWNED AT CENTER!', 'sword');
       }
 
+      spawnPickupInPit(pit) {
+        // Check if this type is enabled
+        if (pit.type === 'health' && !this.healthSpawnsEnabled) return false;
+        if (pit.type === 'armor' && !this.armorSpawnsEnabled) return false;
+
+        // Spawn pickup at pit center
+        this.pickups.push({
+          x: pit.x,
+          y: pit.y,
+          type: pit.type,
+          radius: 18,
+          pitRef: pit
+        });
+
+        pit.hasPickup = true;
+        pit.respawnTimer = 0;
+        pit.respawnTime = 0;
+
+        const icon = pit.type === 'health' ? '🩹' : '🛡️';
+        this.addEvent(icon + ' ' + pit.type.toUpperCase() + ' spawned in pit!', 'pickup');
+        return true;
+      }
+
       spawnPickups() {
-        // Spawn pickups in pits that don't have one
-        let spawnedHealth = false;
-        let spawnedArmor = false;
-
+        // Spawn pickups in all empty pits (used at round start)
         for (const pit of this.pickupPits) {
-          // Skip if pit already has a pickup
-          if (pit.hasPickup) continue;
-
-          // Check if this type is enabled
-          if (pit.type === 'health' && !this.healthSpawnsEnabled) continue;
-          if (pit.type === 'armor' && !this.armorSpawnsEnabled) continue;
-
-          // Spawn pickup at pit center
-          this.pickups.push({
-            x: pit.x,
-            y: pit.y,
-            type: pit.type,
-            radius: 18,
-            pitRef: pit // Reference to parent pit
-          });
-
-          pit.hasPickup = true;
-
-          if (pit.type === 'health') spawnedHealth = true;
-          if (pit.type === 'armor') spawnedArmor = true;
+          if (!pit.hasPickup) {
+            this.spawnPickupInPit(pit);
+          }
         }
+      }
 
-        // Announce spawns
-        if (spawnedHealth) {
-          this.addEvent('🩹 HEALTH spawned in pits!', 'pickup');
+      updatePitTimers(dt) {
+        // Update per-pit respawn timers (Roshan-style random respawn)
+        for (const pit of this.pickupPits) {
+          if (pit.hasPickup) continue; // Pit has a pickup, no timer needed
+          if (pit.respawnTime <= 0) continue; // No respawn scheduled
+
+          pit.respawnTimer += dt;
+          if (pit.respawnTimer >= pit.respawnTime) {
+            this.spawnPickupInPit(pit);
+          }
         }
-        if (spawnedArmor) {
-          this.addEvent('🛡️ ARMOR spawned in pits!', 'pickup');
-        }
+      }
+
+      // Set random respawn time when pickup is collected (15-25 seconds window)
+      schedulePitRespawn(pit) {
+        const baseTime = 20; // Base respawn time
+        const variance = 5;  // +/- 5 seconds
+        pit.respawnTime = baseTime + (Math.random() * 2 - 1) * variance; // 15-25 seconds
+        pit.respawnTimer = 0;
       }
 
       fireLaser(agent) {
@@ -2024,9 +2040,39 @@ button.secondary:hover {
           { w: 60, h: 120 },
         ];
 
+        // =====================
+        // RESERVE PIT AREAS FIRST - prevent other obstacles from spawning here
+        // =====================
+        const pitSize = 100;
+        const pitMargin = 60; // Extra space around pits
+        const pitOffsetX = this.width * 0.2;
+        const pitOffsetY = 300;
+
+        // Store pit center locations for later
+        this.pitLocations = [
+          { x: pitOffsetX, y: pitOffsetY },
+          { x: pitOffsetX, y: this.height - pitOffsetY },
+          { x: this.width - pitOffsetX, y: pitOffsetY },
+          { x: this.width - pitOffsetX, y: this.height - pitOffsetY }
+        ];
+
+        // Add temporary reservations (will be replaced by actual pit walls)
+        const pitReservations = [];
+        for (const loc of this.pitLocations) {
+          const reservation = {
+            x: loc.x - pitSize/2 - pitMargin,
+            y: loc.y - pitSize/2 - pitMargin,
+            w: pitSize + pitMargin * 2,
+            h: pitSize + pitMargin * 2,
+            isReservation: true
+          };
+          pitReservations.push(reservation);
+          this.obstacles.push(reservation);
+        }
+
         const overlaps = (x, y, w, h, margin = 30) => {
           for (const o of this.obstacles) {
-            if (x < o.x + o.w + margin && x + w > o.x - margin && 
+            if (x < o.x + o.w + margin && x + w > o.x - margin &&
                 y < o.y + o.h + margin && y + h > o.y - margin) return true;
           }
           return false;
@@ -2111,33 +2157,19 @@ button.secondary:hover {
         // =====================
         // PICKUP PITS - Enclosed areas for health/armor (like Roshan pit)
         // =====================
+        // Remove temporary reservations (keep only non-reservation obstacles)
+        this.obstacles = this.obstacles.filter(o => !o.isReservation);
+
         this.pickupPits = [];
-        const pitSize = 100; // Interior size
         const wallThick = 20;
 
-        // Helper to create a pit with 3 walls (U-shape), opening facing inward
+        // Helper to create a pit with 3 walls (U-shape), opening facing outward (toward walls)
         const createPit = (cx, cy, openingDir, type) => {
-          // openingDir: 'left', 'right', 'up', 'down' (which way the entrance faces)
+          // openingDir: 'up', 'down' (which way the entrance faces - toward the wall)
           const walls = [];
 
-          if (openingDir === 'right') {
-            // Opening faces right (toward center) - pit is in left edge
-            // Back wall (left)
-            walls.push({ x: cx - pitSize/2 - wallThick, y: cy - pitSize/2, w: wallThick, h: pitSize });
-            // Top wall
-            walls.push({ x: cx - pitSize/2 - wallThick, y: cy - pitSize/2 - wallThick, w: pitSize + wallThick, h: wallThick });
-            // Bottom wall
-            walls.push({ x: cx - pitSize/2 - wallThick, y: cy + pitSize/2, w: pitSize + wallThick, h: wallThick });
-          } else if (openingDir === 'left') {
-            // Opening faces left (toward center) - pit is in right edge
-            // Back wall (right)
-            walls.push({ x: cx + pitSize/2, y: cy - pitSize/2, w: wallThick, h: pitSize });
-            // Top wall
-            walls.push({ x: cx - pitSize/2, y: cy - pitSize/2 - wallThick, w: pitSize + wallThick, h: wallThick });
-            // Bottom wall
-            walls.push({ x: cx - pitSize/2, y: cy + pitSize/2, w: pitSize + wallThick, h: wallThick });
-          } else if (openingDir === 'down') {
-            // Opening faces down (toward center) - pit is in top edge
+          if (openingDir === 'down') {
+            // Opening faces down (toward bottom wall)
             // Back wall (top)
             walls.push({ x: cx - pitSize/2, y: cy - pitSize/2 - wallThick, w: pitSize, h: wallThick });
             // Left wall
@@ -2145,7 +2177,7 @@ button.secondary:hover {
             // Right wall
             walls.push({ x: cx + pitSize/2, y: cy - pitSize/2 - wallThick, w: wallThick, h: pitSize + wallThick });
           } else if (openingDir === 'up') {
-            // Opening faces up (toward center) - pit is in bottom edge
+            // Opening faces up (toward top wall)
             // Back wall (bottom)
             walls.push({ x: cx - pitSize/2, y: cy + pitSize/2, w: pitSize, h: wallThick });
             // Left wall
@@ -2160,19 +2192,17 @@ button.secondary:hover {
             this.buildings.push(w);
           }
 
-          // Store pit info for spawning
+          // Store pit info for spawning with random respawn timer
           this.pickupPits.push({
             x: cx, y: cy,
             type: type, // 'health' or 'armor'
-            hasPickup: false
+            hasPickup: false,
+            respawnTimer: 0,
+            respawnTime: 0 // Will be set when pickup is taken
           });
         };
 
-        // 4 pits moved toward middle, entrances facing walls
-        // ~20% from edges along length, bumped inward on height
-        const pitOffsetX = this.width * 0.2;  // 20% from edges
-        const pitOffsetY = 300;  // Inward from top/bottom
-
+        // 4 pits - using stored locations from reservation phase
         // Top-left area: health pit (opening faces UP toward wall)
         createPit(pitOffsetX, pitOffsetY, 'up', 'health');
 
@@ -2222,10 +2252,13 @@ button.secondary:hover {
         this.droppedWeapons = [];
         this.dodgeTrails = [];
 
-        // Reset pit spawn flags
+        // Reset pit spawn flags and timers, then spawn initial pickups
         for (const pit of this.pickupPits) {
           pit.hasPickup = false;
+          pit.respawnTimer = 0;
+          pit.respawnTime = 0;
         }
+        this.spawnPickups(); // Spawn initial pickups in all pits
 
         this.teamKills = [0, 0];
         this.teamRawKills = [0, 0];
@@ -2325,10 +2358,13 @@ button.secondary:hover {
         this.droppedWeapons = []; // Weapons dropped by dead players or weapon swaps
         this.dodgeTrails = [];
 
-        // Reset pit spawn flags
+        // Reset pit spawn flags and timers, then spawn initial pickups
         for (const pit of this.pickupPits) {
           pit.hasPickup = false;
+          pit.respawnTimer = 0;
+          pit.respawnTime = 0;
         }
+        this.spawnPickups(); // Spawn initial pickups in all pits
 
         // Reset all agents for new round (but keep names and lifetime stats)
         for (const agent of this.agents) {
@@ -2362,11 +2398,8 @@ button.secondary:hover {
         this.timeLeft -= dt;
 
         // Pickup spawning (health/armor only - weapons spawn at round start)
-        this.pickupTimer += dt;
-        if (this.pickupTimer >= this.pickupInterval) {
-          this.pickupTimer = 0;
-          this.spawnPickups();
-        }
+        // Update per-pit respawn timers (Roshan-style random respawn)
+        this.updatePitTimers(dt);
 
         // Pickup collection
         for (const agent of this.agents) {
@@ -2384,16 +2417,22 @@ button.secondary:hover {
                 if (healed > 0) {
                   this.addEvent('🩹 ' + agent.name + ' +' + healed + 'hp', 'pickup');
                 }
-                // Reset pit spawn flag if this was a pit pickup
-                if (p.pitRef) p.pitRef.hasPickup = false;
+                // Schedule random respawn for this pit
+                if (p.pitRef) {
+                  p.pitRef.hasPickup = false;
+                  this.schedulePitRespawn(p.pitRef);
+                }
                 this.pickups.splice(i, 1);
               } else if (p.type === 'armor') {
                 if (agent.armor < agent.maxArmor) {
                   const gained = Math.min(50, agent.maxArmor - agent.armor);
                   agent.armor = Math.min(agent.maxArmor, agent.armor + 50);
                   this.addEvent('🛡️ ' + agent.name + ' +' + gained + ' armor', 'pickup');
-                  // Reset pit spawn flag if this was a pit pickup
-                  if (p.pitRef) p.pitRef.hasPickup = false;
+                  // Schedule random respawn for this pit
+                  if (p.pitRef) {
+                    p.pitRef.hasPickup = false;
+                    this.schedulePitRespawn(p.pitRef);
+                  }
                   this.pickups.splice(i, 1);
                 }
               } else if (p.type === 'laser') {
