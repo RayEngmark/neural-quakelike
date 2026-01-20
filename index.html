@@ -3098,6 +3098,9 @@ button.secondary:hover {
             ctx.shadowBlur = 0;
           } else if (agent.weapon === 'sword') {
             // Legendary Energy Katana
+            // Define sword color locally to ensure correct team color
+            const localSwordColor = agent.team === 0 ? '#ff4444' : '#4488ff';
+
             ctx.save();
             if (agent.swordCharging) {
               // Ready stance - sword held to right side with backward angle (samurai style)
@@ -3132,13 +3135,13 @@ button.secondary:hover {
             ctx.beginPath();
             ctx.ellipse(r * 0.6, 0, 6 * s, 8 * s, 0, 0, Math.PI * 2);
             ctx.fill();
-            ctx.strokeStyle = swordColor;
+            ctx.strokeStyle = localSwordColor;
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
             // Blade outer glow
             ctx.shadowBlur = 15;
-            ctx.shadowColor = swordColor;
+            ctx.shadowColor = localSwordColor;
 
             // Blade shape - katana style with curved edge
             ctx.beginPath();
@@ -3186,7 +3189,7 @@ button.secondary:hover {
 
               // Energy particles gathering along blade
               ctx.shadowBlur = 15 * chargeProgress;
-              ctx.shadowColor = swordColor;
+              ctx.shadowColor = localSwordColor;
               for (let i = 0; i < 5; i++) {
                 const t = (Date.now() / 200 + i * 0.7) % 1;
                 const px = r * 0.7 + t * bladeLength * 0.8;
