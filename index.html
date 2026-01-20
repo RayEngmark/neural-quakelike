@@ -2129,77 +2129,109 @@ button.secondary:hover {
       fireLaser(agent) {
         if (!agent || !agent.alive) return;
 
-        // ULTRA SIMPLE laser - just a straight line to the wall
-        var startX = agent.x + Math.cos(agent.rotation) * agent.radius;
-        var startY = agent.y + Math.sin(agent.rotation) * agent.radius;
-
-        // Clamp start position
-        startX = Math.max(5, Math.min(this.width - 5, startX));
-        startY = Math.max(5, Math.min(this.height - 5, startY));
-
-        var cosA = Math.cos(agent.rotation);
-        var sinA = Math.sin(agent.rotation);
-
-        // Find wall intersection (simple approach)
-        var endX = startX;
-        var endY = startY;
-
-        // Step along the ray until we hit a wall
-        for (var dist = 0; dist < 5000; dist += 10) {
-          var testX = startX + cosA * dist;
-          var testY = startY + sinA * dist;
-
-          if (testX < 0 || testX > this.width || testY < 0 || testY > this.height) {
-            endX = Math.max(0, Math.min(this.width, testX));
-            endY = Math.max(0, Math.min(this.height, testY));
-            break;
-          }
-          endX = testX;
-          endY = testY;
-        }
-
-        // Check for enemy hits along this line
+        // Bouncing, piercing laser with 4 bounces
+        var maxBounces = 4;
+        var beamSegments = [];
+        var hitTargets = {};  // Track hit target IDs
         var killCount = 0;
-        for (var i = 0; i < this.agents.length; i++) {
-          var target = this.agents[i];
-          if (!target || target === agent || !target.alive) continue;
-          if (target.team === agent.team) continue;
 
-          // Simple point-to-line distance
-          var dx = endX - startX;
-          var dy = endY - startY;
+        var currentX = agent.x + Math.cos(agent.rotation) * agent.radius;
+        var currentY = agent.y + Math.sin(agent.rotation) * agent.radius;
+        currentX = Math.max(5, Math.min(this.width - 5, currentX));
+        currentY = Math.max(5, Math.min(this.height - 5, currentY));
+
+        var angle = agent.rotation;
+
+        for (var bounce = 0; bounce <= maxBounces; bounce++) {
+          var cosA = Math.cos(angle);
+          var sinA = Math.sin(angle);
+
+          // Find wall intersection
+          var endX = currentX;
+          var endY = currentY;
+
+          for (var dist = 0; dist < 5000; dist += 10) {
+            var testX = currentX + cosA * dist;
+            var testY = currentY + sinA * dist;
+
+            if (testX < 0 || testX > this.width || testY < 0 || testY > this.height) {
+              endX = Math.max(0, Math.min(this.width, testX));
+              endY = Math.max(0, Math.min(this.height, testY));
+              break;
+            }
+            endX = testX;
+            endY = testY;
+          }
+
+          // Check for enemy hits along this segment (piercing - hits all)
+          var dx = endX - currentX;
+          var dy = endY - currentY;
           var len = Math.sqrt(dx * dx + dy * dy);
-          if (len < 1) continue;
 
-          var px = target.x - startX;
-          var py = target.y - startY;
-          var dot = (px * dx + py * dy) / len;
+          if (len > 1) {
+            for (var i = 0; i < this.agents.length; i++) {
+              var target = this.agents[i];
+              if (!target || target === agent || !target.alive) continue;
+              if (target.team === agent.team) continue;
+              if (hitTargets[target.name]) continue;  // Already hit
 
-          if (dot > 0 && dot < len) {
-            var closestX = startX + (dx / len) * dot;
-            var closestY = startY + (dy / len) * dot;
-            var distToLine = Math.sqrt((target.x - closestX) * (target.x - closestX) + (target.y - closestY) * (target.y - closestY));
+              var px = target.x - currentX;
+              var py = target.y - currentY;
+              var dot = (px * dx + py * dy) / len;
 
-            if (distToLine < target.radius + 10) {
-              var killed = target.takeDamage(999, agent, this);
-              if (killed) {
-                agent.kills++;
-                agent.totalKills++;
-                this.teamKills[agent.team]++;
-                this.teamRawKills[agent.team]++;
-                killCount++;
+              if (dot > 0 && dot < len) {
+                var closestX = currentX + (dx / len) * dot;
+                var closestY = currentY + (dy / len) * dot;
+                var distToLine = Math.sqrt((target.x - closestX) * (target.x - closestX) + (target.y - closestY) * (target.y - closestY));
+
+                if (distToLine < target.radius + 10) {
+                  hitTargets[target.name] = true;
+                  var killed = target.takeDamage(999, agent, this);
+                  if (killed) {
+                    agent.kills++;
+                    agent.totalKills++;
+                    this.teamKills[agent.team]++;
+                    this.teamRawKills[agent.team]++;
+                    killCount++;
+                  }
+                }
               }
             }
           }
+
+          // Store segment
+          beamSegments.push({ startX: currentX, startY: currentY, endX: endX, endY: endY });
+
+          // Calculate bounce direction
+          var hitRight = Math.abs(endX - this.width) < 2;
+          var hitLeft = endX < 2;
+          var hitBottom = Math.abs(endY - this.height) < 2;
+          var hitTop = endY < 2;
+
+          if (hitRight || hitLeft) {
+            angle = Math.PI - angle;
+          }
+          if (hitBottom || hitTop) {
+            angle = -angle;
+          }
+
+          // Move to bounce point
+          currentX = Math.max(2, Math.min(this.width - 2, endX));
+          currentY = Math.max(2, Math.min(this.height - 2, endY));
         }
 
-        if (killCount > 0) {
+        // Event messages
+        if (killCount >= 3) {
+          this.addEvent('⚡ ' + agent.name + ' LASER DEVASTATION x' + killCount + '!', 'laser');
+        } else if (killCount >= 2) {
+          this.addEvent('⚡ ' + agent.name + ' LASER PIERCE x' + killCount + '!', 'laser');
+        } else if (killCount === 1) {
           this.addEvent('⚡ ' + agent.name + ' LASER KILL!', 'laser');
         }
 
-        // Simple beam visual (old format for compatibility)
+        // Add beam with all segments
         this.laserBeams.push({
-          segments: [{ startX: startX, startY: startY, endX: endX, endY: endY }],
+          segments: beamSegments,
           team: agent.team,
           timer: 0,
           maxTime: 1.5
