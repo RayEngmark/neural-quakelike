@@ -1495,8 +1495,14 @@ button.secondary:hover {
         this.attackCooldown = 0;
         this.attackRecovery = 0;
         this.weaponCooldown = 0;
-        this.weapon = 'rocket';
-        this.hasPickedUpWeapon = false; // Can pick up one special weapon per round
+        // Check if forceWeapon is active (debug mode)
+        if (forceWeapon) {
+          this.weapon = forceWeapon;
+          this.hasPickedUpWeapon = true;
+        } else {
+          this.weapon = 'rocket';
+          this.hasPickedUpWeapon = false; // Can pick up one special weapon per round
+        }
         this.dodgeCooldown = 0;
         this.isDodging = false;
         this.dodgeProgress = 0;
@@ -1534,7 +1540,7 @@ button.secondary:hover {
         this.attackRecovery = 0;
         this.weaponCooldown = 0;
         // Check if forceWeapon is active (debug mode)
-        if (typeof forceWeapon !== 'undefined' && forceWeapon) {
+        if (forceWeapon) {
           this.weapon = forceWeapon;
           this.hasPickedUpWeapon = true;
         } else {
@@ -3061,6 +3067,14 @@ button.secondary:hover {
 
         this.timeLeft = this.roundTime;
 
+        // Apply forceWeapon if debug mode is active
+        if (forceWeapon) {
+          for (const agent of this.agents) {
+            agent.weapon = forceWeapon;
+            agent.hasPickedUpWeapon = true;
+          }
+        }
+
         // Spawn weapons at round start
         this.spawnLaserPickups();
         this.spawnSwordPickups();
@@ -3155,6 +3169,14 @@ button.secondary:hover {
           agent.y = clamp(agent.y, 40, this.height - 40);
           agent.rotation = agent.team === 0 ? 0 : Math.PI;
           agent.resetForRound();
+        }
+
+        // Apply forceWeapon after reset if debug mode is active
+        if (forceWeapon) {
+          for (const agent of this.agents) {
+            agent.weapon = forceWeapon;
+            agent.hasPickedUpWeapon = true;
+          }
         }
 
         // Spawn weapons at round start (near team spawns)
