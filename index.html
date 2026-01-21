@@ -4372,8 +4372,14 @@ button.secondary:hover {
       clampCamera() {
         const vw = this.cssW / (this.baseScale * this.zoom);
         const vh = this.cssH / (this.baseScale * this.zoom);
-        this.cameraX = clamp(this.cameraX, -100, this.world.width - vw + 100);
-        this.cameraY = clamp(this.cameraY, -100, this.world.height - vh + 100);
+        // Always allow at least 300 units of panning freedom in each direction
+        const margin = 300;
+        const minX = Math.min(-margin, this.world.width - vw + margin);
+        const maxX = Math.max(-margin, this.world.width - vw + margin);
+        const minY = Math.min(-margin, this.world.height - vh + margin);
+        const maxY = Math.max(-margin, this.world.height - vh + margin);
+        this.cameraX = clamp(this.cameraX, minX, maxX);
+        this.cameraY = clamp(this.cameraY, minY, maxY);
       }
 
       handleClick(clientX, clientY) {
