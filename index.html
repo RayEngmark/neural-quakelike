@@ -6461,11 +6461,9 @@ button.secondary:hover {
       // Hide generation row in persistent mode (not relevant)
       ui.genRow.style.display = persistentMode ? 'none' : 'flex';
 
-      // Disable round-based sliders in persistent mode
-      ui.population.disabled = persistentMode;
+      // Disable round-based sliders in persistent mode (not population)
       ui.roundTime.disabled = persistentMode;
       ui.killLimit.disabled = persistentMode;
-      ui.population.parentElement.style.opacity = persistentMode ? '0.4' : '1';
       ui.roundTime.parentElement.style.opacity = persistentMode ? '0.4' : '1';
       ui.killLimit.parentElement.style.opacity = persistentMode ? '0.4' : '1';
 
