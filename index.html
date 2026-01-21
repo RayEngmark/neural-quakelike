@@ -99,6 +99,22 @@ body {
   border-left: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
 }
+#center-info .mode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+#center-info .mode-label {
+  font-size: 0.6rem;
+  color: #888;
+  letter-spacing: 1px;
+}
+#center-info .mode-toggle .toggle {
+  width: 32px;
+  height: 16px;
+}
 #center-info .big {
   font-family: 'JetBrains Mono', monospace;
   font-size: 1.8rem;
@@ -109,6 +125,185 @@ body {
   font-size: 0.65rem;
   color: #666;
   text-transform: uppercase;
+}
+#stats-btn {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  color: #888;
+  font-size: 1.2rem;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#stats-btn:hover {
+  background: rgba(0, 200, 255, 0.1);
+  border-color: var(--neon-blue);
+  color: var(--neon-blue);
+}
+#stats-btn.active {
+  background: rgba(0, 200, 255, 0.2);
+  border-color: var(--neon-blue);
+  color: var(--neon-blue);
+}
+
+/* Slide-in Stats Panel */
+#stats-panel {
+  position: fixed;
+  top: 0;
+  right: -320px;
+  width: 300px;
+  height: 100vh;
+  background: rgba(10, 10, 15, 0.98);
+  border-left: 1px solid var(--border-color);
+  z-index: 1000;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+  padding: 20px;
+}
+#stats-panel.open {
+  right: 0;
+}
+#stats-panel h3 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--neon-blue);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 20px 0 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color);
+}
+#stats-panel h3:first-child {
+  margin-top: 0;
+}
+#stats-panel .close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+#stats-panel .close-btn:hover {
+  color: #fff;
+}
+#stats-panel .stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+}
+#stats-panel .stat-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: bold;
+}
+#stats-panel .hof-entry {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 8px;
+  margin: 2px 0;
+  background: rgba(255,255,255,0.02);
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+#stats-panel .team-section {
+  margin-bottom: 15px;
+}
+#stats-panel .team-header {
+  font-size: 0.75rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+/* Floating Control Bar */
+#control-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 10, 15, 0.95);
+  border: 1px solid var(--border-color);
+  border-radius: 50px;
+  padding: 8px 16px;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+#control-bar .control-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#control-bar .control-group.main-controls {
+  padding: 0 12px;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+}
+#control-bar button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+  color: #888;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+#control-bar button:hover {
+  background: rgba(0, 200, 255, 0.1);
+  border-color: var(--neon-blue);
+  color: var(--neon-blue);
+}
+#control-bar button.active {
+  background: rgba(0, 255, 157, 0.2);
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+}
+#control-bar button svg {
+  width: 20px;
+  height: 20px;
+}
+#control-bar .play-btn {
+  width: 52px;
+  height: 52px;
+  background: rgba(0, 255, 157, 0.1);
+  border-color: var(--neon-green);
+  color: var(--neon-green);
+}
+#control-bar .play-btn:hover {
+  background: rgba(0, 255, 157, 0.2);
+}
+#control-bar .play-btn svg {
+  width: 24px;
+  height: 24px;
+}
+#control-bar .play-btn .pause-icon {
+  display: none;
+}
+#control-bar .play-btn.paused .play-icon {
+  display: block;
+}
+#control-bar .play-btn.paused .pause-icon {
+  display: none;
+}
+#control-bar .play-btn:not(.paused) .play-icon {
+  display: none;
+}
+#control-bar .play-btn:not(.paused) .pause-icon {
+  display: block;
 }
 
 /* MAIN AREA - Canvas + Sidebars */
@@ -632,9 +827,15 @@ button.secondary:hover {
 
 ```
   <div id="center-info">
+    <div class="mode-toggle">
+      <span class="mode-label" id="mode-label">ROUNDS</span>
+      <div class="toggle" id="toggle-persistent" title="Toggle Persistent Evolution Mode"></div>
+    </div>
     <div class="big" id="kill-limit-display">50</div>
-    <div class="sub">first to</div>
+    <div class="sub" id="mode-sub">first to</div>
   </div>
+
+  <button id="stats-btn" title="View detailed stats">📊</button>
 
   <div class="team-block blue">
     <div class="team-score">
@@ -707,45 +908,23 @@ button.secondary:hover {
     </div>
 
     <div class="panel" data-panel-id="controls">
-      <h2>// Controls</h2>
+      <h2>// Advanced</h2>
       <div class="btn-row">
-        <button id="pause-btn">PAUSE</button>
-        <button id="restart-btn" class="secondary">RESET</button>
-      </div>
-      <div class="btn-row" style="margin-top:10px;">
-        <button id="save-btn" style="background: rgba(0, 200, 255, 0.1); border-color: #00c8ff; color: #00c8ff;">💾 SAVE</button>
-        <button id="load-btn" style="background: rgba(200, 0, 255, 0.1); border-color: #c800ff; color: #c800ff;">📂 LOAD</button>
         <button id="copy-btn" style="background: rgba(0, 255, 100, 0.2); border-color: #00ff64; color: #00ff64;">📋 COPY</button>
         <button id="demo-btn" style="background: rgba(255, 200, 0, 0.2); border-color: #ffc800; color: #ffc800;">🎮 DEMO</button>
-      </div>
-      <div class="btn-row" style="margin-top:10px;">
-        <button id="headless-btn" style="background: rgba(0, 255, 0, 0.3); border-color: #0f0; color: #0f0; width: 100%;">🖥️ HEADLESS MODE (ON)</button>
-      </div>
-      <div class="btn-row" style="margin-top:10px;">
-        <button id="turbo-btn" style="background: rgba(255, 100, 0, 0.2); border-color: #ff6400; color: #ff6400; width: 100%;">⚡ TURBO MODE (OFF)</button>
       </div>
       <div class="btn-row" style="margin-top:10px;">
         <button id="debug-sword-btn" style="background: rgba(255, 0, 255, 0.1); border-color: #ff00ff; color: #ff00ff;">🗡️ ALL SWORD</button>
         <button id="debug-laser-btn" style="background: rgba(0, 200, 255, 0.1); border-color: #00aaff; color: #00aaff;">⚡ ALL LASER</button>
       </div>
       <input type="file" id="load-file" accept=".json" />
-    </div>
-
-    <div class="panel" data-panel-id="weapon-stats">
-      <h2>// Weapon Stats</h2>
-      <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Round / Total</div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>🚀 Rocket</span>
-        <span id="global-rocket-kills" style="color: #ff8800;">0 / 0</span>
-      </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-        <span>⚡ Laser</span>
-        <span id="global-laser-kills" style="color: #00aaff;">0 / 0</span>
-      </div>
-      <div style="display: flex; justify-content: space-between;">
-        <span>🗡️ Sword</span>
-        <span id="global-sword-kills" style="color: #ff00ff;">0 / 0</span>
-      </div>
+      <!-- Hidden elements for compatibility with existing code -->
+      <button id="pause-btn" style="display:none;">PAUSE</button>
+      <button id="restart-btn" style="display:none;">RESET</button>
+      <button id="save-btn" style="display:none;">SAVE</button>
+      <button id="load-btn" style="display:none;">LOAD</button>
+      <button id="headless-btn" style="display:none;">HEADLESS</button>
+      <button id="turbo-btn" style="display:none;">TURBO</button>
     </div>
 
     <div class="panel" data-panel-id="legends">
@@ -777,29 +956,6 @@ button.secondary:hover {
 
   <!-- RIGHT SIDEBAR: Game Modifiers -->
   <div id="right-sidebar">
-    <div class="panel" data-panel-id="evolution">
-      <h2>// Evolution Mode</h2>
-      <div class="toggle-row" title="Continuous evolution - no rounds, each death triggers individual evolution from Hall of Fame">
-        <label>🧬 Persistent Mode</label>
-        <div class="toggle" id="toggle-persistent"></div>
-      </div>
-      <div id="persistent-stats" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
-        <div class="stat-row">
-          <span>Total Lives</span>
-          <span class="stat-value" id="total-lives">0</span>
-        </div>
-        <div class="stat-row">
-          <span>🔴 HoF Entries</span>
-          <span class="stat-value" id="red-hof-count">0</span>
-        </div>
-        <div class="stat-row">
-          <span>🔵 HoF Entries</span>
-          <span class="stat-value" id="blue-hof-count">0</span>
-        </div>
-        <button id="clear-hof-btn" style="margin-top: 10px; width: 100%; background: rgba(255, 50, 50, 0.2); border-color: #ff3333; color: #ff6666;">🗑️ Clear Hall of Fame</button>
-      </div>
-    </div>
-
     <div class="panel" data-panel-id="modifiers">
       <h2>// Game Modifiers</h2>
       <div class="toggle-row" title="Spawns health packs every 10s. Instant 50HP + 50HP regen over 5s.">
@@ -833,29 +989,6 @@ button.secondary:hover {
       <div class="toggle-row" title="Teammate damage reflects back to shooter.">
         <label>🔄 FF Ricochet</label>
         <div class="toggle" id="toggle-ricochet"></div>
-      </div>
-    </div>
-
-    <div class="panel" data-panel-id="field-items">
-      <h2>// Field Items</h2>
-      <div id="field-items-list">
-        <div class="stat-row" style="opacity: 0.5; font-size: 0.75rem;">No active spawns</div>
-      </div>
-    </div>
-
-    <div class="panel" data-panel-id="weapons">
-      <h2>// Weapons</h2>
-      <div class="stat-row" title="4s cooldown, 90 damage, 120 radius splash">
-        <span>🚀 Rocket</span>
-        <span class="stat-value">90 dmg</span>
-      </div>
-      <div class="stat-row" title="3s charge time, infinite range beam, instant kill">
-        <span style="color: var(--neon-blue);">⚡ Laser</span>
-        <span class="stat-value" style="color: var(--neon-blue);">∞ dmg</span>
-      </div>
-      <div class="stat-row" title="Hold to charge (0.3-2s), release to lunge. Team colored.">
-        <span style="color: #ff00ff;">🗡️ Sword</span>
-        <span class="stat-value" style="color: #ff00ff;">∞ dmg</span>
       </div>
     </div>
 
@@ -936,6 +1069,83 @@ button.secondary:hover {
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Slide-in Stats Panel -->
+<div id="stats-panel">
+  <button class="close-btn" id="stats-close">&times;</button>
+
+  <h3>🧬 Evolution</h3>
+  <div class="stat-row">
+    <span>Mode</span>
+    <span class="stat-value" id="stats-mode">Rounds</span>
+  </div>
+  <div class="stat-row">
+    <span>Generation</span>
+    <span class="stat-value" id="stats-generation">1</span>
+  </div>
+  <div class="stat-row">
+    <span>Total Lives</span>
+    <span class="stat-value" id="stats-total-lives">0</span>
+  </div>
+
+  <h3>⚔️ Weapon Kills</h3>
+  <div class="stat-row">
+    <span>🚀 Rocket</span>
+    <span class="stat-value" id="stats-rocket-kills" style="color: #ff8800;">0 / 0</span>
+  </div>
+  <div class="stat-row">
+    <span>⚡ Laser</span>
+    <span class="stat-value" id="stats-laser-kills" style="color: #00aaff;">0 / 0</span>
+  </div>
+  <div class="stat-row">
+    <span>🗡️ Sword</span>
+    <span class="stat-value" id="stats-sword-kills" style="color: #ff00ff;">0 / 0</span>
+  </div>
+
+  <h3>🔴 Red Hall of Fame</h3>
+  <div id="stats-red-hof" class="team-section">
+    <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
+  </div>
+
+  <h3>🔵 Blue Hall of Fame</h3>
+  <div id="stats-blue-hof" class="team-section">
+    <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
+  </div>
+
+  <h3>🛠️ Actions</h3>
+  <button id="clear-hof-btn" style="width: 100%; margin-top: 5px; background: rgba(255, 50, 50, 0.2); border: 1px solid #ff3333; color: #ff6666; padding: 8px; border-radius: 4px; cursor: pointer;">🗑️ Clear Hall of Fame</button>
+</div>
+
+<!-- Floating Control Bar -->
+<div id="control-bar">
+  <div class="control-group">
+    <button id="ctrl-save" title="Save checkpoint">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+    </button>
+    <button id="ctrl-load" title="Load checkpoint">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
+    </button>
+  </div>
+
+  <div class="control-group main-controls">
+    <button id="ctrl-reset" title="Reset simulation">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+    </button>
+    <button id="ctrl-play" class="play-btn" title="Play/Pause">
+      <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+    </button>
+  </div>
+
+  <div class="control-group">
+    <button id="ctrl-headless" title="Toggle headless mode">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
+    </button>
+    <button id="ctrl-performance" title="Toggle performance mode">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.16 8.78L6 22h5v-5l-2.28 2.28C6.08 18 4.5 15.21 4.5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/></svg>
+    </button>
   </div>
 </div>
 
@@ -5636,15 +5846,21 @@ button.secondary:hover {
       toggleRicochet: document.getElementById('toggle-ricochet'),
       togglePersistent: document.getElementById('toggle-persistent'),
 
-      // Persistent mode UI
-      persistentStats: document.getElementById('persistent-stats'),
-      totalLives: document.getElementById('total-lives'),
-      redHofCount: document.getElementById('red-hof-count'),
-      blueHofCount: document.getElementById('blue-hof-count'),
+      // Stats panel
+      statsBtn: document.getElementById('stats-btn'),
+      statsPanel: document.getElementById('stats-panel'),
+      statsClose: document.getElementById('stats-close'),
+      modeLabel: document.getElementById('mode-label'),
+      modeSub: document.getElementById('mode-sub'),
+      statsMode: document.getElementById('stats-mode'),
+      statsGeneration: document.getElementById('stats-generation'),
+      statsTotalLives: document.getElementById('stats-total-lives'),
+      statsRocketKills: document.getElementById('stats-rocket-kills'),
+      statsLaserKills: document.getElementById('stats-laser-kills'),
+      statsSwordKills: document.getElementById('stats-sword-kills'),
+      statsRedHof: document.getElementById('stats-red-hof'),
+      statsBlueHof: document.getElementById('stats-blue-hof'),
       clearHofBtn: document.getElementById('clear-hof-btn'),
-
-      // Field item counts
-      fieldItemsList: document.getElementById('field-items-list'),
 
       // Respawn time slider
       respawnTime: document.getElementById('respawn-time'),
@@ -5684,6 +5900,14 @@ button.secondary:hover {
       neuralDash: document.getElementById('neural-dash'),
       awarenessEnemy: document.getElementById('awareness-enemy'),
       awarenessAlly: document.getElementById('awareness-ally'),
+
+      // Control bar
+      ctrlSave: document.getElementById('ctrl-save'),
+      ctrlLoad: document.getElementById('ctrl-load'),
+      ctrlReset: document.getElementById('ctrl-reset'),
+      ctrlPlay: document.getElementById('ctrl-play'),
+      ctrlHeadless: document.getElementById('ctrl-headless'),
+      ctrlPerformance: document.getElementById('ctrl-performance'),
     };
 
     // Headless mode
@@ -5697,6 +5921,7 @@ button.secondary:hover {
       ui.headlessBtn.style.borderColor = headlessMode ? '#0f0' : '#888';
       ui.headlessBtn.style.color = headlessMode ? '#0f0' : '#888';
       ui.headlessOverlay.classList.toggle('visible', headlessMode);
+      ui.ctrlHeadless.classList.toggle('active', headlessMode);
     });
 
     // Turbo mode - ultra performance rendering
@@ -5707,6 +5932,7 @@ button.secondary:hover {
       ui.turboBtn.style.borderColor = turboMode ? '#ff6400' : '#ff6400';
       ui.turboBtn.style.color = turboMode ? '#fff' : '#ff6400';
       world.addEvent(turboMode ? '⚡ TURBO MODE ON - Max Performance!' : '⚡ TURBO MODE OFF', 'kill');
+      ui.ctrlPerformance.classList.toggle('active', turboMode);
     });
 
     // Debug buttons - give all agents a weapon (persists after death)
@@ -5848,14 +6074,11 @@ button.secondary:hover {
       ui.togglePersistent.classList.toggle('active');
       persistentMode = ui.togglePersistent.classList.contains('active');
 
-      // Show/hide persistent mode stats
-      ui.persistentStats.style.display = persistentMode ? 'block' : 'none';
-
-      // Show/hide round-based UI elements
-      const roundElements = document.querySelectorAll('.round-mode-only');
-      const persistentElements = document.querySelectorAll('.persistent-mode-only');
-      roundElements.forEach(el => el.style.display = persistentMode ? 'none' : '');
-      persistentElements.forEach(el => el.style.display = persistentMode ? '' : 'none');
+      // Update header display
+      ui.modeLabel.textContent = persistentMode ? 'PERSISTENT' : 'ROUNDS';
+      ui.modeLabel.style.color = persistentMode ? '#00ff9d' : '#888';
+      ui.modeSub.textContent = persistentMode ? 'elapsed' : 'first to';
+      ui.killLimitDisplay.textContent = persistentMode ? formatTime(world.totalTime) : world.killLimit;
 
       if (persistentMode) {
         // Initialize life stats for all agents
@@ -5869,6 +6092,122 @@ button.secondary:hover {
         world.addEvent('🧬 PERSISTENT MODE OFF - Round-based evolution', 'kill');
       }
     });
+
+    // Stats panel open/close
+    ui.statsBtn.addEventListener('click', () => {
+      ui.statsPanel.classList.toggle('open');
+      ui.statsBtn.classList.toggle('active');
+    });
+    ui.statsClose.addEventListener('click', () => {
+      ui.statsPanel.classList.remove('open');
+      ui.statsBtn.classList.remove('active');
+    });
+
+    // Control bar event handlers
+    function updatePlayButton() {
+      ui.ctrlPlay.classList.toggle('paused', world.paused);
+    }
+
+    ui.ctrlPlay.addEventListener('click', () => {
+      world.paused = !world.paused;
+      updatePlayButton();
+      ui.pauseBtn.textContent = world.paused ? 'RESUME' : 'PAUSE';
+    });
+
+    ui.ctrlReset.addEventListener('click', () => {
+      world.generation = 1;
+      world.events = [];
+      world.teamBrains = [null, null];
+      forceWeapon = null;
+      updateDebugButtonStyles();
+      world.spawnAgents(population);
+    });
+
+    ui.ctrlSave.addEventListener('click', () => {
+      const checkpoint = {
+        version: '2.8',
+        timestamp: Date.now(),
+        generation: world.generation,
+        teamWins: world.teamWins,
+        teamBrains: world.teamBrains.map(b => b ? {
+          weightsIH: b.weightsIH.map(row => Array.from(row)),
+          weightsHO: b.weightsHO.map(row => Array.from(row)),
+          biasH: Array.from(b.biasH),
+          biasO: Array.from(b.biasO),
+          inputSize: b.inputSize,
+          hiddenSize: b.hiddenSize,
+          outputSize: b.outputSize
+        } : null)
+      };
+      localStorage.setItem('quake-checkpoint', JSON.stringify(checkpoint));
+      world.addEvent('💾 Checkpoint saved! Gen ' + world.generation, 'kill');
+      ui.ctrlSave.classList.add('active');
+      setTimeout(() => ui.ctrlSave.classList.remove('active'), 1000);
+    });
+
+    ui.ctrlLoad.addEventListener('click', () => {
+      try {
+        const data = localStorage.getItem('quake-checkpoint');
+        if (!data) {
+          world.addEvent('❌ No checkpoint saved!', 'kill');
+          return;
+        }
+
+        const checkpoint = JSON.parse(data);
+        world.generation = checkpoint.generation || 1;
+        world.teamWins = checkpoint.teamWins || [0, 0];
+
+        world.teamBrains = checkpoint.teamBrains.map(data => {
+          if (!data) return null;
+          const nn = new NeuralNetwork(data.inputSize, data.hiddenSize, data.outputSize);
+          nn.weightsIH = data.weightsIH.map(row => Float64Array.from(row));
+          nn.weightsHO = data.weightsHO.map(row => Float64Array.from(row));
+          nn.biasH = Float64Array.from(data.biasH);
+          nn.biasO = Float64Array.from(data.biasO);
+          return nn;
+        });
+
+        world.spawnAgents(population);
+        world.addEvent('📂 Loaded! Gen ' + world.generation, 'kill');
+        ui.ctrlLoad.classList.add('active');
+        setTimeout(() => ui.ctrlLoad.classList.remove('active'), 1000);
+      } catch (err) {
+        world.addEvent('❌ Failed to load checkpoint', 'kill');
+      }
+    });
+
+    function updateHeadlessButton() {
+      ui.ctrlHeadless.classList.toggle('active', headlessMode);
+    }
+
+    ui.ctrlHeadless.addEventListener('click', () => {
+      headlessMode = !headlessMode;
+      ui.headlessBtn.textContent = headlessMode ? '🖥️ HEADLESS MODE (ON)' : '🖥️ HEADLESS MODE (OFF)';
+      ui.headlessBtn.style.background = headlessMode ? 'rgba(0, 255, 0, 0.3)' : 'rgba(100, 100, 100, 0.1)';
+      ui.headlessBtn.style.borderColor = headlessMode ? '#0f0' : '#888';
+      ui.headlessBtn.style.color = headlessMode ? '#0f0' : '#888';
+      ui.headlessOverlay.classList.toggle('visible', headlessMode);
+      updateHeadlessButton();
+    });
+
+    function updatePerformanceButton() {
+      ui.ctrlPerformance.classList.toggle('active', turboMode);
+    }
+
+    ui.ctrlPerformance.addEventListener('click', () => {
+      turboMode = !turboMode;
+      ui.turboBtn.textContent = turboMode ? '⚡ TURBO MODE (ON)' : '⚡ TURBO MODE (OFF)';
+      ui.turboBtn.style.background = turboMode ? 'rgba(255, 100, 0, 0.5)' : 'rgba(255, 100, 0, 0.2)';
+      ui.turboBtn.style.borderColor = turboMode ? '#ff6400' : '#ff6400';
+      ui.turboBtn.style.color = turboMode ? '#fff' : '#ff6400';
+      world.addEvent(turboMode ? '⚡ PERFORMANCE MODE ON' : '⚡ PERFORMANCE MODE OFF', 'kill');
+      updatePerformanceButton();
+    });
+
+    // Initialize control bar button states
+    updatePlayButton();
+    updateHeadlessButton();
+    updatePerformanceButton();
 
     // Clear Hall of Fame button
     ui.clearHofBtn.addEventListener('click', () => {
@@ -5912,6 +6251,7 @@ button.secondary:hover {
     ui.pauseBtn.addEventListener('click', (e) => {
       world.paused = !world.paused;
       e.target.textContent = world.paused ? 'RESUME' : 'PAUSE';
+      updatePlayButton();
     });
 
     ui.restartBtn.addEventListener('click', () => {
@@ -6126,34 +6466,33 @@ button.secondary:hover {
       ui.redWins.textContent = world.teamWins[0];
       ui.blueWins.textContent = world.teamWins[1];
 
-      // Global weapon stats
-      ui.globalRocketKills.textContent = world.weaponKills.rocket + ' / ' + world.totalWeaponKills.rocket;
-      ui.globalLaserKills.textContent = world.weaponKills.laser + ' / ' + world.totalWeaponKills.laser;
-      ui.globalSwordKills.textContent = world.weaponKills.sword + ' / ' + world.totalWeaponKills.sword;
+      // Update stats panel
+      ui.statsMode.textContent = persistentMode ? 'Persistent' : 'Rounds';
+      ui.statsGeneration.textContent = world.generation;
+      ui.statsTotalLives.textContent = totalLivesEvaluated;
+      ui.statsRocketKills.textContent = world.weaponKills.rocket + ' / ' + world.totalWeaponKills.rocket;
+      ui.statsLaserKills.textContent = world.weaponKills.laser + ' / ' + world.totalWeaponKills.laser;
+      ui.statsSwordKills.textContent = world.weaponKills.sword + ' / ' + world.totalWeaponKills.sword;
 
-      // Field items (dynamic based on active toggles with actual counts)
-      const healthCount = world.pickups.filter(p => p.type === 'health').length;
-      const armorCount = world.pickups.filter(p => p.type === 'armor').length;
-      const laserCount = world.pickups.filter(p => p.type === 'laser').length;
-      const swordCount = world.pickups.filter(p => p.type === 'sword').length;
-      
-      let fieldItemsHtml = '';
-      if (ui.toggleHealth.classList.contains('active')) {
-        fieldItemsHtml += '<div class="stat-row" title="Heals 50HP instantly"><span>🩹 Health</span><span class="stat-value">' + healthCount + '</span></div>';
+      // Update Hall of Fame in stats panel
+      ui.statsRedHof.innerHTML = hallOfFame[0].length > 0
+        ? hallOfFame[0].slice(0, 5).map((e, i) => {
+            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+            return '<div class="hof-entry"><span>' + medal + ' ' + e.kills + 'K</span><span style="color:#00ff9d">' + e.score + '</span></div>';
+          }).join('')
+        : '<div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>';
+
+      ui.statsBlueHof.innerHTML = hallOfFame[1].length > 0
+        ? hallOfFame[1].slice(0, 5).map((e, i) => {
+            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+            return '<div class="hof-entry"><span>' + medal + ' ' + e.kills + 'K</span><span style="color:#00ff9d">' + e.score + '</span></div>';
+          }).join('')
+        : '<div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>';
+
+      // Update header display in persistent mode
+      if (persistentMode) {
+        ui.killLimitDisplay.textContent = formatTime(world.totalTime);
       }
-      if (ui.toggleArmor.classList.contains('active')) {
-        fieldItemsHtml += '<div class="stat-row" title="+50 armor per pickup, max 100"><span>🛡️ Armor</span><span class="stat-value">' + armorCount + '</span></div>';
-      }
-      if (ui.toggleLaser.classList.contains('active')) {
-        fieldItemsHtml += '<div class="stat-row" title="3s charge, instant kill beam"><span>⚡ Laser</span><span class="stat-value">' + laserCount + '</span></div>';
-      }
-      if (ui.toggleSword.classList.contains('active')) {
-        fieldItemsHtml += '<div class="stat-row" title="Hold to charge, release to lunge"><span>🗡️ Sword</span><span class="stat-value">' + swordCount + '</span></div>';
-      }
-      if (!fieldItemsHtml) {
-        fieldItemsHtml = '<div class="stat-row" style="opacity: 0.5; font-size: 0.75rem;">No active spawns</div>';
-      }
-      ui.fieldItemsList.innerHTML = fieldItemsHtml;
 
       // Leaderboard - different in persistent mode
       if (persistentMode) {
