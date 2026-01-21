@@ -870,7 +870,7 @@ button.secondary:hover {
   <div id="left-sidebar">
     <div class="panel" data-panel-id="status">
       <h2>// Status</h2>
-      <div class="stat-row">
+      <div class="stat-row" id="generation-row">
         <span>Generation</span>
         <span class="stat-value" id="generation">1</span>
       </div>
@@ -5820,6 +5820,7 @@ button.secondary:hover {
 
     const ui = {
       gen: document.getElementById('generation'),
+      genRow: document.getElementById('generation-row'),
       alive: document.getElementById('alive'),
       time: document.getElementById('time-left'),
       leaderboard: document.getElementById('leaderboard'),
@@ -6093,6 +6094,19 @@ button.secondary:hover {
       ui.modeSub.textContent = persistentMode ? 'elapsed' : 'first to';
       ui.killLimitDisplay.textContent = persistentMode ? formatTime(world.totalTime) : world.killLimit;
 
+      // Full reset when switching modes - they are separate
+      world.generation = 1;
+      world.events = [];
+      world.teamBrains = [null, null];
+      world.teamWins = [0, 0];
+      forceWeapon = null;
+      updateDebugButtonStyles();
+      clearHallOfFame();
+      world.spawnAgents(population);
+
+      // Hide generation row in persistent mode (not relevant)
+      ui.genRow.style.display = persistentMode ? 'none' : 'flex';
+
       if (persistentMode) {
         // Initialize life stats for all agents
         for (const agent of world.agents) {
@@ -6100,9 +6114,9 @@ button.secondary:hover {
           agent.lifeKills = 0;
           agent.lifeDamageDealt = 0;
         }
-        world.addEvent('🧬 PERSISTENT MODE ON - Continuous evolution!', 'kill');
+        world.addEvent('🧬 PERSISTENT MODE - Continuous evolution!', 'kill');
       } else {
-        world.addEvent('🧬 PERSISTENT MODE OFF - Round-based evolution', 'kill');
+        world.addEvent('🧬 ROUNDS MODE - Generation-based evolution', 'kill');
       }
     });
 
@@ -6471,7 +6485,10 @@ button.secondary:hover {
       if (uiTimer < UI_INTERVAL) return;
       uiTimer = 0;
 
-      ui.gen.textContent = persistentMode ? totalLivesEvaluated : world.generation;
+      // Only update generation in rounds mode (hidden in persistent mode)
+      if (!persistentMode) {
+        ui.gen.textContent = world.generation;
+      }
       ui.alive.textContent = world.agents.filter(a => a.alive).length;
       ui.time.textContent = persistentMode
         ? formatTime(world.totalTime)
