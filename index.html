@@ -4372,14 +4372,12 @@ button.secondary:hover {
       clampCamera() {
         const vw = this.cssW / (this.baseScale * this.zoom);
         const vh = this.cssH / (this.baseScale * this.zoom);
-        // Always allow at least 300 units of panning freedom in each direction
-        const margin = 300;
-        const minX = Math.min(-margin, this.world.width - vw + margin);
-        const maxX = Math.max(-margin, this.world.width - vw + margin);
-        const minY = Math.min(-margin, this.world.height - vh + margin);
-        const maxY = Math.max(-margin, this.world.height - vh + margin);
-        this.cameraX = clamp(this.cameraX, minX, maxX);
-        this.cameraY = clamp(this.cameraY, minY, maxY);
+        // Calculate how much "slack" there is when zoomed out
+        const slackX = Math.max(0, (vw - this.world.width) / 2);
+        const slackY = Math.max(0, (vh - this.world.height) / 2);
+        // Allow panning to move the world anywhere within the viewport
+        this.cameraX = clamp(this.cameraX, -slackX - 200, this.world.width - vw + slackX + 200);
+        this.cameraY = clamp(this.cameraY, -slackY - 200, this.world.height - vh + slackY + 200);
       }
 
       handleClick(clientX, clientY) {
