@@ -19,7 +19,6 @@
       --border-color: rgba(255, 255, 255, 0.1);
     }
 
-```
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
   background: var(--bg-dark);
@@ -824,7 +823,6 @@ button.secondary:hover {
 #headless-overlay .hint strong {
   color: var(--neon-green);
 }
-```
 
   </style>
 </head>
@@ -843,7 +841,6 @@ button.secondary:hover {
         </div>
       </div>
 
-```
   <div id="center-info">
     <div class="mode-toggle">
       <span class="mode-label" id="mode-label">ROUNDS</span>
@@ -853,7 +850,7 @@ button.secondary:hover {
     <div class="sub" id="mode-sub">first to</div>
   </div>
 
-  <button id="stats-btn" title="View detailed stats" style="display: none;">📊</button>
+  <button id="stats-btn" title="Stats & Info">☰</button>
 
   <div class="team-block blue">
     <div class="team-score">
@@ -1153,14 +1150,11 @@ button.secondary:hover {
   </div>
 
   <div class="control-group">
-    <button id="ctrl-headless" data-tooltip="Headless Mode">
+    <button id="ctrl-headless" title="Headless Mode" data-tooltip="Headless Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
     </button>
-    <button id="ctrl-performance" data-tooltip="Performance Mode">
+    <button id="ctrl-performance" title="Performance Mode" data-tooltip="Performance Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.16 8.78L6 22h5v-5l-2.28 2.28C6.08 18 4.5 15.21 4.5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/></svg>
-    </button>
-    <button id="ctrl-menu" data-tooltip="Stats & Info">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
     </button>
   </div>
 </div>
@@ -5920,7 +5914,6 @@ button.secondary:hover {
       ctrlPlay: document.getElementById('ctrl-play'),
       ctrlHeadless: document.getElementById('ctrl-headless'),
       ctrlPerformance: document.getElementById('ctrl-performance'),
-      ctrlMenu: document.getElementById('ctrl-menu'),
 
       // Stats panel elements
       statsUps: document.getElementById('stats-ups'),
@@ -6117,12 +6110,10 @@ button.secondary:hover {
     function openStatsPanel() {
       ui.statsPanel.classList.add('open');
       ui.statsBtn.classList.add('active');
-      ui.ctrlMenu.classList.add('active');
     }
     function closeStatsPanel() {
       ui.statsPanel.classList.remove('open');
       ui.statsBtn.classList.remove('active');
-      ui.ctrlMenu.classList.remove('active');
     }
     function toggleStatsPanel() {
       if (ui.statsPanel.classList.contains('open')) {
@@ -6133,16 +6124,14 @@ button.secondary:hover {
     }
     ui.statsBtn.addEventListener('click', toggleStatsPanel);
     ui.statsClose.addEventListener('click', closeStatsPanel);
-    ui.ctrlMenu.addEventListener('click', toggleStatsPanel);
 
     // Click outside to close stats panel
     document.addEventListener('click', (e) => {
       if (ui.statsPanel.classList.contains('open')) {
-        // Check if click is outside the panel and not on the menu/stats buttons
+        // Check if click is outside the panel and not on the stats button
         const clickedInPanel = ui.statsPanel.contains(e.target);
-        const clickedOnMenuBtn = ui.ctrlMenu.contains(e.target);
         const clickedOnStatsBtn = ui.statsBtn.contains(e.target);
-        if (!clickedInPanel && !clickedOnMenuBtn && !clickedOnStatsBtn) {
+        if (!clickedInPanel && !clickedOnStatsBtn) {
           closeStatsPanel();
         }
       }
@@ -6534,9 +6523,9 @@ button.secondary:hover {
 
       // Update Combat Log in stats panel
       ui.statsCombatLog.innerHTML = world.events.slice(-15).reverse().map(e => {
-        const typeColors = { kill: '#ff4444', death: '#888', spawn: '#00ff9d', damage: '#ffc800', sword: '#ff00ff', laser: '#00aaff' };
+        const typeColors = { kill: '#ff4444', death: '#888', spawn: '#00ff9d', damage: '#ffc800', sword: '#ff00ff', laser: '#00aaff', pickup: '#00ff9d', teleporter: '#aa00ff' };
         const color = typeColors[e.type] || '#888';
-        return '<div style="color: ' + color + '; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">' + e.msg + '</div>';
+        return '<div style="color: ' + color + '; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">' + e.text + '</div>';
       }).join('');
 
       // Update Hall of Fame in stats panel (only shown in persistent mode)
