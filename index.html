@@ -186,6 +186,44 @@ canvas { display: block; width: 100%; height: 100%; }
   text-transform: uppercase;
   letter-spacing: 1px;
   margin-bottom: 8px;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.panel h2::before {
+  content: '⋮⋮';
+  font-size: 10px;
+  color: #445;
+  letter-spacing: -2px;
+}
+.panel h2:hover::before {
+  color: var(--neon-blue);
+}
+.panel.dragging {
+  opacity: 0.9;
+  z-index: 1000;
+  box-shadow: 0 8px 32px rgba(0, 200, 255, 0.3);
+  border-color: var(--neon-blue);
+  pointer-events: none;
+}
+.panel.dragging h2 {
+  cursor: grabbing;
+}
+.panel.drag-over {
+  border-color: var(--neon-green);
+  background: rgba(0, 255, 136, 0.05);
+}
+#left-sidebar, #right-sidebar {
+  display: flex;
+  flex-direction: column;
+}
+#left-sidebar .panel, #right-sidebar .panel {
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.15s ease;
+}
+.panel.placeholder {
+  visibility: hidden;
 }
 
 .stat-row {
@@ -614,7 +652,7 @@ button.secondary:hover {
 <div id="main-area">
   <!-- LEFT SIDEBAR: Stats & Controls -->
   <div id="left-sidebar">
-    <div class="panel">
+    <div class="panel" data-panel-id="status">
       <h2>// Status</h2>
       <div class="stat-row">
         <span>Generation</span>
@@ -634,7 +672,7 @@ button.secondary:hover {
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-panel-id="parameters">
       <h2>// Parameters</h2>
       <div class="control-row">
         <label>Zoom</label>
@@ -668,7 +706,7 @@ button.secondary:hover {
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-panel-id="controls">
       <h2>// Controls</h2>
       <div class="btn-row">
         <button id="pause-btn">PAUSE</button>
@@ -693,8 +731,8 @@ button.secondary:hover {
       <input type="file" id="load-file" accept=".json" />
     </div>
 
-    <div class="panel">
-      <h2>// Weapon Stats ⚔️</h2>
+    <div class="panel" data-panel-id="weapon-stats">
+      <h2>// Weapon Stats</h2>
       <div style="font-size: 11px; color: #888; margin-bottom: 8px;">Round / Total</div>
       <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
         <span>🚀 Rocket</span>
@@ -710,17 +748,17 @@ button.secondary:hover {
       </div>
     </div>
 
-    <div class="panel">
-      <h2>// Legends 🏆</h2>
+    <div class="panel" data-panel-id="legends">
+      <h2>// Legends</h2>
       <div id="alltime-leaderboard"></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-panel-id="leaderboard">
       <h2>// Leaderboard</h2>
       <div id="leaderboard"></div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-panel-id="combat-log">
       <h2>// Combat Log</h2>
       <div id="event-log"></div>
     </div>
@@ -739,7 +777,7 @@ button.secondary:hover {
 
   <!-- RIGHT SIDEBAR: Game Modifiers -->
   <div id="right-sidebar">
-    <div class="panel">
+    <div class="panel" data-panel-id="modifiers">
       <h2>// Game Modifiers</h2>
       <div class="toggle-row" title="Spawns health packs every 10s. Instant 50HP + 50HP regen over 5s.">
         <label>🩹 Health Spawns</label>
@@ -775,14 +813,14 @@ button.secondary:hover {
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-panel-id="field-items">
       <h2>// Field Items</h2>
       <div id="field-items-list">
         <div class="stat-row" style="opacity: 0.5; font-size: 0.75rem;">No active spawns</div>
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-panel-id="weapons">
       <h2>// Weapons</h2>
       <div class="stat-row" title="4s cooldown, 90 damage, 120 radius splash">
         <span>🚀 Rocket</span>
@@ -799,7 +837,7 @@ button.secondary:hover {
     </div>
 
     <!-- Agent Profile Card (shown when following) -->
-    <div class="panel" id="agent-profile" style="display: none;">
+    <div class="panel" id="agent-profile" data-panel-id="agent-profile" style="display: none;">
       <h2>// Agent Profile</h2>
 
       <div id="profile-header">
@@ -5991,6 +6029,211 @@ button.secondary:hover {
     ui.populationValue.textContent = String(population);
     ui.roundTimeValue.textContent = String(parseInt(ui.roundTime.value, 10));
     ui.killLimitValue.textContent = String(world.killLimit);
+
+    // ========== MODULAR DRAGGABLE PANELS ==========
+    (function initDraggablePanels() {
+      const STORAGE_KEY = 'panelOrder';
+
+      // Get saved panel order from localStorage
+      function getSavedOrder() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          return saved ? JSON.parse(saved) : null;
+        } catch { return null; }
+      }
+
+      // Save panel order to localStorage
+      function saveOrder() {
+        const order = {
+          left: Array.from(document.querySelectorAll('#left-sidebar .panel[data-panel-id]'))
+            .map(p => p.dataset.panelId),
+          right: Array.from(document.querySelectorAll('#right-sidebar .panel[data-panel-id]'))
+            .map(p => p.dataset.panelId)
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+      }
+
+      // Restore saved panel order
+      function restoreOrder() {
+        const order = getSavedOrder();
+        if (!order) return;
+
+        ['left', 'right'].forEach(side => {
+          const sidebar = document.getElementById(side + '-sidebar');
+          if (!sidebar || !order[side]) return;
+
+          const panels = {};
+          sidebar.querySelectorAll('.panel[data-panel-id]').forEach(p => {
+            panels[p.dataset.panelId] = p;
+          });
+
+          order[side].forEach(id => {
+            if (panels[id]) sidebar.appendChild(panels[id]);
+          });
+        });
+      }
+
+      // Drag state
+      let draggedPanel = null;
+      let draggedRect = null;
+      let placeholder = null;
+      let startY = 0;
+      let offsetY = 0;
+      let currentSidebar = null;
+
+      // Get all panels in a sidebar, sorted by visual position
+      function getPanelsInOrder(sidebar) {
+        return Array.from(sidebar.querySelectorAll('.panel[data-panel-id]'))
+          .filter(p => p !== draggedPanel && !p.classList.contains('placeholder'));
+      }
+
+      // Calculate where the dragged panel should be inserted
+      function getInsertIndex(sidebar, y) {
+        const panels = getPanelsInOrder(sidebar);
+        for (let i = 0; i < panels.length; i++) {
+          const rect = panels[i].getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          if (y < midY) return i;
+        }
+        return panels.length;
+      }
+
+      // Handle drag start (mouse/touch)
+      function startDrag(e, panel) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+
+        e.preventDefault();
+
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+        draggedPanel = panel;
+        currentSidebar = panel.parentElement;
+        draggedRect = panel.getBoundingClientRect();
+        startY = clientY;
+        offsetY = clientY - draggedRect.top;
+
+        // Create placeholder
+        placeholder = document.createElement('div');
+        placeholder.className = 'panel placeholder';
+        placeholder.style.height = draggedRect.height + 'px';
+        placeholder.style.marginBottom = getComputedStyle(panel).marginBottom;
+        panel.parentElement.insertBefore(placeholder, panel);
+
+        // Style dragged panel
+        panel.classList.add('dragging');
+        panel.style.position = 'fixed';
+        panel.style.width = draggedRect.width + 'px';
+        panel.style.left = draggedRect.left + 'px';
+        panel.style.top = draggedRect.top + 'px';
+        panel.style.margin = '0';
+
+        document.body.style.cursor = 'grabbing';
+      }
+
+      // Handle drag move
+      function moveDrag(e) {
+        if (!draggedPanel) return;
+
+        e.preventDefault();
+
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const newTop = clientY - offsetY;
+
+        draggedPanel.style.top = newTop + 'px';
+
+        // Find which sidebar we're over
+        const sidebars = [
+          document.getElementById('left-sidebar'),
+          document.getElementById('right-sidebar')
+        ];
+
+        let targetSidebar = currentSidebar;
+        for (const sidebar of sidebars) {
+          const rect = sidebar.getBoundingClientRect();
+          const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          if (clientX >= rect.left && clientX <= rect.right) {
+            targetSidebar = sidebar;
+            break;
+          }
+        }
+
+        // Move placeholder to new position
+        if (targetSidebar) {
+          const insertIdx = getInsertIndex(targetSidebar, clientY);
+          const panels = getPanelsInOrder(targetSidebar);
+
+          // Remove placeholder from current position
+          if (placeholder.parentElement) {
+            placeholder.parentElement.removeChild(placeholder);
+          }
+
+          // Insert at new position
+          if (insertIdx >= panels.length) {
+            targetSidebar.appendChild(placeholder);
+          } else {
+            targetSidebar.insertBefore(placeholder, panels[insertIdx]);
+          }
+
+          currentSidebar = targetSidebar;
+        }
+      }
+
+      // Handle drag end
+      function endDrag() {
+        if (!draggedPanel) return;
+
+        // Animate panel to placeholder position
+        const placeholderRect = placeholder.getBoundingClientRect();
+
+        draggedPanel.style.transition = 'top 0.2s ease, left 0.2s ease';
+        draggedPanel.style.top = placeholderRect.top + 'px';
+        draggedPanel.style.left = placeholderRect.left + 'px';
+
+        setTimeout(() => {
+          // Reset panel styles
+          draggedPanel.classList.remove('dragging');
+          draggedPanel.style.position = '';
+          draggedPanel.style.width = '';
+          draggedPanel.style.left = '';
+          draggedPanel.style.top = '';
+          draggedPanel.style.margin = '';
+          draggedPanel.style.transition = '';
+
+          // Insert panel where placeholder was
+          placeholder.parentElement.insertBefore(draggedPanel, placeholder);
+          placeholder.remove();
+
+          // Save new order
+          saveOrder();
+
+          draggedPanel = null;
+          placeholder = null;
+          currentSidebar = null;
+        }, 200);
+
+        document.body.style.cursor = '';
+      }
+
+      // Attach event listeners to all panels
+      document.querySelectorAll('.panel[data-panel-id] h2').forEach(header => {
+        const panel = header.parentElement;
+
+        // Mouse events
+        header.addEventListener('mousedown', e => startDrag(e, panel));
+
+        // Touch events
+        header.addEventListener('touchstart', e => startDrag(e, panel), { passive: false });
+      });
+
+      // Global move/end handlers
+      document.addEventListener('mousemove', moveDrag);
+      document.addEventListener('mouseup', endDrag);
+      document.addEventListener('touchmove', moveDrag, { passive: false });
+      document.addEventListener('touchend', endDrag);
+
+      // Restore saved order on load
+      restoreOrder();
+    })();
 
     requestAnimationFrame(gameLoop);
   })();
