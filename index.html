@@ -2634,8 +2634,8 @@ button.secondary:hover {
         this.deaths++;
         this.totalDeaths++;
 
-        // Drop special weapon on death
-        if (world && (this.weapon === 'laser' || this.weapon === 'sword')) {
+        // Drop special weapon on death (unless forceWeapon debug mode is active)
+        if (world && !forceWeapon && (this.weapon === 'laser' || this.weapon === 'sword')) {
           world.dropWeapon(this.x, this.y, this.weapon);
         }
 
