@@ -1229,6 +1229,10 @@ button.secondary:hover {
         <label>🔄 FF Ricochet</label>
         <div class="toggle" id="toggle-ricochet"></div>
       </div>
+      <div class="toggle-row" id="no-respawn-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;" title="Rounds mode only. No respawns - round ends when one team is eliminated.">
+        <label>💀 No Respawn</label>
+        <div class="toggle" id="toggle-no-respawn"></div>
+      </div>
     </div>
 
     <!-- Agent Profile Card (shown when following) -->
@@ -1437,6 +1441,7 @@ button.secondary:hover {
     let turboMode = false;
     let forceWeapon = null; // 'sword', 'laser', or null - persists weapons after death
     let persistentMode = false; // Persistent per-life evolution mode
+    let noRespawnMode = false; // Rounds mode only: no respawns, round ends when team eliminated
 
     // --------------------
     // Hall of Fame (for persistent mode)
@@ -3930,13 +3935,15 @@ button.secondary:hover {
         this.aliveCount = alive;
         this.rebuildSpatial();
         
-        // Handle respawns
-        for (const agent of this.agents) {
-          if (!agent.alive && agent.respawnTimer > 0) {
-            agent.respawnTimer -= dt;
-            if (agent.respawnTimer <= 0) {
-              agent.respawn(this);
-              this.addEvent('🔄 ' + agent.name + ' respawned', 'damage');
+        // Handle respawns (skip in no respawn mode)
+        if (!noRespawnMode) {
+          for (const agent of this.agents) {
+            if (!agent.alive && agent.respawnTimer > 0) {
+              agent.respawnTimer -= dt;
+              if (agent.respawnTimer <= 0) {
+                agent.respawn(this);
+                this.addEvent('🔄 ' + agent.name + ' respawned', 'damage');
+              }
             }
           }
         }
@@ -4207,14 +4214,44 @@ button.secondary:hover {
 
         // Check win condition (only in generational mode)
         if (!persistentMode) {
-          if (this.teamKills[0] >= this.killLimit || this.teamKills[1] >= this.killLimit || this.timeLeft <= 0) {
+          // In no respawn mode, check if one team is eliminated
+          if (noRespawnMode) {
+            const redAlive = this.agents.filter(a => a.team === 0 && a.alive).length;
+            const blueAlive = this.agents.filter(a => a.team === 1 && a.alive).length;
+            if (redAlive === 0 || blueAlive === 0 || this.timeLeft <= 0) {
+              this.endRound();
+            }
+          } else if (this.teamKills[0] >= this.killLimit || this.teamKills[1] >= this.killLimit || this.timeLeft <= 0) {
             this.endRound();
           }
         }
       }
       endRound() {
         // Determine winner
-        if (this.teamKills[0] >= this.killLimit) {
+        if (noRespawnMode) {
+          // In no respawn mode, check which team was eliminated
+          const redAlive = this.agents.filter(a => a.team === 0 && a.alive).length;
+          const blueAlive = this.agents.filter(a => a.team === 1 && a.alive).length;
+          if (blueAlive === 0 && redAlive > 0) {
+            this.winningTeam = 0;
+            this.teamWins[0]++;
+            this.addEvent('🔴 RED TEAM WINS! Blue team eliminated!', 'kill');
+          } else if (redAlive === 0 && blueAlive > 0) {
+            this.winningTeam = 1;
+            this.teamWins[1]++;
+            this.addEvent('🔵 BLUE TEAM WINS! Red team eliminated!', 'kill');
+          } else {
+            // Time out or both eliminated - team with more alive wins, or most kills as tiebreaker
+            if (redAlive !== blueAlive) {
+              this.winningTeam = redAlive > blueAlive ? 0 : 1;
+            } else {
+              this.winningTeam = this.teamKills[0] > this.teamKills[1] ? 0 : 1;
+            }
+            this.teamWins[this.winningTeam]++;
+            const winnerName = this.winningTeam === 0 ? 'RED' : 'BLUE';
+            this.addEvent('⏱️ TIME! ' + winnerName + ' WINS (' + (this.winningTeam === 0 ? redAlive : blueAlive) + ' alive)', 'kill');
+          }
+        } else if (this.teamKills[0] >= this.killLimit) {
           this.winningTeam = 0;
           this.teamWins[0]++;
           this.addEvent('🔴 RED TEAM WINS! ' + this.teamKills[0] + ' kills!', 'kill');
@@ -6148,6 +6185,8 @@ button.secondary:hover {
       toggleTeleporter: document.getElementById('toggle-teleporter'),
       toggleFf: document.getElementById('toggle-ff'),
       toggleRicochet: document.getElementById('toggle-ricochet'),
+      toggleNoRespawn: document.getElementById('toggle-no-respawn'),
+      noRespawnRow: document.getElementById('no-respawn-row'),
       // Mode selector
       modeRounds: document.getElementById('mode-rounds'),
       modePersistent: document.getElementById('mode-persistent'),
@@ -6389,6 +6428,16 @@ button.secondary:hover {
       world.teleportersEnabled = ui.toggleTeleporter.classList.contains('active');
     });
 
+    // No Respawn toggle (rounds mode only)
+    ui.toggleNoRespawn.addEventListener('click', () => {
+      if (ui.toggleNoRespawn.classList.contains('disabled')) return;
+      ui.toggleNoRespawn.classList.toggle('active');
+      noRespawnMode = ui.toggleNoRespawn.classList.contains('active');
+      // Gray out kill limit when no respawn is active
+      ui.killLimit.disabled = noRespawnMode;
+      ui.killLimit.parentElement.style.opacity = noRespawnMode ? '0.4' : '1';
+    });
+
     // Mode info content
     const modeInfo = {
       rounds: {
@@ -6466,9 +6515,20 @@ button.secondary:hover {
 
       // Disable round-based sliders in persistent mode (not population)
       ui.roundTime.disabled = persistentMode;
-      ui.killLimit.disabled = persistentMode;
+      ui.killLimit.disabled = persistentMode || noRespawnMode;
       ui.roundTime.parentElement.style.opacity = persistentMode ? '0.4' : '1';
-      ui.killLimit.parentElement.style.opacity = persistentMode ? '0.4' : '1';
+      ui.killLimit.parentElement.style.opacity = (persistentMode || noRespawnMode) ? '0.4' : '1';
+
+      // Disable no respawn toggle in persistent mode (only works in rounds mode)
+      if (persistentMode) {
+        ui.toggleNoRespawn.classList.remove('active');
+        ui.toggleNoRespawn.classList.add('disabled');
+        ui.noRespawnRow.style.opacity = '0.4';
+        noRespawnMode = false;
+      } else {
+        ui.toggleNoRespawn.classList.remove('disabled');
+        ui.noRespawnRow.style.opacity = '1';
+      }
 
       if (persistentMode) {
         // Initialize life stats for all agents
