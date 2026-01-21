@@ -3067,6 +3067,14 @@ button.secondary:hover {
 
         this.timeLeft = this.roundTime;
 
+        // Apply forceWeapon if debug mode is active
+        if (forceWeapon) {
+          for (const agent of this.agents) {
+            agent.weapon = forceWeapon;
+            agent.hasPickedUpWeapon = true;
+          }
+        }
+
         // Spawn weapons at round start
         this.spawnLaserPickups();
         this.spawnSwordPickups();
@@ -3161,6 +3169,14 @@ button.secondary:hover {
           agent.y = clamp(agent.y, 40, this.height - 40);
           agent.rotation = agent.team === 0 ? 0 : Math.PI;
           agent.resetForRound();
+        }
+
+        // Apply forceWeapon after reset if debug mode is active
+        if (forceWeapon) {
+          for (const agent of this.agents) {
+            agent.weapon = forceWeapon;
+            agent.hasPickedUpWeapon = true;
+          }
         }
 
         // Spawn weapons at round start (near team spawns)
