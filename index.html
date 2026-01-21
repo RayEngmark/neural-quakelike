@@ -4422,9 +4422,7 @@ button.secondary:hover {
             ctx.lineWidth = 1.5;
             ctx.stroke();
 
-            // Blade outer glow
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = localSwordColor;
+            // Blade (no shadowBlur for performance)
 
             // Blade shape - katana style with curved edge
             ctx.beginPath();
@@ -4461,39 +4459,15 @@ button.secondary:hover {
             ctx.lineTo(r * 0.65 + bladeLength * 0.85, -bladeWidth * 0.4);
             ctx.stroke();
 
-            ctx.shadowBlur = 0;
             ctx.restore();
 
-            // Charging effect - energy gathering at blade
-            if (agent.swordCharging && agent.swordCharge > 0) {
-              const chargeProgress = agent.swordCharge / 2.0;
-              ctx.save();
-              ctx.rotate(Math.PI / 2 + Math.PI / 6);
-
-              // Energy particles gathering along blade
-              ctx.shadowBlur = 15 * chargeProgress;
-              ctx.shadowColor = localSwordColor;
-              for (let i = 0; i < 5; i++) {
-                const t = (Date.now() / 200 + i * 0.7) % 1;
-                const px = r * 0.7 + t * bladeLength * 0.8;
-                const py = (Math.sin(t * Math.PI * 4 + i) * 8 - 4) * s * chargeProgress;
-                const pSize = (2 + chargeProgress * 3) * s * (1 - t * 0.5);
-                ctx.fillStyle = `rgba(255, 255, 255, ${(0.3 + chargeProgress * 0.7) * (1 - t)})`;
-                ctx.beginPath();
-                ctx.arc(px, py, pSize, 0, Math.PI * 2);
-                ctx.fill();
-              }
-
-              // Blade intensifying glow
-              ctx.strokeStyle = `rgba(255, 255, 255, ${0.4 + chargeProgress * 0.5})`;
-              ctx.lineWidth = 2 + chargeProgress * 2;
+            // Simple ready indicator when charging (no heavy effects)
+            if (agent.swordCharging) {
+              ctx.strokeStyle = localSwordColor;
+              ctx.lineWidth = 2;
               ctx.beginPath();
-              ctx.moveTo(r * 0.65, 0);
-              ctx.lineTo(r * 0.65 + bladeLength * 0.9, 0);
+              ctx.arc(0, 0, r * 1.5, -0.3, 0.3);
               ctx.stroke();
-
-              ctx.shadowBlur = 0;
-              ctx.restore();
             }
           }
 
