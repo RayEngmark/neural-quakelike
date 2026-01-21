@@ -6477,13 +6477,6 @@ button.secondary:hover {
         ? formatTime(world.totalTime)
         : Math.ceil(world.timeLeft) + 's';
 
-      // Update persistent mode stats
-      if (persistentMode) {
-        ui.totalLives.textContent = totalLivesEvaluated;
-        ui.redHofCount.textContent = hallOfFame[0].length;
-        ui.blueHofCount.textContent = hallOfFame[1].length;
-      }
-      
       // Team scores (new layout)
       ui.redScore.textContent = world.teamKills[0];
       ui.blueScore.textContent = world.teamKills[1];
