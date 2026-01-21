@@ -2053,6 +2053,7 @@ button.secondary:hover {
         this.lifeStartTime = 0; // Set when agent spawns/respawns
         this.lifeKills = 0; // Kills this life only
         this.lifeDamageDealt = 0; // Damage this life only
+        this.lifeDamageTaken = 0; // Damage taken this life only
 
         // Dodge ability
         this.dodgeCooldown = 0;
@@ -2139,6 +2140,7 @@ button.secondary:hover {
         this.lifeStartTime = world ? world.totalTime : 0;
         this.lifeKills = 0;
         this.lifeDamageDealt = 0;
+        this.lifeDamageTaken = 0;
 
         // Spawn at back of team's side
         const clusterX = this.team === 0 ? 80 : world.width - 80;
@@ -2615,6 +2617,7 @@ button.secondary:hover {
         
         this.health -= amount;
         this.damageTaken += amount;
+        this.lifeDamageTaken += amount;
 
         // Track who hit us for assists
         if (attacker && attacker !== this.lastHitBy) {
@@ -2639,7 +2642,7 @@ button.secondary:hover {
         // Persistent mode: evaluate this life and evolve
         if (persistentMode && world) {
           const survivalTime = world.totalTime - this.lifeStartTime;
-          const lifeScore = this.lifeKills * 100 + this.lifeDamageDealt - (this.damageTaken * 0.3);
+          const lifeScore = this.lifeKills * 100 + this.lifeDamageDealt - (this.lifeDamageTaken * 0.3);
 
           // Add to Hall of Fame
           const entry = {
