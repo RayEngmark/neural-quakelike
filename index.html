@@ -677,6 +677,7 @@ button.secondary:hover {
       <div class="btn-row" style="margin-top:10px;">
         <button id="save-btn" style="background: rgba(0, 200, 255, 0.1); border-color: #00c8ff; color: #00c8ff;">💾 SAVE</button>
         <button id="load-btn" style="background: rgba(200, 0, 255, 0.1); border-color: #c800ff; color: #c800ff;">📂 LOAD</button>
+        <button id="demo-btn" style="background: rgba(255, 200, 0, 0.2); border-color: #ffc800; color: #ffc800;">🎮 DEMO</button>
       </div>
       <div class="btn-row" style="margin-top:10px;">
         <button id="headless-btn" style="background: rgba(0, 255, 0, 0.3); border-color: #0f0; color: #0f0; width: 100%;">🖥️ HEADLESS MODE (ON)</button>
@@ -881,6 +882,14 @@ button.secondary:hover {
     // Utility
     // --------------------
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    // --------------------
+    // Demo Checkpoint (pre-trained AI for visitors)
+    // To update: Save a checkpoint, then run in console:
+    // copy(localStorage.getItem('quake-checkpoint'))
+    // and paste the result below (replacing null)
+    // --------------------
+    const DEMO_CHECKPOINT = null;
 
     // --------------------
     // Names
@@ -5288,6 +5297,7 @@ button.secondary:hover {
       restartBtn: document.getElementById('restart-btn'),
       saveBtn: document.getElementById('save-btn'),
       loadBtn: document.getElementById('load-btn'),
+      demoBtn: document.getElementById('demo-btn'),
       loadFile: document.getElementById('load-file'),
       headlessBtn: document.getElementById('headless-btn'),
       headlessOverlay: document.getElementById('headless-overlay'),
@@ -5515,6 +5525,43 @@ button.secondary:hover {
         setTimeout(() => ui.loadBtn.textContent = '📂 LOAD', 1000);
       } catch (err) {
         alert('Failed to load: ' + err.message);
+      }
+    });
+
+    // Load demo checkpoint (pre-trained AI)
+    ui.demoBtn.addEventListener('click', () => {
+      if (!DEMO_CHECKPOINT) {
+        alert('No demo available yet! Train an AI, save it, then embed it in the code.');
+        return;
+      }
+
+      try {
+        const checkpoint = typeof DEMO_CHECKPOINT === 'string'
+          ? JSON.parse(DEMO_CHECKPOINT)
+          : DEMO_CHECKPOINT;
+
+        world.generation = checkpoint.generation || 1;
+        world.teamWins = checkpoint.teamWins || [0, 0];
+
+        // Restore brains
+        world.teamBrains = checkpoint.teamBrains.map(b => {
+          if (!b) return null;
+          const brain = new NeuralNetwork(b.inputSize, b.hiddenSize, b.outputSize);
+          brain.weightsIH = b.weightsIH.map(row => [...row]);
+          brain.weightsHO = b.weightsHO.map(row => [...row]);
+          brain.biasH = [...b.biasH];
+          brain.biasO = [...b.biasO];
+          return brain;
+        });
+
+        // Respawn with demo brains
+        world.spawnAgents(population);
+
+        world.addEvent('🎮 DEMO LOADED! Gen ' + world.generation, 'kill');
+        ui.demoBtn.textContent = '🎮 LOADED!';
+        setTimeout(() => ui.demoBtn.textContent = '🎮 DEMO', 1000);
+      } catch (err) {
+        alert('Failed to load demo: ' + err.message);
       }
     });
 
