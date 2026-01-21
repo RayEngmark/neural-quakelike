@@ -250,8 +250,8 @@ body {
   border-right: 1px solid var(--border-color);
 }
 #control-bar button {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 1px solid var(--border-color);
   background: rgba(255, 255, 255, 0.03);
@@ -261,6 +261,7 @@ body {
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  position: relative;
 }
 #control-bar button:hover {
   background: rgba(0, 200, 255, 0.1);
@@ -273,12 +274,29 @@ body {
   color: var(--neon-green);
 }
 #control-bar button svg {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
+}
+/* Tooltip for control bar buttons */
+#control-bar button[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  margin-bottom: 8px;
+  pointer-events: none;
+  z-index: 1000;
 }
 #control-bar .play-btn {
-  width: 52px;
-  height: 52px;
+  width: 60px;
+  height: 60px;
   background: rgba(0, 255, 157, 0.1);
   border-color: var(--neon-green);
   color: var(--neon-green);
@@ -287,8 +305,8 @@ body {
   background: rgba(0, 255, 157, 0.2);
 }
 #control-bar .play-btn svg {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
 }
 #control-bar .play-btn .pause-icon {
   display: none;
@@ -835,7 +853,7 @@ button.secondary:hover {
     <div class="sub" id="mode-sub">first to</div>
   </div>
 
-  <button id="stats-btn" title="View detailed stats">📊</button>
+  <button id="stats-btn" title="View detailed stats" style="display: none;">📊</button>
 
   <div class="team-block blue">
     <div class="team-score">
@@ -866,10 +884,6 @@ button.secondary:hover {
       <div class="stat-row">
         <span>Time</span>
         <span class="stat-value" id="time-left">60s</span>
-      </div>
-      <div class="stat-row">
-        <span>UPS</span>
-        <span class="stat-value" id="ups">60</span>
       </div>
     </div>
 
@@ -927,19 +941,9 @@ button.secondary:hover {
       <button id="turbo-btn" style="display:none;">TURBO</button>
     </div>
 
-    <div class="panel" data-panel-id="legends">
-      <h2>// Legends</h2>
-      <div id="alltime-leaderboard"></div>
-    </div>
-
     <div class="panel" data-panel-id="leaderboard">
       <h2>// Leaderboard</h2>
       <div id="leaderboard"></div>
-    </div>
-
-    <div class="panel" data-panel-id="combat-log">
-      <h2>// Combat Log</h2>
-      <div id="event-log"></div>
     </div>
   </div>
 
@@ -1076,18 +1080,18 @@ button.secondary:hover {
 <div id="stats-panel">
   <button class="close-btn" id="stats-close">&times;</button>
 
-  <h3>🧬 Evolution</h3>
+  <h3>📊 Simulation</h3>
   <div class="stat-row">
     <span>Mode</span>
     <span class="stat-value" id="stats-mode">Rounds</span>
   </div>
-  <div class="stat-row">
-    <span>Generation</span>
-    <span class="stat-value" id="stats-generation">1</span>
-  </div>
-  <div class="stat-row">
+  <div class="stat-row" id="stats-total-lives-row">
     <span>Total Lives</span>
     <span class="stat-value" id="stats-total-lives">0</span>
+  </div>
+  <div class="stat-row">
+    <span>Sim Speed</span>
+    <span class="stat-value" id="stats-ups">60</span>
   </div>
 
   <h3>⚔️ Weapon Kills</h3>
@@ -1104,18 +1108,27 @@ button.secondary:hover {
     <span class="stat-value" id="stats-sword-kills" style="color: #ff00ff;">0 / 0</span>
   </div>
 
-  <h3>🔴 Red Hall of Fame</h3>
-  <div id="stats-red-hof" class="team-section">
-    <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
+  <h3>🏆 Overall Kill Leaderboard</h3>
+  <div id="stats-leaderboard" class="team-section">
+    <div style="opacity: 0.5; font-size: 0.75rem;">No data yet</div>
   </div>
 
-  <h3>🔵 Blue Hall of Fame</h3>
-  <div id="stats-blue-hof" class="team-section">
-    <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
+  <div id="hof-section">
+    <h3>🔴 Red Hall of Fame</h3>
+    <div id="stats-red-hof" class="team-section">
+      <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
+    </div>
+
+    <h3>🔵 Blue Hall of Fame</h3>
+    <div id="stats-blue-hof" class="team-section">
+      <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
+    </div>
+
+    <button id="clear-hof-btn" style="width: 100%; margin-top: 5px; background: rgba(255, 50, 50, 0.2); border: 1px solid #ff3333; color: #ff6666; padding: 8px; border-radius: 4px; cursor: pointer;">🗑️ Clear Hall of Fame</button>
   </div>
 
-  <h3>🛠️ Actions</h3>
-  <button id="clear-hof-btn" style="width: 100%; margin-top: 5px; background: rgba(255, 50, 50, 0.2); border: 1px solid #ff3333; color: #ff6666; padding: 8px; border-radius: 4px; cursor: pointer;">🗑️ Clear Hall of Fame</button>
+  <h3>📜 Combat Log</h3>
+  <div id="stats-combat-log" style="max-height: 200px; overflow-y: auto; font-size: 0.75rem;"></div>
 </div>
 
 <!-- Floating Control Bar -->
@@ -1140,11 +1153,14 @@ button.secondary:hover {
   </div>
 
   <div class="control-group">
-    <button id="ctrl-headless" title="Toggle headless mode">
+    <button id="ctrl-headless" data-tooltip="Headless Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
     </button>
-    <button id="ctrl-performance" title="Toggle performance mode">
+    <button id="ctrl-performance" data-tooltip="Performance Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.16 8.78L6 22h5v-5l-2.28 2.28C6.08 18 4.5 15.21 4.5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/></svg>
+    </button>
+    <button id="ctrl-menu" data-tooltip="Stats & Info">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
     </button>
   </div>
 </div>
@@ -5813,8 +5829,6 @@ button.secondary:hover {
       alive: document.getElementById('alive'),
       time: document.getElementById('time-left'),
       leaderboard: document.getElementById('leaderboard'),
-      log: document.getElementById('event-log'),
-      alltimeLeaderboard: document.getElementById('alltime-leaderboard'),
 
       zoom: document.getElementById('zoom'),
       speed: document.getElementById('speed'),
@@ -5853,7 +5867,6 @@ button.secondary:hover {
       modeLabel: document.getElementById('mode-label'),
       modeSub: document.getElementById('mode-sub'),
       statsMode: document.getElementById('stats-mode'),
-      statsGeneration: document.getElementById('stats-generation'),
       statsTotalLives: document.getElementById('stats-total-lives'),
       statsRocketKills: document.getElementById('stats-rocket-kills'),
       statsLaserKills: document.getElementById('stats-laser-kills'),
@@ -5876,7 +5889,6 @@ button.secondary:hover {
       headlessBtn: document.getElementById('headless-btn'),
       turboBtn: document.getElementById('turbo-btn'),
       headlessOverlay: document.getElementById('headless-overlay'),
-      ups: document.getElementById('ups'),
 
       // Global weapon stats
       globalRocketKills: document.getElementById('global-rocket-kills'),
@@ -5908,6 +5920,14 @@ button.secondary:hover {
       ctrlPlay: document.getElementById('ctrl-play'),
       ctrlHeadless: document.getElementById('ctrl-headless'),
       ctrlPerformance: document.getElementById('ctrl-performance'),
+      ctrlMenu: document.getElementById('ctrl-menu'),
+
+      // Stats panel elements
+      statsUps: document.getElementById('stats-ups'),
+      statsLeaderboard: document.getElementById('stats-leaderboard'),
+      statsCombatLog: document.getElementById('stats-combat-log'),
+      hofSection: document.getElementById('hof-section'),
+      statsTotalLivesRow: document.getElementById('stats-total-lives-row'),
     };
 
     // Headless mode
@@ -6094,13 +6114,38 @@ button.secondary:hover {
     });
 
     // Stats panel open/close
-    ui.statsBtn.addEventListener('click', () => {
-      ui.statsPanel.classList.toggle('open');
-      ui.statsBtn.classList.toggle('active');
-    });
-    ui.statsClose.addEventListener('click', () => {
+    function openStatsPanel() {
+      ui.statsPanel.classList.add('open');
+      ui.statsBtn.classList.add('active');
+      ui.ctrlMenu.classList.add('active');
+    }
+    function closeStatsPanel() {
       ui.statsPanel.classList.remove('open');
       ui.statsBtn.classList.remove('active');
+      ui.ctrlMenu.classList.remove('active');
+    }
+    function toggleStatsPanel() {
+      if (ui.statsPanel.classList.contains('open')) {
+        closeStatsPanel();
+      } else {
+        openStatsPanel();
+      }
+    }
+    ui.statsBtn.addEventListener('click', toggleStatsPanel);
+    ui.statsClose.addEventListener('click', closeStatsPanel);
+    ui.ctrlMenu.addEventListener('click', toggleStatsPanel);
+
+    // Click outside to close stats panel
+    document.addEventListener('click', (e) => {
+      if (ui.statsPanel.classList.contains('open')) {
+        // Check if click is outside the panel and not on the menu/stats buttons
+        const clickedInPanel = ui.statsPanel.contains(e.target);
+        const clickedOnMenuBtn = ui.ctrlMenu.contains(e.target);
+        const clickedOnStatsBtn = ui.statsBtn.contains(e.target);
+        if (!clickedInPanel && !clickedOnMenuBtn && !clickedOnStatsBtn) {
+          closeStatsPanel();
+        }
+      }
     });
 
     // Control bar event handlers
@@ -6450,16 +6495,6 @@ button.secondary:hover {
         ui.blueHofCount.textContent = hallOfFame[1].length;
       }
       
-      // UPS display with color coding
-      ui.ups.textContent = currentUps;
-      if (currentUps >= 55) {
-        ui.ups.style.color = '#00ff9d';
-      } else if (currentUps >= 30) {
-        ui.ups.style.color = '#ffc800';
-      } else {
-        ui.ups.style.color = '#ff4444';
-      }
-      
       // Team scores (new layout)
       ui.redScore.textContent = world.teamKills[0];
       ui.blueScore.textContent = world.teamKills[1];
@@ -6468,13 +6503,43 @@ button.secondary:hover {
 
       // Update stats panel
       ui.statsMode.textContent = persistentMode ? 'Persistent' : 'Rounds';
-      ui.statsGeneration.textContent = world.generation;
       ui.statsTotalLives.textContent = totalLivesEvaluated;
       ui.statsRocketKills.textContent = world.weaponKills.rocket + ' / ' + world.totalWeaponKills.rocket;
       ui.statsLaserKills.textContent = world.weaponKills.laser + ' / ' + world.totalWeaponKills.laser;
       ui.statsSwordKills.textContent = world.weaponKills.sword + ' / ' + world.totalWeaponKills.sword;
 
-      // Update Hall of Fame in stats panel
+      // Update stats panel UPS
+      ui.statsUps.textContent = currentUps;
+      if (currentUps >= 55) {
+        ui.statsUps.style.color = '#00ff9d';
+      } else if (currentUps >= 30) {
+        ui.statsUps.style.color = '#ffc800';
+      } else {
+        ui.statsUps.style.color = '#ff4444';
+      }
+
+      // Show/hide Hall of Fame section based on mode
+      ui.hofSection.style.display = persistentMode ? 'block' : 'none';
+      ui.statsTotalLivesRow.style.display = persistentMode ? 'flex' : 'none';
+
+      // Update Overall Kill Leaderboard in stats panel (works in both modes)
+      const allAgents = world.agents.slice().sort((a, b) => b.totalKills - a.totalKills).slice(0, 10);
+      ui.statsLeaderboard.innerHTML = allAgents.length > 0
+        ? allAgents.map((a, i) => {
+            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+            const teamColor = a.team === 0 ? '#ff6666' : '#6699ff';
+            return '<div class="hof-entry" style="border-left: 2px solid ' + teamColor + '"><span>' + medal + ' ' + a.name + '</span><span style="color:#00ff9d">' + a.totalKills + 'K</span></div>';
+          }).join('')
+        : '<div style="opacity: 0.5; font-size: 0.75rem;">No data yet</div>';
+
+      // Update Combat Log in stats panel
+      ui.statsCombatLog.innerHTML = world.events.slice(-15).reverse().map(e => {
+        const typeColors = { kill: '#ff4444', death: '#888', spawn: '#00ff9d', damage: '#ffc800', sword: '#ff00ff', laser: '#00aaff' };
+        const color = typeColors[e.type] || '#888';
+        return '<div style="color: ' + color + '; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">' + e.msg + '</div>';
+      }).join('');
+
+      // Update Hall of Fame in stats panel (only shown in persistent mode)
       ui.statsRedHof.innerHTML = hallOfFame[0].length > 0
         ? hallOfFame[0].slice(0, 5).map((e, i) => {
             const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
@@ -6513,22 +6578,7 @@ button.secondary:hover {
             }).join('')
           : '<div class="stat-row" style="opacity: 0.5;">No entries yet - start dying!</div>';
 
-        // Legends show top HoF by team
-        ui.alltimeLeaderboard.innerHTML =
-          '<div style="color: #ff6666; font-size: 0.7rem; margin-bottom: 4px;">🔴 RED HALL OF FAME</div>' +
-          hallOfFame[0].slice(0, 3).map((e, i) => {
-            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : '🥉');
-            return '<div class="leader-entry" style="border-left: 2px solid #ff4444">' +
-              '<span class="name" style="color: #ff8888">' + medal + ' ' + e.kills + 'K</span>' +
-              '<span class="score">' + e.score + '</span></div>';
-          }).join('') +
-          '<div style="color: #6699ff; font-size: 0.7rem; margin: 8px 0 4px;">🔵 BLUE HALL OF FAME</div>' +
-          hallOfFame[1].slice(0, 3).map((e, i) => {
-            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : '🥉');
-            return '<div class="leader-entry" style="border-left: 2px solid #4488ff">' +
-              '<span class="name" style="color: #88aaff">' + medal + ' ' + e.kills + 'K</span>' +
-              '<span class="score">' + e.score + '</span></div>';
-          }).join('');
+        // Legends moved to stats panel
       } else {
         // Normal round leaderboard
         ui.leaderboard.innerHTML = world.getLeaderboard().map((a, i) => {
@@ -6540,20 +6590,10 @@ button.secondary:hover {
           '</div>';
         }).join('');
 
-        // All-time legends leaderboard
-        const allTimeSorted = [...world.agents].sort((a, b) => b.totalKills - a.totalKills).slice(0, 5);
-        ui.alltimeLeaderboard.innerHTML = allTimeSorted.map((a, i) => {
-          const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
-          return '<div class="leader-entry" style="border-left: 2px solid ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
-            '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + medal + ' ' + a.name + '</span>' +
-            '<span class="score">' + a.totalKills + 'K</span>' +
-          '</div>';
-        }).join('');
+        // Legends moved to stats panel
       }
 
-      ui.log.innerHTML = world.events.slice(0, 10).map(e =>
-        '<div class="event"><span class="' + e.type + '">' + e.text + '</span></div>'
-      ).join('');
+      // Combat log moved to stats panel
 
       // Update agent profile card
       updateAgentProfile();
