@@ -684,6 +684,9 @@ button.secondary:hover {
         <button id="headless-btn" style="background: rgba(0, 255, 0, 0.3); border-color: #0f0; color: #0f0; width: 100%;">🖥️ HEADLESS MODE (ON)</button>
       </div>
       <div class="btn-row" style="margin-top:10px;">
+        <button id="turbo-btn" style="background: rgba(255, 100, 0, 0.2); border-color: #ff6400; color: #ff6400; width: 100%;">⚡ TURBO MODE (OFF)</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
         <button id="debug-sword-btn" style="background: rgba(255, 0, 255, 0.1); border-color: #ff00ff; color: #ff00ff;">🗡️ ALL SWORD</button>
         <button id="debug-laser-btn" style="background: rgba(0, 200, 255, 0.1); border-color: #00aaff; color: #00aaff;">⚡ ALL LASER</button>
       </div>
@@ -891,6 +894,11 @@ button.secondary:hover {
     // and paste the result below (replacing null)
     // --------------------
     const DEMO_CHECKPOINT = null;
+
+    // --------------------
+    // Turbo Mode (ultra performance for training)
+    // --------------------
+    let turboMode = false;
 
     // --------------------
     // Names
@@ -3790,157 +3798,172 @@ button.secondary:hover {
         const maxX = this.world.width * s;
         const maxY = this.world.height * s;
 
-        // Arena floor - gradient base
-        const floorGrad = ctx.createRadialGradient(maxX / 2, maxY / 2, 0, maxX / 2, maxY / 2, maxX * 0.7);
-        floorGrad.addColorStop(0, '#0a0a18');
-        floorGrad.addColorStop(0.5, '#080812');
-        floorGrad.addColorStop(1, '#040408');
-        ctx.fillStyle = floorGrad;
-        ctx.fillRect(0, 0, maxX, maxY);
+        if (turboMode) {
+          // TURBO: Simple solid background and border
+          ctx.fillStyle = '#080810';
+          ctx.fillRect(0, 0, maxX, maxY);
+          ctx.strokeStyle = '#ff0055';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(1, 1, maxX - 2, maxY - 2);
+        } else {
+          // Arena floor - gradient base
+          const floorGrad = ctx.createRadialGradient(maxX / 2, maxY / 2, 0, maxX / 2, maxY / 2, maxX * 0.7);
+          floorGrad.addColorStop(0, '#0a0a18');
+          floorGrad.addColorStop(0.5, '#080812');
+          floorGrad.addColorStop(1, '#040408');
+          ctx.fillStyle = floorGrad;
+          ctx.fillRect(0, 0, maxX, maxY);
 
-        // Animated hex grid pattern
-        const hexSize = 60 * s;
-        const time = Date.now() / 3000;
-        ctx.strokeStyle = '#151528';
-        ctx.lineWidth = 1;
-        for (let row = 0; row < maxY / (hexSize * 0.866) + 1; row++) {
-          for (let col = 0; col < maxX / hexSize + 1; col++) {
-            const cx = col * hexSize * 1.5 + (row % 2) * hexSize * 0.75;
-            const cy = row * hexSize * 0.866;
-            if (cx > maxX + hexSize || cy > maxY + hexSize) continue;
+          // Animated hex grid pattern
+          const hexSize = 60 * s;
+          const time = Date.now() / 3000;
+          ctx.strokeStyle = '#151528';
+          ctx.lineWidth = 1;
+          for (let row = 0; row < maxY / (hexSize * 0.866) + 1; row++) {
+            for (let col = 0; col < maxX / hexSize + 1; col++) {
+              const cx = col * hexSize * 1.5 + (row % 2) * hexSize * 0.75;
+              const cy = row * hexSize * 0.866;
+              if (cx > maxX + hexSize || cy > maxY + hexSize) continue;
 
-            // Subtle pulse based on position
-            const pulse = Math.sin(time + col * 0.3 + row * 0.2) * 0.3 + 0.7;
-            ctx.strokeStyle = `rgba(20, 25, 50, ${pulse * 0.6})`;
+              // Subtle pulse based on position
+              const pulse = Math.sin(time + col * 0.3 + row * 0.2) * 0.3 + 0.7;
+              ctx.strokeStyle = `rgba(20, 25, 50, ${pulse * 0.6})`;
 
-            ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-              const angle = i * Math.PI / 3 - Math.PI / 6;
-              const hx = cx + Math.cos(angle) * hexSize * 0.4;
-              const hy = cy + Math.sin(angle) * hexSize * 0.4;
-              if (i === 0) ctx.moveTo(hx, hy);
-              else ctx.lineTo(hx, hy);
+              ctx.beginPath();
+              for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3 - Math.PI / 6;
+                const hx = cx + Math.cos(angle) * hexSize * 0.4;
+                const hy = cy + Math.sin(angle) * hexSize * 0.4;
+                if (i === 0) ctx.moveTo(hx, hy);
+                else ctx.lineTo(hx, hy);
+              }
+              ctx.closePath();
+              ctx.stroke();
             }
-            ctx.closePath();
-            ctx.stroke();
           }
+
+          // Center danger zone glow (where weapons spawn)
+          const centerGlow = ctx.createRadialGradient(maxX / 2, maxY / 2, 50 * s, maxX / 2, maxY / 2, 300 * s);
+          centerGlow.addColorStop(0, 'rgba(255, 50, 100, 0.08)');
+          centerGlow.addColorStop(0.5, 'rgba(255, 50, 100, 0.03)');
+          centerGlow.addColorStop(1, 'rgba(255, 50, 100, 0)');
+          ctx.fillStyle = centerGlow;
+          ctx.fillRect(0, 0, maxX, maxY);
+
+          // Team spawn zone hints
+          const redZone = ctx.createRadialGradient(80 * s, maxY / 2, 20 * s, 80 * s, maxY / 2, 200 * s);
+          redZone.addColorStop(0, 'rgba(255, 50, 50, 0.1)');
+          redZone.addColorStop(1, 'rgba(255, 50, 50, 0)');
+          ctx.fillStyle = redZone;
+          ctx.fillRect(0, 0, maxX, maxY);
+
+          const blueZone = ctx.createRadialGradient(maxX - 80 * s, maxY / 2, 20 * s, maxX - 80 * s, maxY / 2, 200 * s);
+          blueZone.addColorStop(0, 'rgba(50, 100, 255, 0.1)');
+          blueZone.addColorStop(1, 'rgba(50, 100, 255, 0)');
+          ctx.fillStyle = blueZone;
+          ctx.fillRect(0, 0, maxX, maxY);
+
+          // Border - glowing tech frame
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#ff0055';
+          ctx.strokeStyle = '#ff0055';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(2, 2, maxX - 4, maxY - 4);
+          ctx.shadowBlur = 0;
+
+          // Corner accents
+          const cornerSize = 40 * s;
+          ctx.strokeStyle = '#ff0055';
+          ctx.lineWidth = 2;
+          // Top-left
+          ctx.beginPath(); ctx.moveTo(0, cornerSize); ctx.lineTo(0, 0); ctx.lineTo(cornerSize, 0); ctx.stroke();
+          // Top-right
+          ctx.beginPath(); ctx.moveTo(maxX - cornerSize, 0); ctx.lineTo(maxX, 0); ctx.lineTo(maxX, cornerSize); ctx.stroke();
+          // Bottom-left
+          ctx.beginPath(); ctx.moveTo(0, maxY - cornerSize); ctx.lineTo(0, maxY); ctx.lineTo(cornerSize, maxY); ctx.stroke();
+          // Bottom-right
+          ctx.beginPath(); ctx.moveTo(maxX - cornerSize, maxY); ctx.lineTo(maxX, maxY); ctx.lineTo(maxX, maxY - cornerSize); ctx.stroke();
         }
 
-        // Center danger zone glow (where weapons spawn)
-        const centerGlow = ctx.createRadialGradient(maxX / 2, maxY / 2, 50 * s, maxX / 2, maxY / 2, 300 * s);
-        centerGlow.addColorStop(0, 'rgba(255, 50, 100, 0.08)');
-        centerGlow.addColorStop(0.5, 'rgba(255, 50, 100, 0.03)');
-        centerGlow.addColorStop(1, 'rgba(255, 50, 100, 0)');
-        ctx.fillStyle = centerGlow;
-        ctx.fillRect(0, 0, maxX, maxY);
-
-        // Team spawn zone hints
-        const redZone = ctx.createRadialGradient(80 * s, maxY / 2, 20 * s, 80 * s, maxY / 2, 200 * s);
-        redZone.addColorStop(0, 'rgba(255, 50, 50, 0.1)');
-        redZone.addColorStop(1, 'rgba(255, 50, 50, 0)');
-        ctx.fillStyle = redZone;
-        ctx.fillRect(0, 0, maxX, maxY);
-
-        const blueZone = ctx.createRadialGradient(maxX - 80 * s, maxY / 2, 20 * s, maxX - 80 * s, maxY / 2, 200 * s);
-        blueZone.addColorStop(0, 'rgba(50, 100, 255, 0.1)');
-        blueZone.addColorStop(1, 'rgba(50, 100, 255, 0)');
-        ctx.fillStyle = blueZone;
-        ctx.fillRect(0, 0, maxX, maxY);
-
-        // Border - glowing tech frame
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#ff0055';
-        ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(2, 2, maxX - 4, maxY - 4);
-        ctx.shadowBlur = 0;
-
-        // Corner accents
-        const cornerSize = 40 * s;
-        ctx.strokeStyle = '#ff0055';
-        ctx.lineWidth = 2;
-        // Top-left
-        ctx.beginPath(); ctx.moveTo(0, cornerSize); ctx.lineTo(0, 0); ctx.lineTo(cornerSize, 0); ctx.stroke();
-        // Top-right
-        ctx.beginPath(); ctx.moveTo(maxX - cornerSize, 0); ctx.lineTo(maxX, 0); ctx.lineTo(maxX, cornerSize); ctx.stroke();
-        // Bottom-left
-        ctx.beginPath(); ctx.moveTo(0, maxY - cornerSize); ctx.lineTo(0, maxY); ctx.lineTo(cornerSize, maxY); ctx.stroke();
-        // Bottom-right
-        ctx.beginPath(); ctx.moveTo(maxX - cornerSize, maxY); ctx.lineTo(maxX, maxY); ctx.lineTo(maxX, maxY - cornerSize); ctx.stroke();
-
-        // Buildings/Obstacles - sci-fi crates
+        // Buildings/Obstacles
         for (const b of this.world.buildings) {
           const x = b.x * s, y = b.y * s, w = b.w * s, h = b.h * s;
 
-          // Shadow
-          ctx.fillStyle = 'rgba(0,0,0,0.4)';
-          ctx.fillRect(x + 6, y + 6, w, h);
+          if (turboMode) {
+            // TURBO: Simple solid rectangle
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(x, y, w, h);
+          } else {
+            // Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.fillRect(x + 6, y + 6, w, h);
 
-          // Main body gradient
-          const obstacleGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-          obstacleGrad.addColorStop(0, '#1a1a2e');
-          obstacleGrad.addColorStop(0.5, '#12121f');
-          obstacleGrad.addColorStop(1, '#0a0a15');
-          ctx.fillStyle = obstacleGrad;
-          ctx.fillRect(x, y, w, h);
+            // Main body gradient
+            const obstacleGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+            obstacleGrad.addColorStop(0, '#1a1a2e');
+            obstacleGrad.addColorStop(0.5, '#12121f');
+            obstacleGrad.addColorStop(1, '#0a0a15');
+            ctx.fillStyle = obstacleGrad;
+            ctx.fillRect(x, y, w, h);
 
-          // Top highlight
-          ctx.fillStyle = 'rgba(255,255,255,0.05)';
-          ctx.fillRect(x, y, w, 3);
-          ctx.fillRect(x, y, 3, h);
+            // Top highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.05)';
+            ctx.fillRect(x, y, w, 3);
+            ctx.fillRect(x, y, 3, h);
 
-          // Bottom shadow edge
-          ctx.fillStyle = 'rgba(0,0,0,0.3)';
-          ctx.fillRect(x, y + h - 3, w, 3);
-          ctx.fillRect(x + w - 3, y, 3, h);
+            // Bottom shadow edge
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.fillRect(x, y + h - 3, w, 3);
+            ctx.fillRect(x + w - 3, y, 3, h);
 
-          // Tech lines
-          ctx.strokeStyle = 'rgba(0, 255, 200, 0.15)';
-          ctx.lineWidth = 1;
-          // Horizontal line
-          ctx.beginPath();
-          ctx.moveTo(x + 5, y + h / 2);
-          ctx.lineTo(x + w - 5, y + h / 2);
-          ctx.stroke();
-          // Vertical line
-          ctx.beginPath();
-          ctx.moveTo(x + w / 2, y + 5);
-          ctx.lineTo(x + w / 2, y + h - 5);
-          ctx.stroke();
+            // Tech lines
+            ctx.strokeStyle = 'rgba(0, 255, 200, 0.15)';
+            ctx.lineWidth = 1;
+            // Horizontal line
+            ctx.beginPath();
+            ctx.moveTo(x + 5, y + h / 2);
+            ctx.lineTo(x + w - 5, y + h / 2);
+            ctx.stroke();
+            // Vertical line
+            ctx.beginPath();
+            ctx.moveTo(x + w / 2, y + 5);
+            ctx.lineTo(x + w / 2, y + h - 5);
+            ctx.stroke();
 
-          // Corner brackets
-          const bracketSize = Math.min(w, h) * 0.2;
-          ctx.strokeStyle = 'rgba(0, 255, 200, 0.3)';
-          ctx.lineWidth = 2;
-          // Top-left bracket
-          ctx.beginPath();
-          ctx.moveTo(x + bracketSize, y + 4);
-          ctx.lineTo(x + 4, y + 4);
-          ctx.lineTo(x + 4, y + bracketSize);
-          ctx.stroke();
-          // Top-right bracket
-          ctx.beginPath();
-          ctx.moveTo(x + w - bracketSize, y + 4);
-          ctx.lineTo(x + w - 4, y + 4);
-          ctx.lineTo(x + w - 4, y + bracketSize);
-          ctx.stroke();
-          // Bottom-left bracket
-          ctx.beginPath();
-          ctx.moveTo(x + bracketSize, y + h - 4);
-          ctx.lineTo(x + 4, y + h - 4);
-          ctx.lineTo(x + 4, y + h - bracketSize);
-          ctx.stroke();
-          // Bottom-right bracket
-          ctx.beginPath();
-          ctx.moveTo(x + w - bracketSize, y + h - 4);
-          ctx.lineTo(x + w - 4, y + h - 4);
-          ctx.lineTo(x + w - 4, y + h - bracketSize);
-          ctx.stroke();
+            // Corner brackets
+            const bracketSize = Math.min(w, h) * 0.2;
+            ctx.strokeStyle = 'rgba(0, 255, 200, 0.3)';
+            ctx.lineWidth = 2;
+            // Top-left bracket
+            ctx.beginPath();
+            ctx.moveTo(x + bracketSize, y + 4);
+            ctx.lineTo(x + 4, y + 4);
+            ctx.lineTo(x + 4, y + bracketSize);
+            ctx.stroke();
+            // Top-right bracket
+            ctx.beginPath();
+            ctx.moveTo(x + w - bracketSize, y + 4);
+            ctx.lineTo(x + w - 4, y + 4);
+            ctx.lineTo(x + w - 4, y + bracketSize);
+            ctx.stroke();
+            // Bottom-left bracket
+            ctx.beginPath();
+            ctx.moveTo(x + bracketSize, y + h - 4);
+            ctx.lineTo(x + 4, y + h - 4);
+            ctx.lineTo(x + 4, y + h - bracketSize);
+            ctx.stroke();
+            // Bottom-right bracket
+            ctx.beginPath();
+            ctx.moveTo(x + w - bracketSize, y + h - 4);
+            ctx.lineTo(x + w - 4, y + h - 4);
+            ctx.lineTo(x + w - 4, y + h - bracketSize);
+            ctx.stroke();
 
-          // Outer glow
-          ctx.strokeStyle = 'rgba(0, 200, 255, 0.2)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
+            // Outer glow
+            ctx.strokeStyle = 'rgba(0, 200, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
+          }
         }
 
         // Teleporters
@@ -3949,155 +3972,175 @@ button.secondary:hover {
         // Pickups
         for (const p of this.world.pickups) {
           const px = p.x * s, py = p.y * s, pr = p.radius * s;
-          
-          // Glow effect
-          const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
-          
-          if (p.type === 'health') {
-            // Health pack - green cross shape
-            ctx.shadowBlur = 15 * pulse;
-            ctx.shadowColor = '#00ff9d';
-            ctx.fillStyle = '#00ff9d';
-            
-            // Horizontal bar of cross
-            ctx.fillRect(px - pr, py - pr * 0.3, pr * 2, pr * 0.6);
-            // Vertical bar of cross
-            ctx.fillRect(px - pr * 0.3, py - pr, pr * 0.6, pr * 2);
-            
-          } else if (p.type === 'armor') {
-            // Armor pack - blue kite shield
-            ctx.shadowBlur = 15 * pulse;
-            ctx.shadowColor = '#00aaff';
-            ctx.fillStyle = '#00aaff';
-            
-            // Kite shield shape (wider at top, pointed at bottom)
+
+          if (turboMode) {
+            // TURBO: Simple colored circles
+            const colors = { health: '#00ff9d', armor: '#00aaff', laser: '#00ffff', sword: '#ff00ff' };
+            ctx.fillStyle = colors[p.type] || '#fff';
             ctx.beginPath();
-            ctx.moveTo(px, py - pr * 1.1);           // Top center
-            ctx.lineTo(px + pr * 0.8, py - pr * 0.3); // Top right
-            ctx.lineTo(px + pr * 0.6, py + pr * 0.4); // Mid right
-            ctx.lineTo(px, py + pr * 1.1);            // Bottom point
-            ctx.lineTo(px - pr * 0.6, py + pr * 0.4); // Mid left
-            ctx.lineTo(px - pr * 0.8, py - pr * 0.3); // Top left
-            ctx.closePath();
+            ctx.arc(px, py, pr, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Inner highlight
-            ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          } else if (p.type === 'laser') {
-            // Laser pickup - electric bolt shape
-            ctx.shadowBlur = 20 * pulse;
-            ctx.shadowColor = '#00ffff';
-            ctx.fillStyle = '#00ffff';
-            
-            // Lightning bolt shape
-            ctx.beginPath();
-            ctx.moveTo(px + pr * 0.3, py - pr * 1.2);
-            ctx.lineTo(px - pr * 0.1, py - pr * 0.2);
-            ctx.lineTo(px + pr * 0.3, py - pr * 0.2);
-            ctx.lineTo(px - pr * 0.3, py + pr * 1.2);
-            ctx.lineTo(px + pr * 0.1, py + pr * 0.2);
-            ctx.lineTo(px - pr * 0.3, py + pr * 0.2);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Inner glow
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          } else if (p.type === 'sword') {
-            // Sword pickup - energy sword shape (neutral purple until picked up)
-            ctx.shadowBlur = 20 * pulse;
-            ctx.shadowColor = '#ff00ff';
-            ctx.fillStyle = '#ff00ff';
-            
-            // Sword blade shape
-            ctx.beginPath();
-            ctx.moveTo(px, py - pr * 1.5);           // Tip
-            ctx.lineTo(px + pr * 0.3, py - pr * 0.5); // Right edge upper
-            ctx.lineTo(px + pr * 0.2, py + pr * 0.8); // Right edge lower
-            ctx.lineTo(px, py + pr * 1.2);            // Handle
-            ctx.lineTo(px - pr * 0.2, py + pr * 0.8); // Left edge lower
-            ctx.lineTo(px - pr * 0.3, py - pr * 0.5); // Left edge upper
-            ctx.closePath();
-            ctx.fill();
-            
-            // Inner glow line
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+          } else {
+            // Glow effect
+            const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+
+            if (p.type === 'health') {
+              // Health pack - green cross shape
+              ctx.shadowBlur = 15 * pulse;
+              ctx.shadowColor = '#00ff9d';
+              ctx.fillStyle = '#00ff9d';
+
+              // Horizontal bar of cross
+              ctx.fillRect(px - pr, py - pr * 0.3, pr * 2, pr * 0.6);
+              // Vertical bar of cross
+              ctx.fillRect(px - pr * 0.3, py - pr, pr * 0.6, pr * 2);
+
+            } else if (p.type === 'armor') {
+              // Armor pack - blue kite shield
+              ctx.shadowBlur = 15 * pulse;
+              ctx.shadowColor = '#00aaff';
+              ctx.fillStyle = '#00aaff';
+
+              // Kite shield shape (wider at top, pointed at bottom)
+              ctx.beginPath();
+              ctx.moveTo(px, py - pr * 1.1);           // Top center
+              ctx.lineTo(px + pr * 0.8, py - pr * 0.3); // Top right
+              ctx.lineTo(px + pr * 0.6, py + pr * 0.4); // Mid right
+              ctx.lineTo(px, py + pr * 1.1);            // Bottom point
+              ctx.lineTo(px - pr * 0.6, py + pr * 0.4); // Mid left
+              ctx.lineTo(px - pr * 0.8, py - pr * 0.3); // Top left
+              ctx.closePath();
+              ctx.fill();
+
+              // Inner highlight
+              ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            } else if (p.type === 'laser') {
+              // Laser pickup - electric bolt shape
+              ctx.shadowBlur = 20 * pulse;
+              ctx.shadowColor = '#00ffff';
+              ctx.fillStyle = '#00ffff';
+
+              // Lightning bolt shape
+              ctx.beginPath();
+              ctx.moveTo(px + pr * 0.3, py - pr * 1.2);
+              ctx.lineTo(px - pr * 0.1, py - pr * 0.2);
+              ctx.lineTo(px + pr * 0.3, py - pr * 0.2);
+              ctx.lineTo(px - pr * 0.3, py + pr * 1.2);
+              ctx.lineTo(px + pr * 0.1, py + pr * 0.2);
+              ctx.lineTo(px - pr * 0.3, py + pr * 0.2);
+              ctx.closePath();
+              ctx.fill();
+
+              // Inner glow
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            } else if (p.type === 'sword') {
+              // Sword pickup - energy sword shape (neutral purple until picked up)
+              ctx.shadowBlur = 20 * pulse;
+              ctx.shadowColor = '#ff00ff';
+              ctx.fillStyle = '#ff00ff';
+
+              // Sword blade shape
+              ctx.beginPath();
+              ctx.moveTo(px, py - pr * 1.5);           // Tip
+              ctx.lineTo(px + pr * 0.3, py - pr * 0.5); // Right edge upper
+              ctx.lineTo(px + pr * 0.2, py + pr * 0.8); // Right edge lower
+              ctx.lineTo(px, py + pr * 1.2);            // Handle
+              ctx.lineTo(px - pr * 0.2, py + pr * 0.8); // Left edge lower
+              ctx.lineTo(px - pr * 0.3, py - pr * 0.5); // Left edge upper
+              ctx.closePath();
+              ctx.fill();
+
+              // Inner glow line
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
           }
-          ctx.shadowBlur = 0;
         }
 
-        // Dropped weapons (flashing to indicate they're dropped loot)
-        for (const w of this.world.droppedWeapons) {
-          const wx = w.x * s, wy = w.y * s, wr = w.radius * s;
+        // Dropped weapons
+        if (!turboMode) {
+          for (const w of this.world.droppedWeapons) {
+            const wx = w.x * s, wy = w.y * s, wr = w.radius * s;
 
-          // Faster pulse for dropped weapons + slight bounce effect
-          const pulse = Math.sin(Date.now() / 100) * 0.4 + 0.6;
-          const bounce = Math.abs(Math.sin(Date.now() / 300)) * 3 * s;
+            // Faster pulse for dropped weapons + slight bounce effect
+            const pulse = Math.sin(Date.now() / 100) * 0.4 + 0.6;
+            const bounce = Math.abs(Math.sin(Date.now() / 300)) * 3 * s;
 
-          if (w.type === 'laser') {
-            // Dropped laser - cyan lightning bolt with flash effect
-            ctx.shadowBlur = 25 * pulse;
-            ctx.shadowColor = '#00ffff';
-            ctx.fillStyle = `rgba(0, 255, 255, ${0.7 + pulse * 0.3})`;
+            if (w.type === 'laser') {
+              // Dropped laser - cyan lightning bolt with flash effect
+              ctx.shadowBlur = 25 * pulse;
+              ctx.shadowColor = '#00ffff';
+              ctx.fillStyle = `rgba(0, 255, 255, ${0.7 + pulse * 0.3})`;
 
-            // Lightning bolt shape (slightly larger than pickup)
-            ctx.beginPath();
-            ctx.moveTo(wx + wr * 0.35, wy - bounce - wr * 1.4);
-            ctx.lineTo(wx - wr * 0.1, wy - bounce - wr * 0.25);
-            ctx.lineTo(wx + wr * 0.35, wy - bounce - wr * 0.25);
-            ctx.lineTo(wx - wr * 0.35, wy - bounce + wr * 1.4);
-            ctx.lineTo(wx + wr * 0.1, wy - bounce + wr * 0.25);
-            ctx.lineTo(wx - wr * 0.35, wy - bounce + wr * 0.25);
-            ctx.closePath();
-            ctx.fill();
+              // Lightning bolt shape (slightly larger than pickup)
+              ctx.beginPath();
+              ctx.moveTo(wx + wr * 0.35, wy - bounce - wr * 1.4);
+              ctx.lineTo(wx - wr * 0.1, wy - bounce - wr * 0.25);
+              ctx.lineTo(wx + wr * 0.35, wy - bounce - wr * 0.25);
+              ctx.lineTo(wx - wr * 0.35, wy - bounce + wr * 1.4);
+              ctx.lineTo(wx + wr * 0.1, wy - bounce + wr * 0.25);
+              ctx.lineTo(wx - wr * 0.35, wy - bounce + wr * 0.25);
+              ctx.closePath();
+              ctx.fill();
 
-            // Bright core
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+              // Bright core
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2;
+              ctx.stroke();
 
-            // "DROPPED" indicator ring
-            ctx.strokeStyle = `rgba(0, 255, 255, ${pulse * 0.5})`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(wx, wy - bounce, wr * 1.8, 0, Math.PI * 2);
-            ctx.stroke();
+              // "DROPPED" indicator ring
+              ctx.strokeStyle = `rgba(0, 255, 255, ${pulse * 0.5})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(wx, wy - bounce, wr * 1.8, 0, Math.PI * 2);
+              ctx.stroke();
 
-          } else if (w.type === 'sword') {
-            // Dropped sword - magenta sword shape with flash effect
-            ctx.shadowBlur = 25 * pulse;
-            ctx.shadowColor = '#ff00ff';
-            ctx.fillStyle = `rgba(255, 0, 255, ${0.7 + pulse * 0.3})`;
+            } else if (w.type === 'sword') {
+              // Dropped sword - magenta sword shape with flash effect
+              ctx.shadowBlur = 25 * pulse;
+              ctx.shadowColor = '#ff00ff';
+              ctx.fillStyle = `rgba(255, 0, 255, ${0.7 + pulse * 0.3})`;
 
-            // Sword blade shape (slightly larger than pickup)
-            ctx.beginPath();
-            ctx.moveTo(wx, wy - bounce - wr * 1.7);           // Tip
-            ctx.lineTo(wx + wr * 0.35, wy - bounce - wr * 0.6); // Right edge upper
-            ctx.lineTo(wx + wr * 0.25, wy - bounce + wr * 0.9); // Right edge lower
-            ctx.lineTo(wx, wy - bounce + wr * 1.4);             // Handle
-            ctx.lineTo(wx - wr * 0.25, wy - bounce + wr * 0.9); // Left edge lower
-            ctx.lineTo(wx - wr * 0.35, wy - bounce - wr * 0.6); // Left edge upper
-            ctx.closePath();
-            ctx.fill();
+              // Sword blade shape (slightly larger than pickup)
+              ctx.beginPath();
+              ctx.moveTo(wx, wy - bounce - wr * 1.7);           // Tip
+              ctx.lineTo(wx + wr * 0.35, wy - bounce - wr * 0.6); // Right edge upper
+              ctx.lineTo(wx + wr * 0.25, wy - bounce + wr * 0.9); // Right edge lower
+              ctx.lineTo(wx, wy - bounce + wr * 1.4);             // Handle
+              ctx.lineTo(wx - wr * 0.25, wy - bounce + wr * 0.9); // Left edge lower
+              ctx.lineTo(wx - wr * 0.35, wy - bounce - wr * 0.6); // Left edge upper
+              ctx.closePath();
+              ctx.fill();
 
-            // Bright core
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+              // Bright core
+              ctx.strokeStyle = '#fff';
+              ctx.lineWidth = 2;
+              ctx.stroke();
 
-            // "DROPPED" indicator ring
-            ctx.strokeStyle = `rgba(255, 0, 255, ${pulse * 0.5})`;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(wx, wy - bounce, wr * 1.8, 0, Math.PI * 2);
-            ctx.stroke();
+              // "DROPPED" indicator ring
+              ctx.strokeStyle = `rgba(255, 0, 255, ${pulse * 0.5})`;
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(wx, wy - bounce, wr * 1.8, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
           }
-          ctx.shadowBlur = 0;
+        } else {
+          // TURBO: Simple circles for dropped weapons
+          for (const w of this.world.droppedWeapons) {
+            const wx = w.x * s, wy = w.y * s, wr = w.radius * s;
+            ctx.fillStyle = w.type === 'laser' ? '#00ffff' : '#ff00ff';
+            ctx.beginPath();
+            ctx.arc(wx, wy, wr, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
 
         // Draw raycast visualization for followed agent (behind everything)
@@ -4156,6 +4199,22 @@ button.secondary:hover {
         for (const agent of this.world.agents) {
           if (!agent.alive) continue;
           const x = agent.x * s, y = agent.y * s, r = agent.radius * s;
+
+          if (turboMode) {
+            // TURBO: Simple colored circle with direction line
+            ctx.fillStyle = agent.team === 0 ? '#ff4444' : '#4488ff';
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+            // Direction indicator
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + Math.cos(agent.rotation) * r * 1.5, y + Math.sin(agent.rotation) * r * 1.5);
+            ctx.stroke();
+            continue; // Skip detailed rendering
+          }
 
           // Selection highlight for followed agent
           if (agent === this.followAgent) {
@@ -4501,144 +4560,183 @@ button.secondary:hover {
 
         // Projectiles
         ctx.shadowBlur = 0;
-        
-        // Smoke particles (draw first, behind rockets)
-        for (const p of this.world.smokeParticles) {
-          const px = p.x * s, py = p.y * s;
-          const alpha = (p.life / p.maxLife) * 0.6;
-          const size = p.size * s;
-          
-          ctx.fillStyle = `rgba(100, 100, 100, ${alpha})`;
-          ctx.beginPath();
-          ctx.arc(px, py, size, 0, Math.PI * 2);
-          ctx.fill();
+
+        // Smoke particles (skip in turbo mode)
+        if (!turboMode) {
+          for (const p of this.world.smokeParticles) {
+            const px = p.x * s, py = p.y * s;
+            const alpha = (p.life / p.maxLife) * 0.6;
+            const size = p.size * s;
+
+            ctx.fillStyle = `rgba(100, 100, 100, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(px, py, size, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
 
         // Rockets
         for (const r of this.world.rockets) {
           if (!r.alive) continue;
           const rx = r.x * s, ry = r.y * s;
-          
-          ctx.save();
-          ctx.translate(rx, ry);
-          ctx.rotate(r.angle);
-          
-          // Flame trail (behind rocket)
-          const flameGrad = ctx.createLinearGradient(-35 * s, 0, 0, 0);
-          flameGrad.addColorStop(0, 'rgba(255, 100, 0, 0)');
-          flameGrad.addColorStop(0.3, 'rgba(255, 150, 0, 0.8)');
-          flameGrad.addColorStop(0.6, 'rgba(255, 200, 50, 1)');
-          flameGrad.addColorStop(1, 'rgba(255, 255, 200, 1)');
-          
-          ctx.fillStyle = flameGrad;
-          ctx.beginPath();
-          ctx.moveTo(-35 * s, 0);
-          ctx.lineTo(-8 * s, -6 * s);
-          ctx.lineTo(-8 * s, 6 * s);
-          ctx.closePath();
-          ctx.fill();
-          
-          // Rocket body
-          ctx.fillStyle = '#444';
-          ctx.strokeStyle = '#666';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.ellipse(0, 0, 12 * s, 5 * s, 0, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          
-          // Rocket nose (red tip)
-          ctx.fillStyle = '#ff3300';
-          ctx.beginPath();
-          ctx.moveTo(12 * s, 0);
-          ctx.lineTo(6 * s, -4 * s);
-          ctx.lineTo(6 * s, 4 * s);
-          ctx.closePath();
-          ctx.fill();
-          
-          // Fins
-          ctx.fillStyle = '#ff3300';
-          ctx.beginPath();
-          ctx.moveTo(-8 * s, -5 * s);
-          ctx.lineTo(-12 * s, -10 * s);
-          ctx.lineTo(-6 * s, -5 * s);
-          ctx.closePath();
-          ctx.fill();
-          
-          ctx.beginPath();
-          ctx.moveTo(-8 * s, 5 * s);
-          ctx.lineTo(-12 * s, 10 * s);
-          ctx.lineTo(-6 * s, 5 * s);
-          ctx.closePath();
-          ctx.fill();
-          
-          ctx.restore();
+
+          if (turboMode) {
+            // TURBO: Simple orange rectangle
+            ctx.fillStyle = '#ff6600';
+            ctx.save();
+            ctx.translate(rx, ry);
+            ctx.rotate(r.angle);
+            ctx.fillRect(-8 * s, -3 * s, 16 * s, 6 * s);
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.translate(rx, ry);
+            ctx.rotate(r.angle);
+
+            // Flame trail (behind rocket)
+            const flameGrad = ctx.createLinearGradient(-35 * s, 0, 0, 0);
+            flameGrad.addColorStop(0, 'rgba(255, 100, 0, 0)');
+            flameGrad.addColorStop(0.3, 'rgba(255, 150, 0, 0.8)');
+            flameGrad.addColorStop(0.6, 'rgba(255, 200, 50, 1)');
+            flameGrad.addColorStop(1, 'rgba(255, 255, 200, 1)');
+
+            ctx.fillStyle = flameGrad;
+            ctx.beginPath();
+            ctx.moveTo(-35 * s, 0);
+            ctx.lineTo(-8 * s, -6 * s);
+            ctx.lineTo(-8 * s, 6 * s);
+            ctx.closePath();
+            ctx.fill();
+
+            // Rocket body
+            ctx.fillStyle = '#444';
+            ctx.strokeStyle = '#666';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 12 * s, 5 * s, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Rocket nose (red tip)
+            ctx.fillStyle = '#ff3300';
+            ctx.beginPath();
+            ctx.moveTo(12 * s, 0);
+            ctx.lineTo(6 * s, -4 * s);
+            ctx.lineTo(6 * s, 4 * s);
+            ctx.closePath();
+            ctx.fill();
+
+            // Fins
+            ctx.fillStyle = '#ff3300';
+            ctx.beginPath();
+            ctx.moveTo(-8 * s, -5 * s);
+            ctx.lineTo(-12 * s, -10 * s);
+            ctx.lineTo(-6 * s, -5 * s);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(-8 * s, 5 * s);
+            ctx.lineTo(-12 * s, 10 * s);
+            ctx.lineTo(-6 * s, 5 * s);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.restore();
+          }
         }
 
         // Explosions
         ctx.globalCompositeOperation = 'lighter';
-        for (const e of this.world.explosions) {
-          const ex = e.x * s, ey = e.y * s;
-          const progress = e.timer / e.maxTime;
-          const currentRadius = e.splashRadius * s * (0.3 + progress * 0.7);
-          
-          // Outer shockwave ring
-          ctx.strokeStyle = `rgba(255, 100, 0, ${1 - progress})`;
-          ctx.lineWidth = 8 * (1 - progress);
-          ctx.beginPath();
-          ctx.arc(ex, ey, currentRadius, 0, Math.PI * 2);
-          ctx.stroke();
-          
-          // Inner flash
-          const innerGrad = ctx.createRadialGradient(ex, ey, 0, ex, ey, currentRadius * 0.8);
-          innerGrad.addColorStop(0, `rgba(255, 255, 200, ${0.9 - progress * 0.9})`);
-          innerGrad.addColorStop(0.3, `rgba(255, 200, 0, ${0.7 - progress * 0.7})`);
-          innerGrad.addColorStop(0.6, `rgba(255, 100, 0, ${0.5 - progress * 0.5})`);
-          innerGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
-          ctx.fillStyle = innerGrad;
-          ctx.beginPath();
-          ctx.arc(ex, ey, currentRadius * 0.8, 0, Math.PI * 2);
-          ctx.fill();
+        if (!turboMode) {
+          for (const e of this.world.explosions) {
+            const ex = e.x * s, ey = e.y * s;
+            const progress = e.timer / e.maxTime;
+            const currentRadius = e.splashRadius * s * (0.3 + progress * 0.7);
+
+            // Outer shockwave ring
+            ctx.strokeStyle = `rgba(255, 100, 0, ${1 - progress})`;
+            ctx.lineWidth = 8 * (1 - progress);
+            ctx.beginPath();
+            ctx.arc(ex, ey, currentRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Inner flash
+            const innerGrad = ctx.createRadialGradient(ex, ey, 0, ex, ey, currentRadius * 0.8);
+            innerGrad.addColorStop(0, `rgba(255, 255, 200, ${0.9 - progress * 0.9})`);
+            innerGrad.addColorStop(0.3, `rgba(255, 200, 0, ${0.7 - progress * 0.7})`);
+            innerGrad.addColorStop(0.6, `rgba(255, 100, 0, ${0.5 - progress * 0.5})`);
+            innerGrad.addColorStop(1, 'rgba(255, 50, 0, 0)');
+            ctx.fillStyle = innerGrad;
+            ctx.beginPath();
+            ctx.arc(ex, ey, currentRadius * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else {
+          // TURBO: Simple orange circles for explosions
+          for (const e of this.world.explosions) {
+            const ex = e.x * s, ey = e.y * s;
+            const progress = e.timer / e.maxTime;
+            ctx.fillStyle = `rgba(255, 100, 0, ${0.5 - progress * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(ex, ey, e.splashRadius * s * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
         
-        // Laser beams (simple version for Safari compatibility)
+        // Laser beams
         for (var bi = 0; bi < this.world.laserBeams.length; bi++) {
           var beam = this.world.laserBeams[bi];
           if (!beam || !beam.segments || beam.segments.length === 0) continue;
 
           var progress = beam.timer / beam.maxTime;
           var alpha = Math.max(0, 1 - progress);
-          var beamWidth = Math.max(2, 20 * alpha);
-
           var isRed = beam.team === 0;
-          var beamColor = isRed ? '255, 50, 100' : '50, 150, 255';
 
-          // Draw each segment as simple lines
-          for (var si = 0; si < beam.segments.length; si++) {
-            var seg = beam.segments[si];
-            if (!seg) continue;
-
-            var sx = seg.startX * s;
-            var sy = seg.startY * s;
-            var ex = seg.endX * s;
-            var ey = seg.endY * s;
-
-            // Outer glow
-            ctx.strokeStyle = 'rgba(' + beamColor + ', ' + (alpha * 0.3) + ')';
-            ctx.lineWidth = beamWidth * s * 3;
+          if (turboMode) {
+            // TURBO: Simple thin lines
+            ctx.strokeStyle = isRed ? `rgba(255, 50, 100, ${alpha})` : `rgba(50, 150, 255, ${alpha})`;
+            ctx.lineWidth = 3 * s;
             ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(sx, sy);
-            ctx.lineTo(ex, ey);
-            ctx.stroke();
+            for (var si = 0; si < beam.segments.length; si++) {
+              var seg = beam.segments[si];
+              if (!seg) continue;
+              ctx.beginPath();
+              ctx.moveTo(seg.startX * s, seg.startY * s);
+              ctx.lineTo(seg.endX * s, seg.endY * s);
+              ctx.stroke();
+            }
+          } else {
+            var beamWidth = Math.max(2, 20 * alpha);
+            var beamColor = isRed ? '255, 50, 100' : '50, 150, 255';
 
-            // Core beam
-            ctx.strokeStyle = 'rgba(255, 255, 255, ' + alpha + ')';
-            ctx.lineWidth = beamWidth * s * 0.5;
-            ctx.beginPath();
-            ctx.moveTo(sx, sy);
-            ctx.lineTo(ex, ey);
-            ctx.stroke();
+            // Draw each segment as simple lines
+            for (var si = 0; si < beam.segments.length; si++) {
+              var seg = beam.segments[si];
+              if (!seg) continue;
+
+              var sx = seg.startX * s;
+              var sy = seg.startY * s;
+              var ex = seg.endX * s;
+              var ey = seg.endY * s;
+
+              // Outer glow
+              ctx.strokeStyle = 'rgba(' + beamColor + ', ' + (alpha * 0.3) + ')';
+              ctx.lineWidth = beamWidth * s * 3;
+              ctx.lineCap = 'round';
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(ex, ey);
+              ctx.stroke();
+
+              // Core beam
+              ctx.strokeStyle = 'rgba(255, 255, 255, ' + alpha + ')';
+              ctx.lineWidth = beamWidth * s * 0.5;
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(ex, ey);
+              ctx.stroke();
+            }
           }
         }
 
@@ -4657,6 +4755,23 @@ button.secondary:hover {
           const dy = ey - sy;
           const len = Math.hypot(dx, dy);
           if (len === 0) continue;
+
+          // TURBO MODE: Simple line slash
+          if (turboMode) {
+            const lungeDuration = slash.lungeDuration || (slash.maxTime * 0.8);
+            const sweepProgress = Math.min(1, slash.timer / lungeDuration);
+            const currentX = sx + dx * sweepProgress;
+            const currentY = sy + dy * sweepProgress;
+            ctx.strokeStyle = glowColor;
+            ctx.globalAlpha = alpha;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            continue;
+          }
 
           const dirX = dx / len;
           const dirY = dy / len;
@@ -4792,6 +4907,22 @@ button.secondary:hover {
           const len = Math.hypot(dx, dy);
           if (len === 0) continue;
 
+          // TURBO MODE: Simple dashed line
+          if (turboMode) {
+            const isRed = trail.team === 0;
+            ctx.strokeStyle = isRed ? '#ff6666' : '#6699ff';
+            ctx.globalAlpha = alpha;
+            ctx.lineWidth = 3;
+            ctx.setLineDash([8, 4]);
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+            continue;
+          }
+
           const dirX = dx / len;
           const dirY = dy / len;
           const nx = -dirY; // perpendicular
@@ -4924,6 +5055,40 @@ button.secondary:hover {
         const isEnabled = world.teleportersEnabled;
         const isActive = world.teleporterActive;
         const time = Date.now() / 1000; // For animations
+
+        // TURBO MODE: Simple circles for teleporters
+        if (turboMode) {
+          for (const tele of world.teleporters) {
+            const x = tele.x * s;
+            const y = tele.y * s;
+            const r = tele.radius * s;
+
+            if (!isEnabled) {
+              ctx.strokeStyle = '#444';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(x, y, r, 0, Math.PI * 2);
+              ctx.stroke();
+            } else if (!isActive) {
+              ctx.strokeStyle = '#448888';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(x, y, r, 0, Math.PI * 2);
+              ctx.stroke();
+            } else {
+              ctx.strokeStyle = '#00ffff';
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(x, y, r, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = '#00ffff';
+              ctx.beginPath();
+              ctx.arc(x, y, 5, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+          return;
+        }
 
         for (let i = 0; i < world.teleporters.length; i++) {
           const tele = world.teleporters[i];
@@ -5276,6 +5441,7 @@ button.secondary:hover {
       demoBtn: document.getElementById('demo-btn'),
       loadFile: document.getElementById('load-file'),
       headlessBtn: document.getElementById('headless-btn'),
+      turboBtn: document.getElementById('turbo-btn'),
       headlessOverlay: document.getElementById('headless-overlay'),
       ups: document.getElementById('ups'),
 
@@ -5314,6 +5480,16 @@ button.secondary:hover {
       ui.headlessBtn.style.borderColor = headlessMode ? '#0f0' : '#888';
       ui.headlessBtn.style.color = headlessMode ? '#0f0' : '#888';
       ui.headlessOverlay.classList.toggle('visible', headlessMode);
+    });
+
+    // Turbo mode - ultra performance rendering
+    ui.turboBtn.addEventListener('click', () => {
+      turboMode = !turboMode;
+      ui.turboBtn.textContent = turboMode ? '⚡ TURBO MODE (ON)' : '⚡ TURBO MODE (OFF)';
+      ui.turboBtn.style.background = turboMode ? 'rgba(255, 100, 0, 0.5)' : 'rgba(255, 100, 0, 0.2)';
+      ui.turboBtn.style.borderColor = turboMode ? '#ff6400' : '#ff6400';
+      ui.turboBtn.style.color = turboMode ? '#fff' : '#ff6400';
+      world.addEvent(turboMode ? '⚡ TURBO MODE ON - Max Performance!' : '⚡ TURBO MODE OFF', 'kill');
     });
 
     // Debug buttons - give all agents a weapon
