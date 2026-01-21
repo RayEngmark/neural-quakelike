@@ -2639,7 +2639,7 @@ button.secondary:hover {
         // Persistent mode: evaluate this life and evolve
         if (persistentMode && world) {
           const survivalTime = world.totalTime - this.lifeStartTime;
-          const lifeScore = this.lifeKills * 50 + this.lifeDamageDealt - this.damageTaken;
+          const lifeScore = this.lifeKills * 100 + this.lifeDamageDealt - (this.damageTaken * 0.3);
 
           // Add to Hall of Fame
           const entry = {
