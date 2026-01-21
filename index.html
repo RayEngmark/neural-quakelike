@@ -4370,14 +4370,11 @@ button.secondary:hover {
       }
 
       clampCamera() {
+        // Free panning - only prevent arena from going completely off screen
         const vw = this.cssW / (this.baseScale * this.zoom);
         const vh = this.cssH / (this.baseScale * this.zoom);
-        // Calculate how much "slack" there is when zoomed out
-        const slackX = Math.max(0, (vw - this.world.width) / 2);
-        const slackY = Math.max(0, (vh - this.world.height) / 2);
-        // Allow panning to move the world anywhere within the viewport
-        this.cameraX = clamp(this.cameraX, -slackX - 200, this.world.width - vw + slackX + 200);
-        this.cameraY = clamp(this.cameraY, -slackY - 200, this.world.height - vh + slackY + 200);
+        this.cameraX = clamp(this.cameraX, -vw + 100, this.world.width - 100);
+        this.cameraY = clamp(this.cameraY, -vh + 100, this.world.height - 100);
       }
 
       handleClick(clientX, clientY) {
