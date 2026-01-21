@@ -11,7 +11,7 @@
       /* Deep Space theme - softer than pure black */
       --bg-dark: #0b0c15;
       --bg-darker: #070810;
-      --panel-bg: rgba(15, 20, 35, 0.85);
+      --panel-bg: rgba(15, 20, 35, 0.70);
       --panel-bg-solid: #0f1423;
 
       /* Neon accents with glow-friendly values */
@@ -289,7 +289,7 @@ body {
   right: -320px;
   width: 300px;
   height: 100vh;
-  background: rgba(12, 15, 25, 0.92);
+  background: rgba(12, 15, 25, 0.78);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-left: 1px solid var(--border-color);
@@ -384,7 +384,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(12, 15, 25, 0.9);
+  background: rgba(12, 15, 25, 0.80);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 50px;
   padding: 10px 20px;
@@ -4372,8 +4372,14 @@ button.secondary:hover {
       clampCamera() {
         const vw = this.cssW / (this.baseScale * this.zoom);
         const vh = this.cssH / (this.baseScale * this.zoom);
-        this.cameraX = clamp(this.cameraX, -100, this.world.width - vw + 100);
-        this.cameraY = clamp(this.cameraY, -100, this.world.height - vh + 100);
+        // Always allow at least 300 units of panning freedom in each direction
+        const margin = 300;
+        const minX = Math.min(-margin, this.world.width - vw + margin);
+        const maxX = Math.max(-margin, this.world.width - vw + margin);
+        const minY = Math.min(-margin, this.world.height - vh + margin);
+        const maxY = Math.max(-margin, this.world.height - vh + margin);
+        this.cameraX = clamp(this.cameraX, minX, maxX);
+        this.cameraY = clamp(this.cameraY, minY, maxY);
       }
 
       handleClick(clientX, clientY) {
