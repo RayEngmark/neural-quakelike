@@ -94,36 +94,134 @@ body {
 
 #center-info {
   text-align: center;
-  padding: 0 30px;
+  padding: 0 20px;
   border-left: 1px solid var(--border-color);
   border-right: 1px solid var(--border-color);
-}
-#center-info .mode-toggle {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: 4px;
 }
-#center-info .mode-label {
-  font-size: 0.6rem;
-  color: #888;
+/* Segmented mode selector */
+.mode-selector {
+  display: flex;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+.mode-selector button {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: bold;
   letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
 }
-#center-info .mode-toggle .toggle {
-  width: 32px;
-  height: 16px;
+.mode-selector button:hover {
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.05);
+}
+.mode-selector button.active {
+  background: var(--neon-green);
+  color: #000;
+}
+.mode-selector button.active:hover {
+  background: var(--neon-green);
 }
 #center-info .big {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   color: var(--neon-green);
   font-weight: bold;
+  line-height: 1;
 }
 #center-info .sub {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: #666;
   text-transform: uppercase;
+}
+
+/* Pre-simulation info screen */
+#pre-sim-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at center, rgba(13, 13, 25, 0.97) 0%, rgba(5, 5, 16, 0.99) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 40px;
+  text-align: center;
+}
+#pre-sim-screen.hidden {
+  display: none;
+}
+#pre-sim-screen .mode-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--neon-green);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+#pre-sim-screen .mode-subtitle {
+  font-size: 1rem;
+  color: var(--neon-blue);
+  margin-bottom: 30px;
+}
+#pre-sim-screen .mode-description {
+  max-width: 500px;
+  font-size: 0.9rem;
+  color: #aaa;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+#pre-sim-screen .mode-features {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 40px;
+  text-align: left;
+}
+#pre-sim-screen .feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #888;
+}
+#pre-sim-screen .feature .icon {
+  color: var(--neon-green);
+  font-size: 1rem;
+}
+#pre-sim-screen .start-btn {
+  padding: 15px 50px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  font-weight: bold;
+  background: var(--neon-green);
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.2s;
+}
+#pre-sim-screen .start-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(0, 255, 157, 0.4);
 }
 #stats-btn {
   position: absolute;
@@ -842,9 +940,9 @@ button.secondary:hover {
       </div>
 
   <div id="center-info">
-    <div class="mode-toggle">
-      <span class="mode-label" id="mode-label">ROUNDS</span>
-      <div class="toggle" id="toggle-persistent" title="Toggle Persistent Evolution Mode"></div>
+    <div class="mode-selector">
+      <button id="mode-rounds" class="active">Rounds</button>
+      <button id="mode-persistent">Persistent</button>
     </div>
     <div class="big" id="kill-limit-display">50</div>
     <div class="sub" id="mode-sub">first to</div>
@@ -952,6 +1050,20 @@ button.secondary:hover {
       <h2>Simulation Running in Headless Mode</h2>
       <p>Rendering is disabled for faster simulation speed.</p>
       <div class="hint">Toggle <strong>🖥️ HEADLESS</strong> in Controls to view the battle.</div>
+    </div>
+    <!-- Pre-simulation info screen -->
+    <div id="pre-sim-screen">
+      <div class="mode-title" id="pre-sim-title">ROUNDS MODE</div>
+      <div class="mode-subtitle" id="pre-sim-subtitle">Generation-based Evolution</div>
+      <div class="mode-description" id="pre-sim-description">
+        Teams battle in timed rounds. After each round, the losing team evolves by learning from the winners. Watch neural networks improve over generations.
+      </div>
+      <div class="mode-features" id="pre-sim-features">
+        <div class="feature"><span class="icon">⏱️</span> Timed rounds with kill limit</div>
+        <div class="feature"><span class="icon">🧬</span> Losers evolve after each round</div>
+        <div class="feature"><span class="icon">🏆</span> Track wins across generations</div>
+      </div>
+      <button class="start-btn" id="start-sim-btn">START SIMULATION</button>
     </div>
   </div>
 
@@ -5853,14 +5965,23 @@ button.secondary:hover {
       toggleTeleporter: document.getElementById('toggle-teleporter'),
       toggleFf: document.getElementById('toggle-ff'),
       toggleRicochet: document.getElementById('toggle-ricochet'),
-      togglePersistent: document.getElementById('toggle-persistent'),
+      // Mode selector
+      modeRounds: document.getElementById('mode-rounds'),
+      modePersistent: document.getElementById('mode-persistent'),
+      modeSub: document.getElementById('mode-sub'),
+
+      // Pre-simulation screen
+      preSimScreen: document.getElementById('pre-sim-screen'),
+      preSimTitle: document.getElementById('pre-sim-title'),
+      preSimSubtitle: document.getElementById('pre-sim-subtitle'),
+      preSimDescription: document.getElementById('pre-sim-description'),
+      preSimFeatures: document.getElementById('pre-sim-features'),
+      startSimBtn: document.getElementById('start-sim-btn'),
 
       // Stats panel
       statsBtn: document.getElementById('stats-btn'),
       statsPanel: document.getElementById('stats-panel'),
       statsClose: document.getElementById('stats-close'),
-      modeLabel: document.getElementById('mode-label'),
-      modeSub: document.getElementById('mode-sub'),
       statsMode: document.getElementById('stats-mode'),
       statsTotalLives: document.getElementById('stats-total-lives'),
       statsRocketKills: document.getElementById('stats-rocket-kills'),
@@ -6083,14 +6204,65 @@ button.secondary:hover {
       world.teleportersEnabled = ui.toggleTeleporter.classList.contains('active');
     });
 
-    // Persistent mode toggle
-    ui.togglePersistent.addEventListener('click', () => {
-      ui.togglePersistent.classList.toggle('active');
-      persistentMode = ui.togglePersistent.classList.contains('active');
+    // Mode info content
+    const modeInfo = {
+      rounds: {
+        title: 'ROUNDS MODE',
+        subtitle: 'Generation-based Evolution',
+        description: 'Teams battle in timed rounds. After each round, the losing team evolves by learning from the winners. Watch neural networks improve over generations.',
+        features: [
+          { icon: '⏱️', text: 'Timed rounds with kill limit' },
+          { icon: '🧬', text: 'Losers evolve after each round' },
+          { icon: '🏆', text: 'Track wins across generations' }
+        ]
+      },
+      persistent: {
+        title: 'PERSISTENT MODE',
+        subtitle: 'Continuous Per-Life Evolution',
+        description: 'No rounds - evolution happens continuously. When an agent dies, it immediately respawns with an evolved brain based on the Hall of Fame. Best performers are remembered.',
+        features: [
+          { icon: '♾️', text: 'Continuous gameplay - no rounds' },
+          { icon: '💀', text: 'Evolve immediately on death' },
+          { icon: '🏅', text: 'Hall of Fame tracks best lives' }
+        ]
+      }
+    };
+
+    // Update pre-sim screen content
+    function updatePreSimScreen() {
+      const mode = persistentMode ? modeInfo.persistent : modeInfo.rounds;
+      ui.preSimTitle.textContent = mode.title;
+      ui.preSimSubtitle.textContent = mode.subtitle;
+      ui.preSimDescription.textContent = mode.description;
+      ui.preSimFeatures.innerHTML = mode.features.map(f =>
+        '<div class="feature"><span class="icon">' + f.icon + '</span> ' + f.text + '</div>'
+      ).join('');
+    }
+
+    // Show pre-sim screen
+    function showPreSimScreen() {
+      world.paused = true;
+      updatePreSimScreen();
+      ui.preSimScreen.classList.remove('hidden');
+    }
+
+    // Hide pre-sim screen and start
+    function hidePreSimScreen() {
+      ui.preSimScreen.classList.add('hidden');
+      world.paused = false;
+    }
+
+    // Switch mode function
+    function switchMode(toPersistent) {
+      if (persistentMode === toPersistent) return;
+
+      persistentMode = toPersistent;
+
+      // Update button states
+      ui.modeRounds.classList.toggle('active', !persistentMode);
+      ui.modePersistent.classList.toggle('active', persistentMode);
 
       // Update header display
-      ui.modeLabel.textContent = persistentMode ? 'PERSISTENT' : 'ROUNDS';
-      ui.modeLabel.style.color = persistentMode ? '#00ff9d' : '#888';
       ui.modeSub.textContent = persistentMode ? 'elapsed' : 'first to';
       ui.killLimitDisplay.textContent = persistentMode ? formatTime(world.totalTime) : world.killLimit;
 
@@ -6114,11 +6286,21 @@ button.secondary:hover {
           agent.lifeKills = 0;
           agent.lifeDamageDealt = 0;
         }
-        world.addEvent('🧬 PERSISTENT MODE - Continuous evolution!', 'kill');
-      } else {
-        world.addEvent('🧬 ROUNDS MODE - Generation-based evolution', 'kill');
       }
-    });
+
+      // Show pre-sim screen
+      showPreSimScreen();
+    }
+
+    // Mode selector button handlers
+    ui.modeRounds.addEventListener('click', () => switchMode(false));
+    ui.modePersistent.addEventListener('click', () => switchMode(true));
+
+    // Start simulation button
+    ui.startSimBtn.addEventListener('click', hidePreSimScreen);
+
+    // Show pre-sim screen on initial load
+    showPreSimScreen();
 
     // Stats panel open/close
     function openStatsPanel() {
