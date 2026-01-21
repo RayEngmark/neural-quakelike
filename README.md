@@ -1,29 +1,31 @@
 # Neural Quake Arena
 
-A browser-based arena shooter where AI agents learn to fight through neuroevolution. Two teams of neural network-controlled agents battle in real-time, evolving their strategies over generations.
+A browser-based arena shooter where AI agents learn to fight through neuroevolution. Two teams of neural network-controlled agents battle in real-time, evolving their strategies over time.
 
 ## Live Demo
 
 https://rayengmark.github.io/neural-quakelike/
 
-## What It Does
+## Game Modes
 
-Red team vs blue team. Each agent has a small neural network brain (26 inputs, 16 hidden neurons, 5 outputs) that controls movement, aiming, and shooting. After each round, the best performers pass their brains to the next generation with mutations. Over time, agents develop combat strategies.
+### Rounds Mode
+Traditional generation-based evolution. Teams fight until time runs out or kill limit is reached. After each round, agents evolve based on performance. Best for structured training with clear generational progress.
 
+### Persistent Mode
+Continuous evolution without rounds. When an agent dies, it immediately respawns with an evolved brain based on the Hall of Fame. No waiting for rounds to end. Best for watching real-time adaptation.
 
-### Inputs
+## How It Works
 
-Each agent perceives the world through:
+Red team vs blue team. Each agent has a neural network brain (26 inputs, 16 hidden neurons, 5 outputs) that controls movement, aiming, and shooting. Over time, agents develop combat strategies through evolution.
+
+### Neural Network Inputs
 - 16 raycast sensors detecting walls, enemies, and allies
 - Health and armor levels
 - Weapon cooldown status
-- Nearest enemy angle and distance
-- Nearest ally angle and distance
+- Nearest enemy/ally angle and distance
 - Current weapon type
 
-### Outputs
-
-The network decides:
+### Neural Network Outputs
 - Turn direction
 - Movement speed
 - Whether to shoot
@@ -32,59 +34,88 @@ The network decides:
 
 ## Weapons
 
-All agents spawn with a rocket launcher (explosive projectiles with splash damage).
+All agents spawn with a **Rocket Launcher** (explosive projectiles with splash damage).
 
-Optional pickups can be enabled:
-- **Laser** - Instant hitscan beam. One-shot kill.
-- **Energy Sword** - Charge-up melee lunge attack. Longer charge = longer range.
+Special weapons spawn at map center when enabled:
+- **Laser** - Charge-up hitscan beam. Instant kill on full charge.
+- **Energy Sword** - Hold to aim, release to lunge. One-hit kill melee.
 
-When enabled, lasers and swords spawn in a circle at map center. Agents can only pick up one special weapon per round.
+## Features
 
-## Optional Features
-
-These can be toggled on/off in the sidebar:
-- **Dodging** - Agents can dash in any direction. 6 second cooldown.
-- **Teleporters** - Two portals that activate at a random point during the round for 30 seconds.
-- **Laser/Sword spawns** - Special weapons at map center.
-- **Health/Armor spawns** - Pickups in enclosed pits near the corners. Random respawn timers.
+Toggle on/off in the settings panel:
+- **Health Packs** - Spawn around the map. +50 HP instant, +50 HP regen over 5s.
+- **Armor Pickups** - +50 armor per pickup, max 100.
+- **Laser/Sword Spawns** - Special weapons at map center.
+- **Dodging** - Dash in any direction. 6 second cooldown.
+- **Teleporters** - Portals that activate randomly for 30 seconds.
 - **Friendly Fire** - Rockets damage teammates.
-- **Ricochet** - Friendly fire reflects back to the shooter.
+- **Ricochet** - Friendly fire reflects back to shooter.
 
 ## Controls
 
-The sidebar has controls for:
-- Simulation speed
-- Population size
-- Round time and kill limit
-- Toggle switches for all optional features
-- Zoom and camera (drag to pan, scroll to zoom)
+### Floating Control Bar
+- Play/Pause simulation
+- Simulation speed (1x-10x)
+- Headless mode (skip rendering for faster training)
+- Performance mode (simplified graphics)
+- Save/Load checkpoints
 
-Click on any agent to follow them and see their stats. Click elsewhere to stop following. Dragging the camera also stops following.
+### Stats Panel (☰ button)
+- Kill statistics by weapon type
+- Overall kill leaderboard
+- Hall of Fame (Persistent mode)
+- Average Life Score per team
+- Combat log
+
+### Camera
+- **Scroll** - Zoom in/out
+- **Drag** - Pan camera freely
+- **Click agent** - Follow that agent
+- **Click elsewhere** - Stop following
+
+## Evolution
+
+### Rounds Mode
+1. Round plays until time/kill limit reached
+2. Agents ranked by score (kills × 50 + damage dealt - damage taken)
+3. Top performers pass brains to next generation with mutations
+4. Next round begins
+
+### Persistent Mode
+1. Agent dies and gets scored
+2. Added to Hall of Fame (top 100 per team)
+3. Respawns with evolved brain based on Hall of Fame parents
+4. Tournament selection picks parents from best performers
+5. Mutation rate varies by parent's rank
+
+### Scoring Formula
+```
+score = kills × 50 + damageDealt - damageTaken
+```
+This rewards efficient combat - dealing damage while minimizing damage taken.
 
 ## Training Tips
 
-More agents and faster generations generally lead to better results. The key is finding a balance where rounds are long enough for agents to actually engage in combat and learn, but short enough to get through many generations quickly.
-
-If your system struggles with large populations, enable headless mode. This skips rendering entirely and runs the simulation as fast as your CPU allows. Useful for overnight training runs.
-
-A round that ends in 1-2 seconds is too short - agents won't have time to do anything meaningful. Aim for rounds where agents have time to move around, find enemies, and fight.
+- **Population** - More agents = more diversity, but slower simulation
+- **Headless Mode** - Skip rendering for 10x+ faster training
+- **Persistent Mode** - Better for long unattended runs
+- **Rounds Mode** - Better for observing generational improvements
 
 ## Running Locally
 
 Open `index.html` in a browser. No build step or server required.
 
-## How Evolution Works
+## Tech
 
-1. Round plays out until time runs out or kill limit is reached
-2. Agents are ranked by score (kills, damage dealt, survival)
-3. Top 10% of each team keep their brains with minor mutations
-4. Bottom 90% receive a copy of a random top performer's brain with heavier mutations
-5. Winning team's best brain is preserved, losing team's best brain gets extra mutation
-6. Next generation begins
+Single HTML file containing:
+- Vanilla JavaScript
+- Canvas 2D rendering
+- Simple feedforward neural networks
+- Neuroevolution with tournament selection
 
 ## Contributing
 
-Pull requests welcome. If you're adding a feature, keep the single-file structure - everything lives in `index.html`.
+Pull requests welcome. Keep the single-file structure - everything lives in `index.html`.
 
 ## License
 
