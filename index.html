@@ -777,6 +777,29 @@ button.secondary:hover {
 
   <!-- RIGHT SIDEBAR: Game Modifiers -->
   <div id="right-sidebar">
+    <div class="panel" data-panel-id="evolution">
+      <h2>// Evolution Mode</h2>
+      <div class="toggle-row" title="Continuous evolution - no rounds, each death triggers individual evolution from Hall of Fame">
+        <label>🧬 Persistent Mode</label>
+        <div class="toggle" id="toggle-persistent"></div>
+      </div>
+      <div id="persistent-stats" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <div class="stat-row">
+          <span>Total Lives</span>
+          <span class="stat-value" id="total-lives">0</span>
+        </div>
+        <div class="stat-row">
+          <span>🔴 HoF Entries</span>
+          <span class="stat-value" id="red-hof-count">0</span>
+        </div>
+        <div class="stat-row">
+          <span>🔵 HoF Entries</span>
+          <span class="stat-value" id="blue-hof-count">0</span>
+        </div>
+        <button id="clear-hof-btn" style="margin-top: 10px; width: 100%; background: rgba(255, 50, 50, 0.2); border-color: #ff3333; color: #ff6666;">🗑️ Clear Hall of Fame</button>
+      </div>
+    </div>
+
     <div class="panel" data-panel-id="modifiers">
       <h2>// Game Modifiers</h2>
       <div class="toggle-row" title="Spawns health packs every 10s. Instant 50HP + 50HP regen over 5s.">
@@ -925,6 +948,13 @@ button.secondary:hover {
     // --------------------
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
+    // Format time in MM:SS format
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return mins + ':' + (secs < 10 ? '0' : '') + secs;
+    }
+
     // --------------------
     // Demo Checkpoint (pre-trained AI for visitors)
     // To update: Save a checkpoint, then run in console:
@@ -938,6 +968,61 @@ button.secondary:hover {
     // --------------------
     let turboMode = false;
     let forceWeapon = null; // 'sword', 'laser', or null - persists weapons after death
+    let persistentMode = false; // Persistent per-life evolution mode
+
+    // --------------------
+    // Hall of Fame (for persistent mode)
+    // --------------------
+    const HOF_MAX_SIZE = 100; // Max entries per team
+    const hallOfFame = [[], []]; // [redTeamHoF, blueTeamHoF]
+    let totalLivesEvaluated = 0;
+
+    // Hall of Fame entry structure:
+    // { score, brain (cloned weights), kills, deaths, damageDealt, survivalTime, timestamp }
+
+    function addToHallOfFame(team, entry) {
+      hallOfFame[team].push(entry);
+      hallOfFame[team].sort((a, b) => b.score - a.score);
+      if (hallOfFame[team].length > HOF_MAX_SIZE) {
+        hallOfFame[team].length = HOF_MAX_SIZE;
+      }
+    }
+
+    // Tournament selection - pick best of k random candidates
+    function selectParentFromHoF(team, tournamentSize = 5) {
+      const hof = hallOfFame[team];
+      if (hof.length === 0) return null;
+      if (hof.length === 1) return hof[0];
+
+      let best = null;
+      for (let i = 0; i < Math.min(tournamentSize, hof.length); i++) {
+        const idx = Math.floor(Math.random() * hof.length);
+        const candidate = hof[idx];
+        if (!best || candidate.score > best.score) {
+          best = candidate;
+        }
+      }
+      return best;
+    }
+
+    // Get mutation rate based on parent's rank in HoF
+    function getMutationRateForRank(team, parentEntry) {
+      const hof = hallOfFame[team];
+      const rank = hof.indexOf(parentEntry);
+      if (rank === -1 || hof.length <= 1) return { rate: 0.15, strength: 0.3 };
+
+      // Top 10% get low mutation, bottom gets higher
+      const percentile = rank / hof.length;
+      const rate = 0.05 + percentile * 0.2; // 0.05 to 0.25
+      const strength = 0.1 + percentile * 0.4; // 0.1 to 0.5
+      return { rate, strength };
+    }
+
+    function clearHallOfFame() {
+      hallOfFame[0] = [];
+      hallOfFame[1] = [];
+      totalLivesEvaluated = 0;
+    }
 
     // --------------------
     // Names
@@ -1118,9 +1203,11 @@ button.secondary:hover {
 
           const killed = agent.takeDamage(damage, this.owner, world);
           this.owner.damageDealt += damage;
+          this.owner.lifeDamageDealt += damage;
           world.addEvent(this.owner.name + ' blasted ' + agent.name, 'damage');
           if (killed) {
             this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
+            this.owner.lifeKills++;
             world.teamKills[this.owner.team]++;
             this.owner.killScore += 50;
             world.addEvent(this.owner.name + ' killed ' + agent.name + '!', 'kill');
@@ -1283,8 +1370,10 @@ button.secondary:hover {
             const killed = agent.takeDamage(finalDamage, this.owner, world);
             if (this.owner) {
               this.owner.damageDealt += finalDamage;
+              this.owner.lifeDamageDealt += finalDamage;
               if (killed) {
                 this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
+                this.owner.lifeKills++;
                 this.owner.weaponKills.rocket++;
                 this.owner.totalWeaponKills.rocket++;
                 world.weaponKills.rocket++;
@@ -1473,6 +1562,11 @@ button.secondary:hover {
         // Track if agent has picked up a special weapon this round (can only pick up once)
         this.hasPickedUpWeapon = false;
 
+        // Persistent mode tracking
+        this.lifeStartTime = 0; // Set when agent spawns/respawns
+        this.lifeKills = 0; // Kills this life only
+        this.lifeDamageDealt = 0; // Damage this life only
+
         // Dodge ability
         this.dodgeCooldown = 0;
         this.isDodging = false;
@@ -1553,7 +1647,12 @@ button.secondary:hover {
         this.swordCharging = false;
         this.swordLunging = false;
         this.lastHitBy = null;
-        
+
+        // Reset life stats for persistent mode
+        this.lifeStartTime = world ? world.totalTime : 0;
+        this.lifeKills = 0;
+        this.lifeDamageDealt = 0;
+
         // Spawn at back of team's side
         const clusterX = this.team === 0 ? 80 : world.width - 80;
         this.x = clusterX + (Math.random() - 0.5) * 100;
@@ -2044,11 +2143,41 @@ button.secondary:hover {
         this.alive = false;
         this.deaths++;
         this.totalDeaths++;
-        this.respawnTimer = world ? world.respawnTime : 3; // Use world's respawn time
 
         // Drop special weapon on death
         if (world && (this.weapon === 'laser' || this.weapon === 'sword')) {
           world.dropWeapon(this.x, this.y, this.weapon);
+        }
+
+        // Persistent mode: evaluate this life and evolve
+        if (persistentMode && world) {
+          const survivalTime = world.totalTime - this.lifeStartTime;
+          const lifeScore = this.lifeKills * 50 + this.lifeDamageDealt - this.damageTaken;
+
+          // Add to Hall of Fame
+          const entry = {
+            score: lifeScore,
+            brain: this.brain.clone(),
+            kills: this.lifeKills,
+            damageDealt: this.lifeDamageDealt,
+            survivalTime: survivalTime,
+            timestamp: Date.now()
+          };
+          addToHallOfFame(this.team, entry);
+          totalLivesEvaluated++;
+
+          // Select parent and evolve
+          const parent = selectParentFromHoF(this.team);
+          if (parent) {
+            const { rate, strength } = getMutationRateForRank(this.team, parent);
+            this.brain = parent.brain.clone();
+            this.brain.mutate(rate, strength);
+          }
+
+          // Immediate respawn in persistent mode
+          this.respawnTimer = 0.1; // Tiny delay for visual feedback
+        } else {
+          this.respawnTimer = world ? world.respawnTime : 3; // Use world's respawn time
         }
 
         return true;
@@ -2106,6 +2235,7 @@ button.secondary:hover {
 
         this.roundTime = 180; // 3 minutes
         this.timeLeft = this.roundTime;
+        this.totalTime = 0; // Total elapsed time (for persistent mode)
 
         this.usedNames = new Set();
         this.generation = 1;
@@ -2319,6 +2449,7 @@ button.secondary:hover {
                   if (killed) {
                     agent.kills++;
                     agent.totalKills++;
+                    agent.lifeKills++;
                     agent.weaponKills.laser++;
                     agent.totalWeaponKills.laser++;
                     this.weaponKills.laser++;
@@ -2390,9 +2521,11 @@ button.secondary:hover {
               }
             } else {
               const killed = target.takeDamage(actualDmg, owner, this);
+              owner.lifeDamageDealt += actualDmg;
               if (killed) {
                 owner.kills++;
                 owner.totalKills++;
+                owner.lifeKills++;
                 owner.weaponKills.laser++;
                 owner.totalWeaponKills.laser++;
                 this.weaponKills.laser++;
@@ -2563,6 +2696,7 @@ button.secondary:hover {
             if (killed) {
               agent.kills++;
               agent.totalKills++;
+              agent.lifeKills++;
               agent.weaponKills.sword++;
               agent.totalWeaponKills.sword++;
               this.weaponKills.sword++;
@@ -3197,7 +3331,10 @@ button.secondary:hover {
       update(dt) {
         if (this.paused) return;
 
-        this.timeLeft -= dt;
+        this.totalTime += dt;
+        if (!persistentMode) {
+          this.timeLeft -= dt;
+        }
 
         // Pickup spawning (health/armor only - weapons spawn at round start)
         // Update per-pit respawn timers (Roshan-style random respawn)
@@ -3453,9 +3590,11 @@ button.secondary:hover {
                 const killed = agent.takeDamage(dmg, e.owner, this);
                 if (e.owner) {
                   e.owner.damageDealt += dmg;
+                  e.owner.lifeDamageDealt += dmg;
                   if (killed) {
                     e.owner.kills++;
                     e.owner.totalKills = (e.owner.totalKills || 0) + 1;
+                    e.owner.lifeKills++;
                     e.owner.weaponKills.rocket++;
                     e.owner.totalWeaponKills.rocket++;
                     this.weaponKills.rocket++;
@@ -3576,9 +3715,11 @@ button.secondary:hover {
           }
         }
 
-        // Check win condition
-        if (this.teamKills[0] >= this.killLimit || this.teamKills[1] >= this.killLimit || this.timeLeft <= 0) {
-          this.endRound();
+        // Check win condition (only in generational mode)
+        if (!persistentMode) {
+          if (this.teamKills[0] >= this.killLimit || this.teamKills[1] >= this.killLimit || this.timeLeft <= 0) {
+            this.endRound();
+          }
         }
       }
       endRound() {
@@ -5493,6 +5634,14 @@ button.secondary:hover {
       toggleTeleporter: document.getElementById('toggle-teleporter'),
       toggleFf: document.getElementById('toggle-ff'),
       toggleRicochet: document.getElementById('toggle-ricochet'),
+      togglePersistent: document.getElementById('toggle-persistent'),
+
+      // Persistent mode UI
+      persistentStats: document.getElementById('persistent-stats'),
+      totalLives: document.getElementById('total-lives'),
+      redHofCount: document.getElementById('red-hof-count'),
+      blueHofCount: document.getElementById('blue-hof-count'),
+      clearHofBtn: document.getElementById('clear-hof-btn'),
 
       // Field item counts
       fieldItemsList: document.getElementById('field-items-list'),
@@ -5692,6 +5841,41 @@ button.secondary:hover {
     ui.toggleTeleporter.addEventListener('click', () => {
       ui.toggleTeleporter.classList.toggle('active');
       world.teleportersEnabled = ui.toggleTeleporter.classList.contains('active');
+    });
+
+    // Persistent mode toggle
+    ui.togglePersistent.addEventListener('click', () => {
+      ui.togglePersistent.classList.toggle('active');
+      persistentMode = ui.togglePersistent.classList.contains('active');
+
+      // Show/hide persistent mode stats
+      ui.persistentStats.style.display = persistentMode ? 'block' : 'none';
+
+      // Show/hide round-based UI elements
+      const roundElements = document.querySelectorAll('.round-mode-only');
+      const persistentElements = document.querySelectorAll('.persistent-mode-only');
+      roundElements.forEach(el => el.style.display = persistentMode ? 'none' : '');
+      persistentElements.forEach(el => el.style.display = persistentMode ? '' : 'none');
+
+      if (persistentMode) {
+        // Initialize life stats for all agents
+        for (const agent of world.agents) {
+          agent.lifeStartTime = world.totalTime;
+          agent.lifeKills = 0;
+          agent.lifeDamageDealt = 0;
+        }
+        world.addEvent('🧬 PERSISTENT MODE ON - Continuous evolution!', 'kill');
+      } else {
+        world.addEvent('🧬 PERSISTENT MODE OFF - Round-based evolution', 'kill');
+      }
+    });
+
+    // Clear Hall of Fame button
+    ui.clearHofBtn.addEventListener('click', () => {
+      if (confirm('Clear all Hall of Fame entries? This cannot be undone.')) {
+        clearHallOfFame();
+        world.addEvent('🗑️ Hall of Fame cleared!', 'kill');
+      }
     });
 
     // Sliders
@@ -5913,9 +6097,18 @@ button.secondary:hover {
       if (uiTimer < UI_INTERVAL) return;
       uiTimer = 0;
 
-      ui.gen.textContent = world.generation;
+      ui.gen.textContent = persistentMode ? totalLivesEvaluated : world.generation;
       ui.alive.textContent = world.agents.filter(a => a.alive).length;
-      ui.time.textContent = Math.ceil(world.timeLeft) + 's';
+      ui.time.textContent = persistentMode
+        ? formatTime(world.totalTime)
+        : Math.ceil(world.timeLeft) + 's';
+
+      // Update persistent mode stats
+      if (persistentMode) {
+        ui.totalLives.textContent = totalLivesEvaluated;
+        ui.redHofCount.textContent = hallOfFame[0].length;
+        ui.blueHofCount.textContent = hallOfFame[1].length;
+      }
       
       // UPS display with color coding
       ui.ups.textContent = currentUps;
@@ -5962,25 +6155,62 @@ button.secondary:hover {
       }
       ui.fieldItemsList.innerHTML = fieldItemsHtml;
 
-      // This round leaderboard
-      ui.leaderboard.innerHTML = world.getLeaderboard().map((a, i) => {
-        const status = a.alive ? '' : (a.respawnTimer > 0 ? ' (' + Math.ceil(a.respawnTimer) + 's)' : '');
-        const kd = a.kills + '/' + a.deaths;
-        return '<div class="leader-entry ' + (a.alive ? '' : 'dead') + '" style="border-left: 2px solid ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
-          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + a.name + status + '</span>' +
-          '<span class="score">' + a.score + '</span>' +
-        '</div>';
-      }).join('');
+      // Leaderboard - different in persistent mode
+      if (persistentMode) {
+        // Show Hall of Fame entries (combined from both teams, sorted by score)
+        const combinedHoF = [
+          ...hallOfFame[0].slice(0, 5).map(e => ({ ...e, team: 0 })),
+          ...hallOfFame[1].slice(0, 5).map(e => ({ ...e, team: 1 }))
+        ].sort((a, b) => b.score - a.score).slice(0, 10);
 
-      // All-time legends leaderboard
-      const allTimeSorted = [...world.agents].sort((a, b) => b.totalKills - a.totalKills).slice(0, 5);
-      ui.alltimeLeaderboard.innerHTML = allTimeSorted.map((a, i) => {
-        const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
-        return '<div class="leader-entry" style="border-left: 2px solid ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
-          '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + medal + ' ' + a.name + '</span>' +
-          '<span class="score">' + a.totalKills + 'K</span>' +
-        '</div>';
-      }).join('');
+        ui.leaderboard.innerHTML = combinedHoF.length > 0
+          ? combinedHoF.map((e, i) => {
+              const timeAgo = Math.floor((Date.now() - e.timestamp) / 1000);
+              const timeStr = timeAgo < 60 ? timeAgo + 's' : Math.floor(timeAgo / 60) + 'm';
+              return '<div class="leader-entry" style="border-left: 2px solid ' + (e.team === 0 ? '#ff4444' : '#4488ff') + '">' +
+                '<span class="name" style="color: ' + (e.team === 0 ? '#ff8888' : '#88aaff') + '">' + e.kills + 'K ' + timeStr + ' ago</span>' +
+                '<span class="score">' + e.score + '</span>' +
+              '</div>';
+            }).join('')
+          : '<div class="stat-row" style="opacity: 0.5;">No entries yet - start dying!</div>';
+
+        // Legends show top HoF by team
+        ui.alltimeLeaderboard.innerHTML =
+          '<div style="color: #ff6666; font-size: 0.7rem; margin-bottom: 4px;">🔴 RED HALL OF FAME</div>' +
+          hallOfFame[0].slice(0, 3).map((e, i) => {
+            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : '🥉');
+            return '<div class="leader-entry" style="border-left: 2px solid #ff4444">' +
+              '<span class="name" style="color: #ff8888">' + medal + ' ' + e.kills + 'K</span>' +
+              '<span class="score">' + e.score + '</span></div>';
+          }).join('') +
+          '<div style="color: #6699ff; font-size: 0.7rem; margin: 8px 0 4px;">🔵 BLUE HALL OF FAME</div>' +
+          hallOfFame[1].slice(0, 3).map((e, i) => {
+            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : '🥉');
+            return '<div class="leader-entry" style="border-left: 2px solid #4488ff">' +
+              '<span class="name" style="color: #88aaff">' + medal + ' ' + e.kills + 'K</span>' +
+              '<span class="score">' + e.score + '</span></div>';
+          }).join('');
+      } else {
+        // Normal round leaderboard
+        ui.leaderboard.innerHTML = world.getLeaderboard().map((a, i) => {
+          const status = a.alive ? '' : (a.respawnTimer > 0 ? ' (' + Math.ceil(a.respawnTimer) + 's)' : '');
+          const kd = a.kills + '/' + a.deaths;
+          return '<div class="leader-entry ' + (a.alive ? '' : 'dead') + '" style="border-left: 2px solid ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
+            '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + a.name + status + '</span>' +
+            '<span class="score">' + a.score + '</span>' +
+          '</div>';
+        }).join('');
+
+        // All-time legends leaderboard
+        const allTimeSorted = [...world.agents].sort((a, b) => b.totalKills - a.totalKills).slice(0, 5);
+        ui.alltimeLeaderboard.innerHTML = allTimeSorted.map((a, i) => {
+          const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+          return '<div class="leader-entry" style="border-left: 2px solid ' + (a.team === 0 ? '#ff4444' : '#4488ff') + '">' +
+            '<span class="name" style="color: ' + (a.team === 0 ? '#ff8888' : '#88aaff') + '">' + medal + ' ' + a.name + '</span>' +
+            '<span class="score">' + a.totalKills + 'K</span>' +
+          '</div>';
+        }).join('');
+      }
 
       ui.log.innerHTML = world.events.slice(0, 10).map(e =>
         '<div class="event"><span class="' + e.type + '">' + e.text + '</span></div>'
