@@ -1349,6 +1349,16 @@ button.secondary:hover {
   </div>
 
   <div id="hof-section">
+    <h3>📊 Average Life Score</h3>
+    <div class="stat-row">
+      <span style="color: var(--team-red);">🔴 Red</span>
+      <span class="stat-value" id="stats-red-avg-score">0</span>
+    </div>
+    <div class="stat-row">
+      <span style="color: var(--team-blue);">🔵 Blue</span>
+      <span class="stat-value" id="stats-blue-avg-score">0</span>
+    </div>
+
     <h3>🔴 Red Hall of Fame</h3>
     <div id="stats-red-hof" class="team-section">
       <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
@@ -1435,10 +1445,25 @@ button.secondary:hover {
     const hallOfFame = [[], []]; // [redTeamHoF, blueTeamHoF]
     let totalLivesEvaluated = 0;
 
+    // Track average score at death for progression monitoring
+    const teamDeathStats = [
+      { totalScore: 0, deathCount: 0 }, // Red team
+      { totalScore: 0, deathCount: 0 }  // Blue team
+    ];
+
+    function getAverageScoreAtDeath(team) {
+      if (teamDeathStats[team].deathCount === 0) return 0;
+      return teamDeathStats[team].totalScore / teamDeathStats[team].deathCount;
+    }
+
     // Hall of Fame entry structure:
     // { score, brain (cloned weights), kills, deaths, damageDealt, survivalTime, timestamp }
 
     function addToHallOfFame(team, entry) {
+      // Track death stats for average calculation
+      teamDeathStats[team].totalScore += entry.score;
+      teamDeathStats[team].deathCount++;
+
       hallOfFame[team].push(entry);
       hallOfFame[team].sort((a, b) => b.score - a.score);
       if (hallOfFame[team].length > HOF_MAX_SIZE) {
@@ -1480,6 +1505,9 @@ button.secondary:hover {
       hallOfFame[0] = [];
       hallOfFame[1] = [];
       totalLivesEvaluated = 0;
+      // Reset death stats
+      teamDeathStats[0] = { totalScore: 0, deathCount: 0 };
+      teamDeathStats[1] = { totalScore: 0, deathCount: 0 };
     }
 
     // --------------------
@@ -6140,6 +6168,8 @@ button.secondary:hover {
       statsSwordKills: document.getElementById('stats-sword-kills'),
       statsRedHof: document.getElementById('stats-red-hof'),
       statsBlueHof: document.getElementById('stats-blue-hof'),
+      statsRedAvgScore: document.getElementById('stats-red-avg-score'),
+      statsBlueAvgScore: document.getElementById('stats-blue-avg-score'),
       clearHofBtn: document.getElementById('clear-hof-btn'),
 
       // Respawn time slider
@@ -6870,6 +6900,10 @@ button.secondary:hover {
         const color = typeColors[e.type] || '#888';
         return '<div style="color: ' + color + '; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">' + e.text + '</div>';
       }).join('');
+
+      // Update Average Life Score
+      ui.statsRedAvgScore.textContent = getAverageScoreAtDeath(0).toFixed(1);
+      ui.statsBlueAvgScore.textContent = getAverageScoreAtDeath(1).toFixed(1);
 
       // Update Hall of Fame in stats panel (only shown in persistent mode)
       ui.statsRedHof.innerHTML = hallOfFame[0].length > 0
