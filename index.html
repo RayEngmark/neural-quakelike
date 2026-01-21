@@ -1458,8 +1458,8 @@ button.secondary:hover {
     // { score, brain (cloned weights), kills, deaths, damageDealt, survivalTime, timestamp }
 
     function addToHallOfFame(team, entry) {
-      // Track rolling average (window size = team population)
-      const windowSize = Math.floor(population / 2); // Half of total = one team's population
+      // Track rolling average (last 100 lives)
+      const windowSize = 100;
       recentScores[team].push(entry.score);
       if (recentScores[team].length > windowSize) {
         recentScores[team].shift(); // Remove oldest
