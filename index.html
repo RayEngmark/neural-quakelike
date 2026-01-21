@@ -937,6 +937,7 @@ button.secondary:hover {
     // Turbo Mode (ultra performance for training)
     // --------------------
     let turboMode = false;
+    let forceWeapon = null; // 'sword', 'laser', or null - persists weapons after death
 
     // --------------------
     // Names
@@ -1532,7 +1533,14 @@ button.secondary:hover {
         this.attackCooldown = 0;
         this.attackRecovery = 0;
         this.weaponCooldown = 0;
-        this.weapon = 'rocket'; // Lose special weapons on death
+        // Check if forceWeapon is active (debug mode)
+        if (typeof forceWeapon !== 'undefined' && forceWeapon) {
+          this.weapon = forceWeapon;
+          this.hasPickedUpWeapon = true;
+        } else {
+          this.weapon = 'rocket'; // Lose special weapons on death
+          this.hasPickedUpWeapon = false;
+        }
         this.laserCharge = 0;
         this.laserCharging = false;
         this.swordCharge = 0;
@@ -3778,19 +3786,19 @@ button.secondary:hover {
       }
 
       updateFollow() {
-        // Clear follow if agent is dead or doesn't exist
-        if (this.followAgent && !this.followAgent.alive) {
-          this.followAgent = null;
-        }
-
+        // Keep following agent even when dead - they'll respawn
         if (!this.followAgent) return;
 
-        // Center camera on followed agent
-        const vw = this.cssW / (this.baseScale * this.zoom);
-        const vh = this.cssH / (this.baseScale * this.zoom);
-        this.cameraX = this.followAgent.x - vw / 2;
-        this.cameraY = this.followAgent.y - vh / 2;
-        this.clampCamera();
+        // Only move camera if agent is alive
+        if (this.followAgent.alive) {
+          // Center camera on followed agent
+          const vw = this.cssW / (this.baseScale * this.zoom);
+          const vh = this.cssH / (this.baseScale * this.zoom);
+          this.cameraX = this.followAgent.x - vw / 2;
+          this.cameraY = this.followAgent.y - vh / 2;
+          this.clampCamera();
+        }
+        // When dead, camera stays in place until respawn
       }
 
       resize() {
@@ -5530,21 +5538,71 @@ button.secondary:hover {
       world.addEvent(turboMode ? '⚡ TURBO MODE ON - Max Performance!' : '⚡ TURBO MODE OFF', 'kill');
     });
 
-    // Debug buttons - give all agents a weapon
-    document.getElementById('debug-sword-btn').addEventListener('click', () => {
-      for (const agent of world.agents) {
-        agent.weapon = 'sword';
-        agent.hasPickedUpWeapon = true;
+    // Debug buttons - give all agents a weapon (persists after death)
+    const debugSwordBtn = document.getElementById('debug-sword-btn');
+    const debugLaserBtn = document.getElementById('debug-laser-btn');
+
+    function updateDebugButtonStyles() {
+      // Sword button
+      if (forceWeapon === 'sword') {
+        debugSwordBtn.style.background = 'rgba(255, 0, 255, 0.5)';
+        debugSwordBtn.style.color = '#fff';
+        debugSwordBtn.textContent = '🗡️ SWORD (ON)';
+      } else {
+        debugSwordBtn.style.background = 'rgba(255, 0, 255, 0.1)';
+        debugSwordBtn.style.color = '#ff00ff';
+        debugSwordBtn.textContent = '🗡️ ALL SWORD';
       }
-      world.addEvent('🗡️ DEBUG: All agents now have SWORD!', 'sword');
+      // Laser button
+      if (forceWeapon === 'laser') {
+        debugLaserBtn.style.background = 'rgba(0, 200, 255, 0.5)';
+        debugLaserBtn.style.color = '#fff';
+        debugLaserBtn.textContent = '⚡ LASER (ON)';
+      } else {
+        debugLaserBtn.style.background = 'rgba(0, 200, 255, 0.1)';
+        debugLaserBtn.style.color = '#00aaff';
+        debugLaserBtn.textContent = '⚡ ALL LASER';
+      }
+    }
+
+    debugSwordBtn.addEventListener('click', () => {
+      if (forceWeapon === 'sword') {
+        // Toggle off - reset all to rocket
+        forceWeapon = null;
+        for (const agent of world.agents) {
+          agent.weapon = 'rocket';
+          agent.hasPickedUpWeapon = false;
+        }
+        world.addEvent('🗡️ Sword mode OFF - weapons reset', 'sword');
+      } else {
+        forceWeapon = 'sword';
+        for (const agent of world.agents) {
+          agent.weapon = 'sword';
+          agent.hasPickedUpWeapon = true;
+        }
+        world.addEvent('🗡️ Sword mode ON - persists after death!', 'sword');
+      }
+      updateDebugButtonStyles();
     });
 
-    document.getElementById('debug-laser-btn').addEventListener('click', () => {
-      for (const agent of world.agents) {
-        agent.weapon = 'laser';
-        agent.hasPickedUpWeapon = true;
+    debugLaserBtn.addEventListener('click', () => {
+      if (forceWeapon === 'laser') {
+        // Toggle off - reset all to rocket
+        forceWeapon = null;
+        for (const agent of world.agents) {
+          agent.weapon = 'rocket';
+          agent.hasPickedUpWeapon = false;
+        }
+        world.addEvent('⚡ Laser mode OFF - weapons reset', 'laser');
+      } else {
+        forceWeapon = 'laser';
+        for (const agent of world.agents) {
+          agent.weapon = 'laser';
+          agent.hasPickedUpWeapon = true;
+        }
+        world.addEvent('⚡ Laser mode ON - persists after death!', 'laser');
       }
-      world.addEvent('⚡ DEBUG: All agents now have LASER!', 'laser');
+      updateDebugButtonStyles();
     });
 
     // Toggle handlers - connect to world
@@ -5654,6 +5712,8 @@ button.secondary:hover {
       world.generation = 1;
       world.events = [];
       world.teamBrains = [null, null];
+      forceWeapon = null; // Reset forced weapon mode
+      updateDebugButtonStyles();
       world.spawnAgents(population);
     });
 
@@ -5918,19 +5978,26 @@ button.secondary:hover {
 
       ui.agentProfile.style.display = 'block';
 
-      // Header
+      // Header - show dead status and respawn timer
       ui.profileName.textContent = agent.name;
-      ui.profileName.style.color = agent.team === 0 ? '#ff6666' : '#6699ff';
-      ui.profileTeam.textContent = agent.team === 0 ? 'RED TEAM' : 'BLUE TEAM';
-      ui.profileTeam.style.color = agent.team === 0 ? '#ff4444' : '#4488ff';
+      if (!agent.alive) {
+        ui.profileName.style.color = '#666';
+        const respawnSec = Math.ceil(agent.respawnTimer);
+        ui.profileTeam.textContent = 'DEAD - Respawn in ' + respawnSec + 's';
+        ui.profileTeam.style.color = '#888';
+      } else {
+        ui.profileName.style.color = agent.team === 0 ? '#ff6666' : '#6699ff';
+        ui.profileTeam.textContent = agent.team === 0 ? 'RED TEAM' : 'BLUE TEAM';
+        ui.profileTeam.style.color = agent.team === 0 ? '#ff4444' : '#4488ff';
+      }
 
       // Health and armor bars
-      const healthPct = Math.max(0, agent.health / agent.maxHealth * 100);
-      const armorPct = Math.max(0, agent.armor / agent.maxArmor * 100);
+      const healthPct = agent.alive ? Math.max(0, agent.health / agent.maxHealth * 100) : 0;
+      const armorPct = agent.alive ? Math.max(0, agent.armor / agent.maxArmor * 100) : 0;
       ui.profileHealthBar.style.width = healthPct + '%';
-      ui.profileHealthVal.textContent = Math.ceil(agent.health);
+      ui.profileHealthVal.textContent = agent.alive ? Math.ceil(agent.health) : '0';
       ui.profileArmorBar.style.width = armorPct + '%';
-      ui.profileArmorVal.textContent = Math.ceil(agent.armor);
+      ui.profileArmorVal.textContent = agent.alive ? Math.ceil(agent.armor) : '0';
 
       // Weapon
       const weaponDisplay = {
