@@ -1445,24 +1445,25 @@ button.secondary:hover {
     const hallOfFame = [[], []]; // [redTeamHoF, blueTeamHoF]
     let totalLivesEvaluated = 0;
 
-    // Track average score at death for progression monitoring
-    const teamDeathStats = [
-      { totalScore: 0, deathCount: 0 }, // Red team
-      { totalScore: 0, deathCount: 0 }  // Blue team
-    ];
+    // Track rolling average score at death (last X lives where X = team population)
+    const recentScores = [[], []]; // Rolling window of recent scores per team
 
     function getAverageScoreAtDeath(team) {
-      if (teamDeathStats[team].deathCount === 0) return 0;
-      return teamDeathStats[team].totalScore / teamDeathStats[team].deathCount;
+      if (recentScores[team].length === 0) return 0;
+      const sum = recentScores[team].reduce((a, b) => a + b, 0);
+      return sum / recentScores[team].length;
     }
 
     // Hall of Fame entry structure:
     // { score, brain (cloned weights), kills, deaths, damageDealt, survivalTime, timestamp }
 
     function addToHallOfFame(team, entry) {
-      // Track death stats for average calculation
-      teamDeathStats[team].totalScore += entry.score;
-      teamDeathStats[team].deathCount++;
+      // Track rolling average (window size = team population)
+      const windowSize = Math.floor(population / 2); // Half of total = one team's population
+      recentScores[team].push(entry.score);
+      if (recentScores[team].length > windowSize) {
+        recentScores[team].shift(); // Remove oldest
+      }
 
       hallOfFame[team].push(entry);
       hallOfFame[team].sort((a, b) => b.score - a.score);
@@ -1505,9 +1506,9 @@ button.secondary:hover {
       hallOfFame[0] = [];
       hallOfFame[1] = [];
       totalLivesEvaluated = 0;
-      // Reset death stats
-      teamDeathStats[0] = { totalScore: 0, deathCount: 0 };
-      teamDeathStats[1] = { totalScore: 0, deathCount: 0 };
+      // Reset rolling average scores
+      recentScores[0] = [];
+      recentScores[1] = [];
     }
 
     // --------------------
@@ -6459,6 +6460,14 @@ button.secondary:hover {
 
       // Hide generation row in persistent mode (not relevant)
       ui.genRow.style.display = persistentMode ? 'none' : 'flex';
+
+      // Disable round-based sliders in persistent mode
+      ui.population.disabled = persistentMode;
+      ui.roundTime.disabled = persistentMode;
+      ui.killLimit.disabled = persistentMode;
+      ui.population.parentElement.style.opacity = persistentMode ? '0.4' : '1';
+      ui.roundTime.parentElement.style.opacity = persistentMode ? '0.4' : '1';
+      ui.killLimit.parentElement.style.opacity = persistentMode ? '0.4' : '1';
 
       if (persistentMode) {
         // Initialize life stats for all agents
