@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>NEURAL QUAKE ARENA // V3.0</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
   <style>
@@ -45,14 +45,18 @@ body {
   color: var(--text-main);
   font-family: 'Rajdhani', sans-serif;
   overflow: hidden;
-  height: 100vh;
+  height: 100vh; /* Fallback for older browsers */
+  height: 100dvh; /* Dynamic viewport height for mobile (Safari toolbar, etc.) */
+  /* Safe area insets for notched devices */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* === NEW LAYOUT: Top bar + Game + Right sidebar === */
 #app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100vh; /* Fallback */
+  height: 100dvh; /* Dynamic viewport height for mobile */
 }
 
 /* TOP BAR - Scores */
@@ -600,8 +604,14 @@ body {
   position: relative;
   background: #000;
   overflow: hidden;
+  /* Ensure container doesn't exceed available space */
+  min-height: 0;
 }
-canvas { display: block; width: 100%; height: 100%; }
+canvas {
+  display: block;
+  /* Size controlled by JavaScript for accurate viewport handling */
+  touch-action: none; /* Prevent browser zoom/pan on touch devices */
+}
 
 /* PANELS */
 .panel {
@@ -4901,12 +4911,29 @@ button.secondary:hover {
 
       resize() {
         const container = this.canvas.parentElement;
-        this.cssW = container.clientWidth;
-        this.cssH = container.clientHeight;
+
+        // Use visualViewport for accurate dimensions on mobile (handles Safari toolbar, etc.)
+        const vv = window.visualViewport;
+        let availableW = container.clientWidth;
+        let availableH = container.clientHeight;
+
+        // On mobile, visualViewport gives the actual visible area
+        if (vv) {
+          // Use the smaller of container and visualViewport to ensure we don't overflow
+          availableW = Math.min(availableW, vv.width);
+          availableH = Math.min(availableH, vv.height);
+        }
+
+        this.cssW = availableW;
+        this.cssH = availableH;
         this.dpr = window.devicePixelRatio || 1;
 
         this.canvas.width = Math.floor(this.cssW * this.dpr);
         this.canvas.height = Math.floor(this.cssH * this.dpr);
+
+        // Also set CSS size to ensure canvas doesn't overflow
+        this.canvas.style.width = this.cssW + 'px';
+        this.canvas.style.height = this.cssH + 'px';
 
         // Fit arena to screen - use whichever dimension constrains it
         // Wide screen (PC): fill width, black bars top/bottom
@@ -4915,7 +4942,8 @@ button.secondary:hover {
         const scaleY = this.cssH / this.world.height;
         this.baseScale = Math.min(scaleX, scaleY);
 
-        // Center camera on world
+        // Center camera on world (cameraX/Y = 0 means top-left of world)
+        // The centering is handled by offsetX/offsetY in render()
         this.cameraX = 0;
         this.cameraY = 0;
 
@@ -7396,8 +7424,12 @@ button.secondary:hover {
       }
     });
 
-    // Resize
+    // Resize - handle both window and visualViewport (for mobile Safari toolbar changes)
     window.addEventListener('resize', () => renderer.resize());
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => renderer.resize());
+      window.visualViewport.addEventListener('scroll', () => renderer.resize());
+    }
 
     // --------------------
     // Game loop (fixed timestep)
