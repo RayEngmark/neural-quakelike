@@ -683,6 +683,32 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 .toggle.disabled { opacity: 0.3; cursor: not-allowed; }
 
+/* WEAPON SELECTOR */
+.weapon-selector {
+  display: flex;
+  gap: 5px;
+}
+.weapon-btn {
+  background: var(--panel-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+.weapon-btn:hover {
+  opacity: 0.8;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.weapon-btn.active {
+  opacity: 1;
+  background: linear-gradient(135deg, var(--neon-green), #00cc7a);
+  border-color: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
 /* SLIDERS */
 .control-row {
   display: flex;
@@ -1236,6 +1262,13 @@ button.secondary:hover {
       <div class="toggle-row" id="5x-hp-row" title="5x HP mode. Agents have 500 HP. Enables combo system for consecutive hits on same target.">
         <label>💪 5x HP</label>
         <div class="toggle" id="toggle-5x-hp"></div>
+      </div>
+      <div class="toggle-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+        <label>🔫 Base Weapon</label>
+        <div class="weapon-selector">
+          <button class="weapon-btn active" id="weapon-rocket" title="Rocket Launcher: 90 damage, splash, 4s cooldown">🚀</button>
+          <button class="weapon-btn" id="weapon-rifle" title="SKS Rifle: 120-60 damage (range), 1s cooldown">🎯</button>
+        </div>
       </div>
     </div>
 
@@ -2000,6 +2033,18 @@ button.secondary:hover {
       maxRange: 2000
     };
 
+    // SKS-style semi-auto rifle - fast bullets, damage dropoff
+    const RIFLE = {
+      damageClose: 120,    // Max damage at point blank
+      damageFar: 60,       // Min damage at max range
+      speed: 1500,         // Much faster than rockets
+      fireRate: 1.0,       // 1 second between shots
+      maxRange: 2500,      // Full map range
+      bulletSize: 4        // Small bullet
+    };
+
+    let baseWeapon = 'rocket'; // 'rocket' or 'rifle' - base weapon for all agents
+
     class Agent {
       constructor(x, y, name, brain = null, team = 0) {
         this.x = x; this.y = y; this.name = name;
@@ -2048,9 +2093,9 @@ button.secondary:hover {
         this.roundsPlayed = 0;
 
         // Weapon kill stats (per round)
-        this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
+        this.weaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
         // Weapon kill stats (lifetime)
-        this.totalWeaponKills = { rocket: 0, laser: 0, sword: 0 };
+        this.totalWeaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
 
         // Network: 54 inputs → 16 hidden → 5 outputs
         // Inputs: 42 raycast (21 rays × 2) + 12 state (health, cooldown, velocity, weapon type, rocket awareness, etc)
@@ -2120,7 +2165,7 @@ button.secondary:hover {
         this.kills = 0;
         this.deaths = 0;
         this.assists = 0;
-        this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
+        this.weaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
         this.roundsPlayed++;
 
         this.maxHealth = fiveXHpMode ? 500 : 100;
@@ -2671,6 +2716,34 @@ button.secondary:hover {
         };
       }
 
+      // Shoot rifle bullet!
+      tryShootRifle(world) {
+        if (!this.alive || this.weaponCooldown > 0) return null;
+
+        this.weaponCooldown = RIFLE.fireRate;
+
+        // Bullet spawns from rifle position (right side)
+        const shoulderOffset = this.radius * 0.5;
+        const perpX = Math.cos(this.rotation - Math.PI / 2) * shoulderOffset;
+        const perpY = Math.sin(this.rotation - Math.PI / 2) * shoulderOffset;
+        const forwardX = Math.cos(this.rotation) * (this.radius * 1.5);
+        const forwardY = Math.sin(this.rotation) * (this.radius * 1.5);
+
+        return {
+          type: 'rifle',
+          x: this.x + perpX + forwardX,
+          y: this.y + perpY + forwardY,
+          startX: this.x + perpX + forwardX, // Track start position for damage calc
+          startY: this.y + perpY + forwardY,
+          angle: this.rotation,
+          owner: this,
+          speed: RIFLE.speed,
+          maxRange: RIFLE.maxRange,
+          traveled: 0,
+          alive: true
+        };
+      }
+
       checkRectCollision(newX, newY, rect) {
         const cx = Math.max(rect.x, Math.min(newX, rect.x + rect.w));
         const cy = Math.max(rect.y, Math.min(newY, rect.y + rect.h));
@@ -2775,8 +2848,9 @@ button.secondary:hover {
         this.obstacles = [];
         this.buildings = [];
 
-        // Projectiles - ROCKETS ONLY in Quake mode
+        // Projectiles
         this.rockets = [];
+        this.rifleBullets = []; // SKS rifle bullets
         this.explosions = [];
         this.smokeParticles = []; // Smoke trail particles
 
@@ -2828,8 +2902,8 @@ button.secondary:hover {
         this.teamWins = [0, 0]; // Track total wins per team
 
         // Global weapon kill stats (for balance tracking)
-        this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
-        this.totalWeaponKills = { rocket: 0, laser: 0, sword: 0 };
+        this.weaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
+        this.totalWeaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
         
         // Game modifiers
         this.friendlyFire = false;
@@ -3735,6 +3809,7 @@ button.secondary:hover {
         this.usedNames.clear();
 
         this.rockets = [];
+        this.rifleBullets = [];
         this.explosions = [];
         this.smokeParticles = [];
 
@@ -3770,7 +3845,7 @@ button.secondary:hover {
         this.teamKills = [0, 0];
         this.teamRawKills = [0, 0];
         this.teamRicochets = [0, 0];
-        this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
+        this.weaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
         this.winningTeam = null;
 
         const perTeam = Math.floor(count / 2);
@@ -3857,12 +3932,13 @@ button.secondary:hover {
         this.teamKills = [0, 0];
         this.teamRawKills = [0, 0];
         this.teamRicochets = [0, 0];
-        this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
+        this.weaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
         this.winningTeam = null;
         this.timeLeft = this.roundTime;
         this.generateObstacles();
 
         this.rockets = [];
+        this.rifleBullets = [];
         this.explosions = [];
         this.smokeParticles = [];
         this.pickups = [];
@@ -4132,6 +4208,108 @@ button.secondary:hover {
         }
         this.rockets = this.rockets.filter(r => r.alive);
 
+        // Update rifle bullets
+        for (const b of this.rifleBullets) {
+          if (!b.alive) continue;
+
+          // Move bullet
+          const prevX = b.x;
+          const prevY = b.y;
+          b.x += Math.cos(b.angle) * b.speed * dt;
+          b.y += Math.sin(b.angle) * b.speed * dt;
+          b.traveled += b.speed * dt;
+
+          let hit = false;
+          let hitAgent = null;
+
+          // Check range
+          if (b.traveled >= b.maxRange) {
+            hit = true;
+          }
+
+          // Check wall collision
+          if (!hit && (b.x < 0 || b.x > this.width || b.y < 0 || b.y > this.height)) {
+            hit = true;
+          }
+
+          // Check obstacle collision
+          if (!hit) {
+            for (const obs of this.obstacles) {
+              if (b.x >= obs.x && b.x <= obs.x + obs.w && b.y >= obs.y && b.y <= obs.y + obs.h) {
+                hit = true;
+                break;
+              }
+            }
+          }
+
+          // Check agent collision (line trace from prev to current position)
+          if (!hit) {
+            for (const agent of this.agents) {
+              if (agent === b.owner || !agent.alive) continue;
+              // Simple circle collision with bullet path
+              const dist = Math.hypot(b.x - agent.x, b.y - agent.y);
+              if (dist < agent.radius + RIFLE.bulletSize) {
+                hit = true;
+                hitAgent = agent;
+                break;
+              }
+            }
+          }
+
+          if (hit) {
+            b.alive = false;
+
+            if (hitAgent && b.owner) {
+              // Calculate damage based on distance (quadratic dropoff)
+              const distRatio = Math.min(1, b.traveled / b.maxRange);
+              const dropoff = distRatio * distRatio; // Quadratic
+              const damage = Math.floor(RIFLE.damageClose - (RIFLE.damageClose - RIFLE.damageFar) * dropoff);
+
+              // Check friendly fire
+              if (hitAgent.team === b.owner.team) {
+                if (this.friendlyFire) {
+                  const killed = hitAgent.takeDamage(damage, b.owner, this);
+                  if (killed) {
+                    this.teamRicochets[b.owner.team]++;
+                    this.addEvent('💀 ' + b.owner.name + ' TEAMKILLED ' + hitAgent.name + '!', 'kill');
+                  }
+                } else if (this.friendlyFireRicochet) {
+                  const killed = b.owner.takeDamage(damage, b.owner, this);
+                  this.teamRicochets[b.owner.team]++;
+                  if (killed) {
+                    this.addEvent('🔄 ' + b.owner.name + ' RIFLE RICOCHET!', 'kill');
+                  }
+                }
+              } else {
+                // Enemy hit
+                const comboMultiplier = b.owner.registerComboHit(hitAgent, damage);
+                b.owner.damageDealt += damage;
+                b.owner.lifeDamageDealt += damage;
+                const killed = hitAgent.takeDamage(damage, b.owner, this);
+                if (killed) {
+                  const comboKillBonus = b.owner.getComboKillBonus(hitAgent);
+                  b.owner.comboScore += comboKillBonus;
+                  b.owner.kills++;
+                  b.owner.totalKills = (b.owner.totalKills || 0) + 1;
+                  b.owner.lifeKills++;
+                  b.owner.weaponKills.rifle = (b.owner.weaponKills.rifle || 0) + 1;
+                  b.owner.totalWeaponKills.rifle = (b.owner.totalWeaponKills.rifle || 0) + 1;
+                  this.weaponKills.rifle = (this.weaponKills.rifle || 0) + 1;
+                  this.totalWeaponKills.rifle = (this.totalWeaponKills.rifle || 0) + 1;
+                  this.teamKills[b.owner.team]++;
+                  this.teamRawKills[b.owner.team]++;
+                  this.addEvent('🎯 ' + b.owner.name + ' SHOT ' + hitAgent.name + '!', 'kill');
+                }
+              }
+            } else if (!hitAgent && b.owner) {
+              // Miss penalty
+              b.owner.misses = (b.owner.misses || 0) + 1;
+              b.owner.lifeMisses = (b.owner.lifeMisses || 0) + 1;
+            }
+          }
+        }
+        this.rifleBullets = this.rifleBullets.filter(b => b.alive);
+
         // Update smoke particles
         for (const p of this.smokeParticles) {
           p.life -= dt;
@@ -4239,9 +4417,17 @@ button.secondary:hover {
           // Handle shooting based on weapon type
           if (d && d.wantsShoot) {
             if (a.weapon === 'rocket') {
-              const rocket = a.tryShoot(this);
-              if (rocket) {
-                this.rockets.push(rocket);
+              // Use base weapon (rocket or rifle)
+              if (baseWeapon === 'rifle') {
+                const bullet = a.tryShootRifle(this);
+                if (bullet) {
+                  this.rifleBullets.push(bullet);
+                }
+              } else {
+                const rocket = a.tryShoot(this);
+                if (rocket) {
+                  this.rockets.push(rocket);
+                }
               }
             } else if (a.weapon === 'laser') {
               // Laser charging
@@ -5524,6 +5710,52 @@ button.secondary:hover {
           }
         }
 
+        // Rifle bullets (tracer style)
+        for (const b of this.world.rifleBullets) {
+          if (!b.alive) continue;
+          const bx = b.x * s, by = b.y * s;
+
+          if (turboMode) {
+            // TURBO: Simple yellow line
+            ctx.strokeStyle = '#ffcc00';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(bx, by);
+            ctx.lineTo(bx - Math.cos(b.angle) * 20 * s, by - Math.sin(b.angle) * 20 * s);
+            ctx.stroke();
+          } else {
+            ctx.save();
+            ctx.translate(bx, by);
+            ctx.rotate(b.angle);
+
+            // Tracer trail (glowing line behind bullet)
+            const tracerLength = 40 * s;
+            const tracerGrad = ctx.createLinearGradient(-tracerLength, 0, 0, 0);
+            tracerGrad.addColorStop(0, 'rgba(255, 200, 50, 0)');
+            tracerGrad.addColorStop(0.5, 'rgba(255, 220, 100, 0.6)');
+            tracerGrad.addColorStop(1, 'rgba(255, 255, 200, 1)');
+
+            ctx.strokeStyle = tracerGrad;
+            ctx.lineWidth = 3 * s;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(-tracerLength, 0);
+            ctx.lineTo(0, 0);
+            ctx.stroke();
+
+            // Bright bullet tip
+            ctx.fillStyle = '#ffffcc';
+            ctx.shadowColor = '#ffcc00';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(0, 0, 3 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.restore();
+          }
+        }
+
         // Explosions
         ctx.globalCompositeOperation = 'lighter';
         if (!turboMode) {
@@ -6306,6 +6538,8 @@ button.secondary:hover {
       noRespawnRow: document.getElementById('no-respawn-row'),
       toggle5xHp: document.getElementById('toggle-5x-hp'),
       fiveXHpRow: document.getElementById('5x-hp-row'),
+      weaponRocket: document.getElementById('weapon-rocket'),
+      weaponRifle: document.getElementById('weapon-rifle'),
       // Mode selector
       modeRounds: document.getElementById('mode-rounds'),
       modePersistent: document.getElementById('mode-persistent'),
@@ -6567,6 +6801,19 @@ button.secondary:hover {
         agent.maxHealth = newMaxHealth;
         agent.health = Math.min(agent.health, newMaxHealth);
       }
+    });
+
+    // Base weapon selector
+    ui.weaponRocket.addEventListener('click', () => {
+      baseWeapon = 'rocket';
+      ui.weaponRocket.classList.add('active');
+      ui.weaponRifle.classList.remove('active');
+    });
+
+    ui.weaponRifle.addEventListener('click', () => {
+      baseWeapon = 'rifle';
+      ui.weaponRifle.classList.add('active');
+      ui.weaponRocket.classList.remove('active');
     });
 
     // Mode info content
