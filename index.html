@@ -45,18 +45,15 @@ body {
   color: var(--text-main);
   font-family: 'Rajdhani', sans-serif;
   overflow: hidden;
-  height: 100vh; /* Fallback for older browsers */
-  height: 100dvh; /* Dynamic viewport height for mobile (Safari toolbar, etc.) */
-  /* Safe area insets for notched devices */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  height: 100vh;
+  height: 100dvh;
 }
 
 /* === NEW LAYOUT: Top bar + Game + Right sidebar === */
 #app {
   display: flex;
   flex-direction: column;
-  height: 100vh; /* Fallback */
-  height: 100dvh; /* Dynamic viewport height for mobile */
+  height: 100%;
 }
 
 /* TOP BAR - Scores */
@@ -604,17 +601,14 @@ body {
   position: relative;
   background: #000;
   overflow: hidden;
-  /* Ensure container doesn't exceed available space */
   min-height: 0;
-  /* Center canvas when it's smaller than container */
-  display: flex;
-  justify-content: center;
-  align-items: center;
 }
 canvas {
   display: block;
-  /* Size controlled by JavaScript for accurate viewport handling */
-  touch-action: none; /* Prevent browser zoom/pan on touch devices */
+  position: absolute;
+  top: 0;
+  left: 0;
+  touch-action: none;
 }
 
 /* PANELS */
@@ -4915,39 +4909,24 @@ button.secondary:hover {
 
       resize() {
         const container = this.canvas.parentElement;
-
-        // Use visualViewport for accurate dimensions on mobile (handles Safari toolbar, etc.)
-        const vv = window.visualViewport;
-        let availableW = container.clientWidth;
-        let availableH = container.clientHeight;
-
-        // On mobile, visualViewport gives the actual visible area
-        if (vv) {
-          // Use the smaller of container and visualViewport to ensure we don't overflow
-          availableW = Math.min(availableW, vv.width);
-          availableH = Math.min(availableH, vv.height);
-        }
-
-        this.cssW = availableW;
-        this.cssH = availableH;
+        this.cssW = container.clientWidth;
+        this.cssH = container.clientHeight;
         this.dpr = window.devicePixelRatio || 1;
 
+        // Set canvas buffer size
         this.canvas.width = Math.floor(this.cssW * this.dpr);
         this.canvas.height = Math.floor(this.cssH * this.dpr);
 
-        // Also set CSS size to ensure canvas doesn't overflow
+        // Set canvas CSS size to fill container
         this.canvas.style.width = this.cssW + 'px';
         this.canvas.style.height = this.cssH + 'px';
 
         // Fit arena to screen - use whichever dimension constrains it
-        // Wide screen (PC): fill width, black bars top/bottom
-        // Tall screen (iPad/mobile): fill height, black bars left/right
         const scaleX = this.cssW / this.world.width;
         const scaleY = this.cssH / this.world.height;
         this.baseScale = Math.min(scaleX, scaleY);
 
-        // Center camera on world (cameraX/Y = 0 means top-left of world)
-        // The centering is handled by offsetX/offsetY in render()
+        // Center camera on world
         this.cameraX = 0;
         this.cameraY = 0;
 
@@ -7428,12 +7407,8 @@ button.secondary:hover {
       }
     });
 
-    // Resize - handle both window and visualViewport (for mobile Safari toolbar changes)
+    // Resize
     window.addEventListener('resize', () => renderer.resize());
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', () => renderer.resize());
-      window.visualViewport.addEventListener('scroll', () => renderer.resize());
-    }
 
     // --------------------
     // Game loop (fixed timestep)
