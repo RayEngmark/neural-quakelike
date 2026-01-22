@@ -497,51 +497,95 @@ body {
 /* LEFT SIDEBAR - Stats & Controls */
 #left-sidebar {
   position: fixed;
-  left: 0;
+  left: -280px;
   top: 0;
-  bottom: 0;
   width: 260px;
-  background: rgba(8, 10, 18, 0.75);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border-right: 1px solid rgba(0, 243, 255, 0.15);
-  padding: 70px 12px 12px 12px; /* Top padding for top-bar */
+  height: 100vh;
+  background: rgba(12, 15, 25, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid var(--border-color);
+  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  padding-top: 70px; /* Space for top-bar */
   display: flex;
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
-  z-index: 100;
-  transform: translateX(-100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 5px 0 30px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 #left-sidebar.open {
-  transform: translateX(0);
+  left: 0;
+}
+#left-sidebar .close-btn {
+  position: absolute;
+  top: 70px;
+  right: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+#left-sidebar .close-btn:hover {
+  background: rgba(255, 0, 85, 0.2);
+  border-color: var(--neon-pink);
+  color: var(--neon-pink);
 }
 
 /* RIGHT SIDEBAR - Game Modifiers */
 #right-sidebar {
   position: fixed;
-  right: 0;
+  right: -240px;
   top: 0;
-  bottom: 0;
   width: 220px;
-  background: rgba(8, 10, 18, 0.75);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border-left: 1px solid rgba(0, 243, 255, 0.15);
-  padding: 70px 12px 12px 12px; /* Top padding for top-bar */
+  height: 100vh;
+  background: rgba(12, 15, 25, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-left: 1px solid var(--border-color);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+  padding: 20px;
+  padding-top: 70px; /* Space for top-bar */
   display: flex;
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
-  z-index: 100;
-  transform: translateX(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: -5px 0 30px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 #right-sidebar.open {
-  transform: translateX(0);
+  right: 0;
+}
+#right-sidebar .close-btn {
+  position: absolute;
+  top: 70px;
+  left: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+  font-size: 1.2rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+#right-sidebar .close-btn:hover {
+  background: rgba(255, 0, 85, 0.2);
+  border-color: var(--neon-pink);
+  color: var(--neon-pink);
 }
 
 /* Sidebar toggle buttons - glowing edge tabs */
@@ -555,7 +599,7 @@ body {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(0, 243, 255, 0.4);
   cursor: pointer;
-  z-index: 101;
+  z-index: 1001;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1228,6 +1272,7 @@ button.secondary:hover {
 
   <!-- LEFT SIDEBAR: Stats & Controls -->
   <div id="left-sidebar">
+    <button class="close-btn" id="close-left-sidebar">✕</button>
     <div class="panel" data-panel-id="status">
       <h2>// Status</h2>
       <div class="stat-row" id="generation-row">
@@ -1331,6 +1376,7 @@ button.secondary:hover {
 
   <!-- RIGHT SIDEBAR: Game Modifiers -->
   <div id="right-sidebar">
+    <button class="close-btn" id="close-right-sidebar">✕</button>
     <div class="panel" data-panel-id="modifiers">
       <h2>// Game Modifiers</h2>
       <div class="toggle-row" title="Spawns health packs every 10s. Instant 50HP + 50HP regen over 5s.">
@@ -6770,13 +6816,60 @@ button.secondary:hover {
     };
 
     // Sidebar toggle handlers
+    function openLeftSidebar() {
+      ui.leftSidebar.classList.add('open');
+      ui.toggleLeftSidebar.classList.add('open');
+    }
+    function closeLeftSidebar() {
+      ui.leftSidebar.classList.remove('open');
+      ui.toggleLeftSidebar.classList.remove('open');
+    }
+    function openRightSidebar() {
+      ui.rightSidebar.classList.add('open');
+      ui.toggleRightSidebar.classList.add('open');
+    }
+    function closeRightSidebar() {
+      ui.rightSidebar.classList.remove('open');
+      ui.toggleRightSidebar.classList.remove('open');
+    }
+
     ui.toggleLeftSidebar.addEventListener('click', () => {
-      ui.leftSidebar.classList.toggle('open');
-      ui.toggleLeftSidebar.classList.toggle('open');
+      if (ui.leftSidebar.classList.contains('open')) {
+        closeLeftSidebar();
+      } else {
+        openLeftSidebar();
+      }
     });
     ui.toggleRightSidebar.addEventListener('click', () => {
-      ui.rightSidebar.classList.toggle('open');
-      ui.toggleRightSidebar.classList.toggle('open');
+      if (ui.rightSidebar.classList.contains('open')) {
+        closeRightSidebar();
+      } else {
+        openRightSidebar();
+      }
+    });
+
+    // Close buttons for sidebars
+    document.getElementById('close-left-sidebar').addEventListener('click', closeLeftSidebar);
+    document.getElementById('close-right-sidebar').addEventListener('click', closeRightSidebar);
+
+    // Click outside to close sidebars
+    document.addEventListener('click', (e) => {
+      // Close left sidebar if clicking outside
+      if (ui.leftSidebar.classList.contains('open')) {
+        const clickedInSidebar = ui.leftSidebar.contains(e.target);
+        const clickedOnToggle = ui.toggleLeftSidebar.contains(e.target);
+        if (!clickedInSidebar && !clickedOnToggle) {
+          closeLeftSidebar();
+        }
+      }
+      // Close right sidebar if clicking outside
+      if (ui.rightSidebar.classList.contains('open')) {
+        const clickedInSidebar = ui.rightSidebar.contains(e.target);
+        const clickedOnToggle = ui.toggleRightSidebar.contains(e.target);
+        if (!clickedInSidebar && !clickedOnToggle) {
+          closeRightSidebar();
+        }
+      }
     });
 
     // Headless mode
