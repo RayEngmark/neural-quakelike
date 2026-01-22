@@ -258,29 +258,94 @@ body {
   transform: scale(1.05);
   box-shadow: 0 0 30px rgba(0, 255, 157, 0.4);
 }
-#stats-btn {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
+
+/* Modifiers Dropdown in Top Bar */
+#modifiers-dropdown {
+  position: relative;
+}
+#modifiers-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
   color: #888;
-  font-size: 1.2rem;
-  padding: 8px 12px;
+  font-size: 0.85rem;
+  padding: 8px 14px;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-#stats-btn:hover {
+#modifiers-btn:hover {
   background: rgba(0, 200, 255, 0.1);
   border-color: var(--neon-blue);
   color: var(--neon-blue);
 }
-#stats-btn.active {
+#modifiers-btn.active {
   background: rgba(0, 200, 255, 0.2);
   border-color: var(--neon-blue);
   color: var(--neon-blue);
+}
+#modifiers-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 280px;
+  background: rgba(12, 15, 25, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  padding: 12px 0;
+  display: none;
+}
+#modifiers-menu.open {
+  display: block;
+}
+#modifiers-menu .menu-category {
+  padding: 8px 16px 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--neon-blue);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+#modifiers-menu .menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#modifiers-menu .menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+#modifiers-menu .menu-item label {
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#modifiers-menu .menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 16px;
+}
+#modifiers-menu .weapon-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+}
+#modifiers-menu .weapon-row label {
+  font-size: 0.85rem;
 }
 
 /* Slide-in Stats Panel */
@@ -299,6 +364,7 @@ body {
   transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow-y: auto;
   padding: 20px;
+  padding-top: 70px; /* Space for top-bar */
 }
 #stats-panel.open {
   right: 0;
@@ -327,7 +393,7 @@ body {
 }
 #stats-panel .close-btn {
   position: absolute;
-  top: 12px;
+  top: 70px;
   right: 12px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -541,53 +607,6 @@ body {
   color: var(--neon-pink);
 }
 
-/* RIGHT SIDEBAR - Game Modifiers */
-#right-sidebar {
-  position: fixed;
-  right: -240px;
-  top: 0;
-  width: 220px;
-  height: 100vh;
-  background: rgba(12, 15, 25, 0.78);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-left: 1px solid var(--border-color);
-  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
-  padding: 20px;
-  padding-top: 70px; /* Space for top-bar */
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-  z-index: 1000;
-  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-#right-sidebar.open {
-  right: 0;
-}
-#right-sidebar .close-btn {
-  position: absolute;
-  top: 70px;
-  left: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-muted);
-  font-size: 1.2rem;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-#right-sidebar .close-btn:hover {
-  background: rgba(255, 0, 85, 0.2);
-  border-color: var(--neon-pink);
-  color: var(--neon-pink);
-}
-
 /* Sidebar toggle buttons - glowing edge tabs */
 .sidebar-toggle {
   position: fixed;
@@ -640,7 +659,7 @@ body {
   left: 260px;
 }
 .sidebar-toggle.right.open {
-  right: 220px;
+  right: 300px;
 }
 .sidebar-toggle svg {
   width: 16px;
@@ -743,11 +762,11 @@ canvas {
   border-color: var(--neon-green);
   background: rgba(0, 255, 136, 0.05);
 }
-#left-sidebar, #right-sidebar {
+#left-sidebar {
   display: flex;
   flex-direction: column;
 }
-#left-sidebar .panel, #right-sidebar .panel {
+#left-sidebar .panel {
   transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.15s ease;
 }
 .panel.placeholder {
@@ -1242,7 +1261,66 @@ button.secondary:hover {
     <div class="sub" id="mode-sub">first to</div>
   </div>
 
-  <button id="stats-btn" title="Stats & Info">☰</button>
+  <div id="modifiers-dropdown">
+    <button id="modifiers-btn" title="Game Modifiers">⚙️ Modifiers</button>
+    <div id="modifiers-menu">
+      <div class="menu-category">Pickups</div>
+      <div class="menu-item">
+        <label for="mod-health">🩹 Health Spawns</label>
+        <div class="toggle active" id="mod-health"></div>
+      </div>
+      <div class="menu-item">
+        <label for="mod-armor">🛡️ Armor Spawns</label>
+        <div class="toggle active" id="mod-armor"></div>
+      </div>
+      <div class="menu-item">
+        <label for="mod-laser">⚡ Laser Drops</label>
+        <div class="toggle active" id="mod-laser"></div>
+      </div>
+      <div class="menu-item">
+        <label for="mod-sword">🗡️ Sword Drops</label>
+        <div class="toggle active" id="mod-sword"></div>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-category">Abilities</div>
+      <div class="menu-item">
+        <label for="mod-dodge">💨 Dodging</label>
+        <div class="toggle active" id="mod-dodge"></div>
+      </div>
+      <div class="menu-item">
+        <label for="mod-teleporter">🌀 Teleporters</label>
+        <div class="toggle active" id="mod-teleporter"></div>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-category">Damage</div>
+      <div class="menu-item">
+        <label for="mod-ff">💥 Friendly Fire</label>
+        <div class="toggle" id="mod-ff"></div>
+      </div>
+      <div class="menu-item">
+        <label for="mod-ricochet">🔄 FF Ricochet</label>
+        <div class="toggle" id="mod-ricochet"></div>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="menu-category">Mode</div>
+      <div class="menu-item" id="mod-no-respawn-row">
+        <label for="mod-no-respawn">💀 No Respawn</label>
+        <div class="toggle" id="mod-no-respawn"></div>
+      </div>
+      <div class="menu-item">
+        <label for="mod-5x-hp">💪 5x HP</label>
+        <div class="toggle" id="mod-5x-hp"></div>
+      </div>
+      <div class="menu-divider"></div>
+      <div class="weapon-row">
+        <label>🔫 Base Weapon</label>
+        <div class="weapon-selector">
+          <button class="weapon-btn active" id="mod-weapon-rocket" title="Rocket Launcher">🚀</button>
+          <button class="weapon-btn" id="mod-weapon-rifle" title="SKS Rifle">🎯</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="team-block blue">
     <div class="team-score">
@@ -1264,7 +1342,7 @@ button.secondary:hover {
       <polyline points="9 18 15 12 9 6"></polyline>
     </svg>
   </button>
-  <button class="sidebar-toggle right" id="toggle-right-sidebar" title="Toggle Modifiers">
+  <button class="sidebar-toggle right" id="toggle-right-sidebar" title="Toggle Stats">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <polyline points="15 18 9 12 15 6"></polyline>
     </svg>
@@ -1374,143 +1452,84 @@ button.secondary:hover {
     </div>
   </div>
 
-  <!-- RIGHT SIDEBAR: Game Modifiers -->
-  <div id="right-sidebar">
-    <button class="close-btn" id="close-right-sidebar">✕</button>
-    <div class="panel" data-panel-id="modifiers">
-      <h2>// Game Modifiers</h2>
-      <div class="toggle-row" title="Spawns health packs every 10s. Instant 50HP + 50HP regen over 5s.">
-        <label>🩹 Health Spawns</label>
-        <div class="toggle active" id="toggle-health"></div>
-      </div>
-      <div class="toggle-row" title="Spawns armor pickups every 10s. +50 armor per pickup, max 100.">
-        <label>🛡️ Armor Spawns</label>
-        <div class="toggle active" id="toggle-armor"></div>
-      </div>
-      <div class="toggle-row" title="Laser weapons spawn at map center when half kills/time reached. 3s charge, instant kill beam.">
-        <label>⚡ Laser Drops</label>
-        <div class="toggle active" id="toggle-laser"></div>
-      </div>
-      <div class="toggle-row" title="Energy swords spawn at map center. Hold to aim (instant max charge), release to lunge. One-hit kill.">
-        <label>🗡️ Sword Drops</label>
-        <div class="toggle active" id="toggle-sword"></div>
-      </div>
-      <div class="toggle-row" title="Agents can dash/dodge in any direction. 6 second cooldown.">
-        <label>💨 Dodging</label>
-        <div class="toggle active" id="toggle-dodge"></div>
-      </div>
-      <div class="toggle-row" title="Teleporters activate randomly during round for 30 seconds. Quick map traversal.">
-        <label>🌀 Teleporters</label>
-        <div class="toggle active" id="toggle-teleporter"></div>
-      </div>
-      <div class="toggle-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;" title="Rockets damage teammates directly.">
-        <label>💥 Friendly Fire</label>
-        <div class="toggle" id="toggle-ff"></div>
-      </div>
-      <div class="toggle-row" title="Teammate damage reflects back to shooter.">
-        <label>🔄 FF Ricochet</label>
-        <div class="toggle" id="toggle-ricochet"></div>
-      </div>
-      <div class="toggle-row" id="no-respawn-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;" title="Rounds mode only. No respawns - round ends when one team is eliminated.">
-        <label>💀 No Respawn</label>
-        <div class="toggle" id="toggle-no-respawn"></div>
-      </div>
-      <div class="toggle-row" id="5x-hp-row" title="5x HP mode. Agents have 500 HP. Enables combo system for consecutive hits on same target.">
-        <label>💪 5x HP</label>
-        <div class="toggle" id="toggle-5x-hp"></div>
-      </div>
-      <div class="toggle-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-        <label>🔫 Base Weapon</label>
-        <div class="weapon-selector">
-          <button class="weapon-btn active" id="weapon-rocket" title="Rocket Launcher: 90 damage, splash, 4s cooldown">🚀</button>
-          <button class="weapon-btn" id="weapon-rifle" title="SKS Rifle: 120-60 damage (range), 1s cooldown">🎯</button>
+</div>
+
+<!-- Slide-in Stats Panel (accessed via right sidebar toggle) -->
+<div id="stats-panel">
+  <button class="close-btn" id="stats-close">&times;</button>
+
+  <!-- Agent Profile Card (shown when following an agent) -->
+  <div id="agent-profile" style="display: none; margin-bottom: 16px;">
+    <h3>🤖 Agent Profile</h3>
+    <div id="profile-header">
+      <div class="agent-name" id="profile-name">-</div>
+      <div class="agent-team" id="profile-team">-</div>
+    </div>
+    <div class="profile-section">
+      <div class="profile-bars">
+        <div class="bar-row">
+          <span class="bar-label">HP</span>
+          <div class="bar-track health-track">
+            <div class="bar-fill health-fill" id="profile-health-bar"></div>
+          </div>
+          <span class="bar-value" id="profile-health-val">100</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">AR</span>
+          <div class="bar-track armor-track">
+            <div class="bar-fill armor-fill" id="profile-armor-bar"></div>
+          </div>
+          <span class="bar-value" id="profile-armor-val">0</span>
         </div>
       </div>
     </div>
-
-    <!-- Agent Profile Card (shown when following) -->
-    <div class="panel" id="agent-profile" data-panel-id="agent-profile" style="display: none;">
-      <h2>// Agent Profile</h2>
-
-      <div id="profile-header">
-        <div class="agent-name" id="profile-name">-</div>
-        <div class="agent-team" id="profile-team">-</div>
+    <div class="profile-section">
+      <div class="stat-row">
+        <span>Weapon</span>
+        <span class="stat-value" id="profile-weapon">Rocket</span>
       </div>
-
-      <div class="profile-section">
-        <div class="profile-bars">
-          <div class="bar-row">
-            <span class="bar-label">HP</span>
-            <div class="bar-track health-track">
-              <div class="bar-fill health-fill" id="profile-health-bar"></div>
-            </div>
-            <span class="bar-value" id="profile-health-val">100</span>
-          </div>
-          <div class="bar-row">
-            <span class="bar-label">AR</span>
-            <div class="bar-track armor-track">
-              <div class="bar-fill armor-fill" id="profile-armor-bar"></div>
-            </div>
-            <span class="bar-value" id="profile-armor-val">0</span>
-          </div>
-        </div>
+      <div class="stat-row">
+        <span>K/D</span>
+        <span class="stat-value" id="profile-kd">0/0</span>
       </div>
-
-      <div class="profile-section">
-        <div class="stat-row">
-          <span>Weapon</span>
-          <span class="stat-value" id="profile-weapon">Rocket</span>
+    </div>
+    <div class="profile-section">
+      <div class="section-label">Neural Activity</div>
+      <div class="neural-grid">
+        <div class="neural-indicator">
+          <div class="indicator-bar" id="neural-turn"></div>
+          <span>Turn</span>
         </div>
-        <div class="stat-row">
-          <span>K/D</span>
-          <span class="stat-value" id="profile-kd">0/0</span>
+        <div class="neural-indicator">
+          <div class="indicator-bar" id="neural-speed"></div>
+          <span>Speed</span>
+        </div>
+        <div class="neural-indicator">
+          <div class="indicator-bar" id="neural-strafe"></div>
+          <span>Strafe</span>
+        </div>
+        <div class="neural-indicator">
+          <div class="indicator-light" id="neural-shoot"></div>
+          <span>Fire</span>
+        </div>
+        <div class="neural-indicator">
+          <div class="indicator-light" id="neural-dash"></div>
+          <span>Dash</span>
         </div>
       </div>
-
-      <div class="profile-section">
-        <div class="section-label">Neural Activity</div>
-        <div class="neural-grid">
-          <div class="neural-indicator">
-            <div class="indicator-bar" id="neural-turn"></div>
-            <span>Turn</span>
-          </div>
-          <div class="neural-indicator">
-            <div class="indicator-bar" id="neural-speed"></div>
-            <span>Speed</span>
-          </div>
-          <div class="neural-indicator">
-            <div class="indicator-bar" id="neural-strafe"></div>
-            <span>Strafe</span>
-          </div>
-          <div class="neural-indicator">
-            <div class="indicator-light" id="neural-shoot"></div>
-            <span>Fire</span>
-          </div>
-          <div class="neural-indicator">
-            <div class="indicator-light" id="neural-dash"></div>
-            <span>Dash</span>
-          </div>
-        </div>
+    </div>
+    <div class="profile-section">
+      <div class="section-label">Awareness</div>
+      <div class="awareness-row">
+        <span>Enemy</span>
+        <span class="awareness-value" id="awareness-enemy">None</span>
       </div>
-
-      <div class="profile-section">
-        <div class="section-label">Awareness</div>
-        <div class="awareness-row">
-          <span>Enemy</span>
-          <span class="awareness-value" id="awareness-enemy">None</span>
-        </div>
-        <div class="awareness-row">
-          <span>Ally</span>
-          <span class="awareness-value" id="awareness-ally">None</span>
-        </div>
+      <div class="awareness-row">
+        <span>Ally</span>
+        <span class="awareness-value" id="awareness-ally">None</span>
       </div>
     </div>
   </div>
-</div>
-
-<!-- Slide-in Stats Panel -->
-<div id="stats-panel">
-  <button class="close-btn" id="stats-close">&times;</button>
 
   <h3>📊 Simulation</h3>
   <div class="stat-row">
@@ -6712,21 +6731,23 @@ button.secondary:hover {
       redWins: document.getElementById('red-wins'),
       blueWins: document.getElementById('blue-wins'),
 
-      // Toggles
-      toggleHealth: document.getElementById('toggle-health'),
-      toggleArmor: document.getElementById('toggle-armor'),
-      toggleLaser: document.getElementById('toggle-laser'),
-      toggleSword: document.getElementById('toggle-sword'),
-      toggleDodge: document.getElementById('toggle-dodge'),
-      toggleTeleporter: document.getElementById('toggle-teleporter'),
-      toggleFf: document.getElementById('toggle-ff'),
-      toggleRicochet: document.getElementById('toggle-ricochet'),
-      toggleNoRespawn: document.getElementById('toggle-no-respawn'),
-      noRespawnRow: document.getElementById('no-respawn-row'),
-      toggle5xHp: document.getElementById('toggle-5x-hp'),
-      fiveXHpRow: document.getElementById('5x-hp-row'),
-      weaponRocket: document.getElementById('weapon-rocket'),
-      weaponRifle: document.getElementById('weapon-rifle'),
+      // Modifiers (now in dropdown menu)
+      toggleHealth: document.getElementById('mod-health'),
+      toggleArmor: document.getElementById('mod-armor'),
+      toggleLaser: document.getElementById('mod-laser'),
+      toggleSword: document.getElementById('mod-sword'),
+      toggleDodge: document.getElementById('mod-dodge'),
+      toggleTeleporter: document.getElementById('mod-teleporter'),
+      toggleFf: document.getElementById('mod-ff'),
+      toggleRicochet: document.getElementById('mod-ricochet'),
+      toggleNoRespawn: document.getElementById('mod-no-respawn'),
+      noRespawnRow: document.getElementById('mod-no-respawn-row'),
+      toggle5xHp: document.getElementById('mod-5x-hp'),
+      weaponRocket: document.getElementById('mod-weapon-rocket'),
+      weaponRifle: document.getElementById('mod-weapon-rifle'),
+      // Modifiers dropdown
+      modifiersBtn: document.getElementById('modifiers-btn'),
+      modifiersMenu: document.getElementById('modifiers-menu'),
       // Mode selector
       modeRounds: document.getElementById('mode-rounds'),
       modePersistent: document.getElementById('mode-persistent'),
@@ -6740,8 +6761,7 @@ button.secondary:hover {
       preSimFeatures: document.getElementById('pre-sim-features'),
       startSimBtn: document.getElementById('start-sim-btn'),
 
-      // Stats panel
-      statsBtn: document.getElementById('stats-btn'),
+      // Stats panel (now accessed via right sidebar toggle)
       statsPanel: document.getElementById('stats-panel'),
       statsClose: document.getElementById('stats-close'),
       statsMode: document.getElementById('stats-mode'),
@@ -6810,7 +6830,6 @@ button.secondary:hover {
 
       // Sidebar toggles
       leftSidebar: document.getElementById('left-sidebar'),
-      rightSidebar: document.getElementById('right-sidebar'),
       toggleLeftSidebar: document.getElementById('toggle-left-sidebar'),
       toggleRightSidebar: document.getElementById('toggle-right-sidebar'),
     };
@@ -6824,12 +6843,14 @@ button.secondary:hover {
       ui.leftSidebar.classList.remove('open');
       ui.toggleLeftSidebar.classList.remove('open');
     }
-    function openRightSidebar() {
-      ui.rightSidebar.classList.add('open');
+
+    // Right toggle now opens stats-panel
+    function openStatsPanel() {
+      ui.statsPanel.classList.add('open');
       ui.toggleRightSidebar.classList.add('open');
     }
-    function closeRightSidebar() {
-      ui.rightSidebar.classList.remove('open');
+    function closeStatsPanel() {
+      ui.statsPanel.classList.remove('open');
       ui.toggleRightSidebar.classList.remove('open');
     }
 
@@ -6841,18 +6862,18 @@ button.secondary:hover {
       }
     });
     ui.toggleRightSidebar.addEventListener('click', () => {
-      if (ui.rightSidebar.classList.contains('open')) {
-        closeRightSidebar();
+      if (ui.statsPanel.classList.contains('open')) {
+        closeStatsPanel();
       } else {
-        openRightSidebar();
+        openStatsPanel();
       }
     });
 
-    // Close buttons for sidebars
+    // Close buttons
     document.getElementById('close-left-sidebar').addEventListener('click', closeLeftSidebar);
-    document.getElementById('close-right-sidebar').addEventListener('click', closeRightSidebar);
+    ui.statsClose.addEventListener('click', closeStatsPanel);
 
-    // Click outside to close sidebars
+    // Click outside to close sidebars and modifiers dropdown
     document.addEventListener('click', (e) => {
       // Close left sidebar if clicking outside
       if (ui.leftSidebar.classList.contains('open')) {
@@ -6862,14 +6883,29 @@ button.secondary:hover {
           closeLeftSidebar();
         }
       }
-      // Close right sidebar if clicking outside
-      if (ui.rightSidebar.classList.contains('open')) {
-        const clickedInSidebar = ui.rightSidebar.contains(e.target);
+      // Close stats panel if clicking outside
+      if (ui.statsPanel.classList.contains('open')) {
+        const clickedInPanel = ui.statsPanel.contains(e.target);
         const clickedOnToggle = ui.toggleRightSidebar.contains(e.target);
-        if (!clickedInSidebar && !clickedOnToggle) {
-          closeRightSidebar();
+        if (!clickedInPanel && !clickedOnToggle) {
+          closeStatsPanel();
         }
       }
+      // Close modifiers dropdown if clicking outside
+      if (ui.modifiersMenu.classList.contains('open')) {
+        const clickedInDropdown = ui.modifiersMenu.contains(e.target);
+        const clickedOnBtn = ui.modifiersBtn.contains(e.target);
+        if (!clickedInDropdown && !clickedOnBtn) {
+          ui.modifiersMenu.classList.remove('open');
+          ui.modifiersBtn.classList.remove('active');
+        }
+      }
+    });
+
+    // Modifiers dropdown toggle
+    ui.modifiersBtn.addEventListener('click', () => {
+      ui.modifiersMenu.classList.toggle('open');
+      ui.modifiersBtn.classList.toggle('active');
     });
 
     // Headless mode
@@ -7181,37 +7217,6 @@ button.secondary:hover {
 
     // Show pre-sim screen on initial load
     showPreSimScreen();
-
-    // Stats panel open/close
-    function openStatsPanel() {
-      ui.statsPanel.classList.add('open');
-      ui.statsBtn.classList.add('active');
-    }
-    function closeStatsPanel() {
-      ui.statsPanel.classList.remove('open');
-      ui.statsBtn.classList.remove('active');
-    }
-    function toggleStatsPanel() {
-      if (ui.statsPanel.classList.contains('open')) {
-        closeStatsPanel();
-      } else {
-        openStatsPanel();
-      }
-    }
-    ui.statsBtn.addEventListener('click', toggleStatsPanel);
-    ui.statsClose.addEventListener('click', closeStatsPanel);
-
-    // Click outside to close stats panel
-    document.addEventListener('click', (e) => {
-      if (ui.statsPanel.classList.contains('open')) {
-        // Check if click is outside the panel and not on the stats button
-        const clickedInPanel = ui.statsPanel.contains(e.target);
-        const clickedOnStatsBtn = ui.statsBtn.contains(e.target);
-        if (!clickedInPanel && !clickedOnStatsBtn) {
-          closeStatsPanel();
-        }
-      }
-    });
 
     // Control bar event handlers
     function updatePlayButton() {
@@ -7809,8 +7814,6 @@ button.secondary:hover {
       function saveOrder() {
         const order = {
           left: Array.from(document.querySelectorAll('#left-sidebar .panel[data-panel-id]'))
-            .map(p => p.dataset.panelId),
-          right: Array.from(document.querySelectorAll('#right-sidebar .panel[data-panel-id]'))
             .map(p => p.dataset.panelId)
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
@@ -7821,18 +7824,16 @@ button.secondary:hover {
         const order = getSavedOrder();
         if (!order) return;
 
-        ['left', 'right'].forEach(side => {
-          const sidebar = document.getElementById(side + '-sidebar');
-          if (!sidebar || !order[side]) return;
+        const sidebar = document.getElementById('left-sidebar');
+        if (!sidebar || !order.left) return;
 
-          const panels = {};
-          sidebar.querySelectorAll('.panel[data-panel-id]').forEach(p => {
-            panels[p.dataset.panelId] = p;
-          });
+        const panels = {};
+        sidebar.querySelectorAll('.panel[data-panel-id]').forEach(p => {
+          panels[p.dataset.panelId] = p;
+        });
 
-          order[side].forEach(id => {
-            if (panels[id]) sidebar.appendChild(panels[id]);
-          });
+        order.left.forEach(id => {
+          if (panels[id]) sidebar.appendChild(panels[id]);
         });
       }
 
@@ -7904,11 +7905,10 @@ button.secondary:hover {
 
         draggedPanel.style.top = newTop + 'px';
 
-        // Find which sidebar we're over
+        // Find which sidebar we're over (only left sidebar has draggable panels now)
         const sidebars = [
-          document.getElementById('left-sidebar'),
-          document.getElementById('right-sidebar')
-        ];
+          document.getElementById('left-sidebar')
+        ].filter(Boolean);
 
         let targetSidebar = currentSidebar;
         for (const sidebar of sidebars) {
