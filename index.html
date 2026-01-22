@@ -5137,6 +5137,8 @@ button.secondary:hover {
         // Compatibility: s=1 since scale transform handles scaling
         // Old code used x*s, y*s - now just x, y works (transform does it)
         const s = 1;
+        // Helper for pixel-based values (lineWidth, shadowBlur)
+        const px = 1 / scale;
 
         // Teleporters
         this.drawTeleporters(ctx, s);
