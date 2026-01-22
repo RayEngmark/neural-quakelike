@@ -490,43 +490,118 @@ body {
   flex: 1;
   overflow: hidden;
   justify-content: center;
+  position: relative;
 }
 
 /* LEFT SIDEBAR - Stats & Controls */
 #left-sidebar {
+  position: fixed;
+  left: 0;
+  top: 60px;
+  bottom: 50px;
   width: 250px;
-  background: var(--panel-bg);
-  border-right: 1px solid var(--border-color);
+  background: rgba(15, 20, 35, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
-  flex-shrink: 0;
+  z-index: 100;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#left-sidebar.open {
+  transform: translateX(0);
+}
+
+/* RIGHT SIDEBAR - Game Modifiers */
+#right-sidebar {
+  position: fixed;
+  right: 0;
+  top: 60px;
+  bottom: 50px;
+  width: 200px;
+  background: rgba(15, 20, 35, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+#right-sidebar.open {
+  transform: translateX(0);
+}
+
+/* Sidebar toggle buttons (bus pocket style) */
+.sidebar-toggle {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 80px;
+  background: rgba(15, 20, 35, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  z-index: 101;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.sidebar-toggle:hover {
+  background: rgba(30, 40, 60, 0.95);
+  color: var(--text-main);
+  border-color: var(--neon-green);
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.2);
+}
+.sidebar-toggle.left {
+  left: 0;
+  border-radius: 0 12px 12px 0;
+  border-left: none;
+}
+.sidebar-toggle.right {
+  right: 0;
+  border-radius: 12px 0 0 12px;
+  border-right: none;
+}
+.sidebar-toggle.left.open {
+  left: 250px;
+}
+.sidebar-toggle.right.open {
+  right: 200px;
+}
+.sidebar-toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.3s ease;
+}
+.sidebar-toggle.left.open svg {
+  transform: rotate(180deg);
+}
+.sidebar-toggle.right.open svg {
+  transform: rotate(180deg);
 }
 
 /* CANVAS */
 #canvas-container {
   flex: 1;
   position: relative;
-  background: radial-gradient(circle at center, #1a1a2e 0%, #050510 100%);
+  background: #000;
   overflow: hidden;
-  margin: 5px 0;
 }
 canvas { display: block; width: 100%; height: 100%; }
-
-/* RIGHT SIDEBAR - Game Modifiers */
-#right-sidebar {
-  width: 200px;
-  background: var(--panel-bg);
-  border-left: 1px solid var(--border-color);
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
 
 /* PANELS */
 .panel {
@@ -1116,6 +1191,18 @@ button.secondary:hover {
 
 <!-- MAIN AREA -->
 <div id="main-area">
+  <!-- Sidebar toggle buttons -->
+  <button class="sidebar-toggle left" id="toggle-left-sidebar" title="Toggle Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </button>
+  <button class="sidebar-toggle right" id="toggle-right-sidebar" title="Toggle Modifiers">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+  </button>
+
   <!-- LEFT SIDEBAR: Stats & Controls -->
   <div id="left-sidebar">
     <div class="panel" data-panel-id="status">
@@ -1138,7 +1225,7 @@ button.secondary:hover {
       <h2>// Parameters</h2>
       <div class="control-row">
         <label>Zoom</label>
-        <input type="range" id="zoom" min="25" max="300" value="100" />
+        <input type="range" id="zoom" min="100" max="400" value="100" />
         <span class="value" id="zoom-value">1.0x</span>
       </div>
       <div class="control-row">
@@ -4627,8 +4714,8 @@ button.secondary:hover {
         this.cameraX = 0;
         this.cameraY = 0;
         this.zoom = 1;
-        this.minZoom = 0.25;
-        this.maxZoom = 3;
+        this.minZoom = 1.0; // 1.0 = map fills screen width (max zoom out)
+        this.maxZoom = 4;
 
         this.isDragging = false;
         this.baseScale = 1;
@@ -4742,11 +4829,26 @@ button.secondary:hover {
       }
 
       clampCamera() {
-        // Free panning - only prevent arena from going completely off screen
-        const vw = this.cssW / (this.baseScale * this.zoom);
-        const vh = this.cssH / (this.baseScale * this.zoom);
-        this.cameraX = clamp(this.cameraX, -vw + 100, this.world.width - 100);
-        this.cameraY = clamp(this.cameraY, -vh + 100, this.world.height - 100);
+        const s = this.baseScale * this.zoom;
+        const viewW = this.cssW / s; // Visible world width
+        const viewH = this.cssH / s; // Visible world height
+
+        // Horizontal: map edges can't go past screen edges
+        // Left edge (cameraX) can't be < 0, right edge (cameraX + viewW) can't be > world.width
+        const minX = 0;
+        const maxX = Math.max(0, this.world.width - viewW);
+        this.cameraX = clamp(this.cameraX, minX, maxX);
+
+        // Vertical: constrain to what's visible at max zoom out
+        // At zoom=1, the map is centered with equal black bars top/bottom
+        const worldH = this.world.height * this.baseScale;
+        const blackBarAtMinZoom = (this.cssH - worldH) / 2;
+        const minYAtMinZoom = -blackBarAtMinZoom / this.baseScale;
+
+        // Calculate min/max Y based on current zoom
+        const minY = minYAtMinZoom;
+        const maxY = Math.max(minY, this.world.height - viewH - minYAtMinZoom);
+        this.cameraY = clamp(this.cameraY, minY, maxY);
       }
 
       handleClick(clientX, clientY) {
@@ -4804,15 +4906,15 @@ button.secondary:hover {
         this.canvas.width = Math.floor(this.cssW * this.dpr);
         this.canvas.height = Math.floor(this.cssH * this.dpr);
 
-        // Auto-fit: baseScale makes the world fit perfectly in the canvas at zoom=1
-        const scaleX = this.cssW / this.world.width;
-        const scaleY = this.cssH / this.world.height;
-        this.baseScale = Math.min(scaleX, scaleY);
-        
-        // Center camera on world
+        // Fill screen width at zoom=1 (max zoom out)
+        this.baseScale = this.cssW / this.world.width;
+
+        // Center camera on world (X=0, Y centered vertically)
         this.cameraX = 0;
-        this.cameraY = 0;
-        
+        const worldH = this.world.height * this.baseScale;
+        const offsetY = (this.cssH - worldH) / 2;
+        this.cameraY = -offsetY / this.baseScale;
+
         this.clampCamera();
       }
 
@@ -6620,12 +6722,28 @@ button.secondary:hover {
       statsCombatLog: document.getElementById('stats-combat-log'),
       hofSection: document.getElementById('hof-section'),
       statsTotalLivesRow: document.getElementById('stats-total-lives-row'),
+
+      // Sidebar toggles
+      leftSidebar: document.getElementById('left-sidebar'),
+      rightSidebar: document.getElementById('right-sidebar'),
+      toggleLeftSidebar: document.getElementById('toggle-left-sidebar'),
+      toggleRightSidebar: document.getElementById('toggle-right-sidebar'),
     };
+
+    // Sidebar toggle handlers
+    ui.toggleLeftSidebar.addEventListener('click', () => {
+      ui.leftSidebar.classList.toggle('open');
+      ui.toggleLeftSidebar.classList.toggle('open');
+    });
+    ui.toggleRightSidebar.addEventListener('click', () => {
+      ui.rightSidebar.classList.toggle('open');
+      ui.toggleRightSidebar.classList.toggle('open');
+    });
 
     // Headless mode
     let headlessMode = true;
     ui.headlessOverlay.classList.add('visible');
-    
+
     ui.headlessBtn.addEventListener('click', () => {
       headlessMode = !headlessMode;
       ui.headlessBtn.textContent = headlessMode ? '🖥️ HEADLESS MODE (ON)' : '🖥️ HEADLESS MODE (OFF)';
