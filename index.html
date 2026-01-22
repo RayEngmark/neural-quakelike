@@ -4833,21 +4833,23 @@ button.secondary:hover {
         const viewW = this.cssW / s; // Visible world width
         const viewH = this.cssH / s; // Visible world height
 
-        // Horizontal: map edges can't go past screen edges
-        // Left edge (cameraX) can't be < 0, right edge (cameraX + viewW) can't be > world.width
-        const minX = 0;
-        const maxX = Math.max(0, this.world.width - viewW);
+        // Calculate black bars at zoom=1 (max zoom out)
+        const worldWAtBase = this.world.width * this.baseScale;
+        const worldHAtBase = this.world.height * this.baseScale;
+        const blackBarX = Math.max(0, (this.cssW - worldWAtBase) / 2);
+        const blackBarY = Math.max(0, (this.cssH - worldHAtBase) / 2);
+
+        // Convert black bars to world coordinates
+        const offsetX = blackBarX / this.baseScale;
+        const offsetY = blackBarY / this.baseScale;
+
+        // Constrain so edges can't go past where they are at max zoom out
+        const minX = -offsetX;
+        const maxX = Math.max(minX, this.world.width - viewW + offsetX);
         this.cameraX = clamp(this.cameraX, minX, maxX);
 
-        // Vertical: constrain to what's visible at max zoom out
-        // At zoom=1, the map is centered with equal black bars top/bottom
-        const worldH = this.world.height * this.baseScale;
-        const blackBarAtMinZoom = (this.cssH - worldH) / 2;
-        const minYAtMinZoom = -blackBarAtMinZoom / this.baseScale;
-
-        // Calculate min/max Y based on current zoom
-        const minY = minYAtMinZoom;
-        const maxY = Math.max(minY, this.world.height - viewH - minYAtMinZoom);
+        const minY = -offsetY;
+        const maxY = Math.max(minY, this.world.height - viewH + offsetY);
         this.cameraY = clamp(this.cameraY, minY, maxY);
       }
 
@@ -4906,14 +4908,16 @@ button.secondary:hover {
         this.canvas.width = Math.floor(this.cssW * this.dpr);
         this.canvas.height = Math.floor(this.cssH * this.dpr);
 
-        // Fill screen width at zoom=1 (max zoom out)
-        this.baseScale = this.cssW / this.world.width;
+        // Fit arena to screen - use whichever dimension constrains it
+        // Wide screen (PC): fill width, black bars top/bottom
+        // Tall screen (iPad/mobile): fill height, black bars left/right
+        const scaleX = this.cssW / this.world.width;
+        const scaleY = this.cssH / this.world.height;
+        this.baseScale = Math.min(scaleX, scaleY);
 
-        // Center camera on world (X=0, Y centered vertically)
+        // Center camera on world
         this.cameraX = 0;
-        const worldH = this.world.height * this.baseScale;
-        const offsetY = (this.cssH - worldH) / 2;
-        this.cameraY = -offsetY / this.baseScale;
+        this.cameraY = 0;
 
         this.clampCamera();
       }
