@@ -1233,6 +1233,10 @@ button.secondary:hover {
         <label>💀 No Respawn</label>
         <div class="toggle" id="toggle-no-respawn"></div>
       </div>
+      <div class="toggle-row" id="5x-hp-row" title="5x HP mode. Agents have 500 HP. Enables combo system for consecutive hits on same target.">
+        <label>💪 5x HP</label>
+        <div class="toggle" id="toggle-5x-hp"></div>
+      </div>
     </div>
 
     <!-- Agent Profile Card (shown when following) -->
@@ -1442,6 +1446,7 @@ button.secondary:hover {
     let forceWeapon = null; // 'sword', 'laser', or null - persists weapons after death
     let persistentMode = false; // Persistent per-life evolution mode
     let noRespawnMode = false; // Rounds mode only: no respawns, round ends when team eliminated
+    let fiveXHpMode = false; // 5x HP mode: 500 HP, combo system enabled
 
     // --------------------
     // Hall of Fame (for persistent mode)
@@ -2002,7 +2007,8 @@ button.secondary:hover {
         this.rotation = Math.random() * Math.PI * 2;
         this.vx = 0; this.vy = 0;
 
-        this.health = 100; this.maxHealth = 100;
+        this.maxHealth = fiveXHpMode ? 500 : 100;
+        this.health = this.maxHealth;
         this.armor = 0; this.maxArmor = 100; // 2 armor packs = 100
         this.stamina = 100; this.maxStamina = 100;
 
@@ -2059,6 +2065,14 @@ button.secondary:hover {
         this.lifeKills = 0; // Kills this life only
         this.lifeDamageDealt = 0; // Damage this life only
         this.lifeDamageTaken = 0; // Damage taken this life only
+        this.lifeMisses = 0; // Missed shots this life only
+        this.misses = 0; // Total missed shots
+
+        // Combo system (5x HP mode)
+        this.comboTarget = null; // Current target being comboed
+        this.comboCount = 0; // Consecutive hits on same target
+        this.comboTimer = 0; // Time since last hit on combo target
+        this.comboScore = 0; // Extra score from combos this life
 
         // Dodge ability
         this.dodgeCooldown = 0;
@@ -2108,14 +2122,16 @@ button.secondary:hover {
         this.assists = 0;
         this.weaponKills = { rocket: 0, laser: 0, sword: 0 };
         this.roundsPlayed++;
-        
+
+        this.maxHealth = fiveXHpMode ? 500 : 100;
         this.health = this.maxHealth;
         this.armor = 0;
         this.stamina = this.maxStamina;
       }
-      
+
       // Respawn after death
       respawn(world) {
+        this.maxHealth = fiveXHpMode ? 500 : 100;
         this.health = this.maxHealth;
         this.armor = 0;
         this.stamina = this.maxStamina;
@@ -2146,6 +2162,13 @@ button.secondary:hover {
         this.lifeKills = 0;
         this.lifeDamageDealt = 0;
         this.lifeDamageTaken = 0;
+        this.lifeMisses = 0;
+
+        // Reset combo
+        this.comboTarget = null;
+        this.comboCount = 0;
+        this.comboTimer = 0;
+        this.comboScore = 0;
 
         // Spawn at back of team's side
         const clusterX = this.team === 0 ? 80 : world.width - 80;
@@ -2161,6 +2184,50 @@ button.secondary:hover {
         const assistPoints = this.assists * 25;
         const damagePoints = this.damageDealt;
         return killPoints + assistPoints + damagePoints - this.damageTaken;
+      }
+
+      // Handle combo hit (5x HP mode) - returns combo multiplier for damage score
+      registerComboHit(target, baseDamage) {
+        if (!fiveXHpMode) return 1.0; // No combo in normal mode
+
+        const COMBO_DURATION = 6.0; // 6 seconds to maintain combo
+
+        if (this.comboTarget === target) {
+          // Same target - continue combo
+          this.comboCount++;
+          this.comboTimer = COMBO_DURATION;
+        } else {
+          // New target - start new combo
+          this.comboTarget = target;
+          this.comboCount = 1;
+          this.comboTimer = COMBO_DURATION;
+        }
+
+        // Calculate combo multiplier: 1.0x, 1.2x, 1.5x, 1.8x, 2.0x (cap)
+        const multipliers = [1.0, 1.2, 1.5, 1.8, 2.0];
+        const multiplier = multipliers[Math.min(this.comboCount - 1, multipliers.length - 1)];
+
+        // Award bonus score based on combo
+        const bonusScore = Math.floor(baseDamage * (multiplier - 1.0));
+        this.comboScore += bonusScore;
+
+        return multiplier;
+      }
+
+      // Get kill bonus based on combo (called when target dies)
+      getComboKillBonus(target) {
+        if (!fiveXHpMode) return 0;
+        if (this.comboTarget !== target) return 0;
+
+        // Bonus: 50 points per combo hit
+        const bonus = this.comboCount * 50;
+
+        // Reset combo after kill
+        this.comboTarget = null;
+        this.comboCount = 0;
+        this.comboTimer = 0;
+
+        return bonus;
       }
 
       castRays(world, numRays = 21, fov = Math.PI * 0.8) {
@@ -2371,6 +2438,16 @@ button.secondary:hover {
         this.attackRecovery = Math.max(0, this.attackRecovery - dt);
         this.weaponCooldown = Math.max(0, this.weaponCooldown - dt);
         this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
+
+        // Update combo timer (5x HP mode)
+        if (this.comboTimer > 0) {
+          this.comboTimer -= dt;
+          if (this.comboTimer <= 0) {
+            // Combo expired
+            this.comboTarget = null;
+            this.comboCount = 0;
+          }
+        }
 
         // Handle sword lunge movement (with chain support)
         if (this.swordLunging) {
@@ -2647,7 +2724,9 @@ button.secondary:hover {
         // Persistent mode: evaluate this life and evolve
         if (persistentMode && world) {
           const survivalTime = world.totalTime - this.lifeStartTime;
-          const lifeScore = this.lifeKills * 100 + this.lifeDamageDealt - (this.lifeDamageTaken * 0.3);
+          const missPenalty = (this.lifeMisses || 0) * 20; // 20 points per missed shot
+          const comboBonus = this.comboScore || 0; // Extra score from combos (5x HP mode)
+          const lifeScore = this.lifeKills * 100 + this.lifeDamageDealt - (this.lifeDamageTaken * 0.3) - missPenalty + comboBonus;
 
           // Add to Hall of Fame
           const entry = {
@@ -2940,8 +3019,16 @@ button.secondary:hover {
 
                 if (distToLine < target.radius + 10) {
                   hitTargets[target.name] = true;
-                  var killed = target.takeDamage(999, agent, this);
+                  const laserDmg = 200;
+                  // Register combo hit (5x HP mode)
+                  agent.registerComboHit(target, laserDmg);
+                  agent.damageDealt += laserDmg;
+                  agent.lifeDamageDealt += laserDmg;
+                  var killed = target.takeDamage(laserDmg, agent, this);
                   if (killed) {
+                    // Get combo kill bonus before it resets
+                    const comboKillBonus = agent.getComboKillBonus(target);
+                    agent.comboScore += comboKillBonus;
                     agent.kills++;
                     agent.totalKills++;
                     agent.lifeKills++;
@@ -2977,6 +3064,13 @@ button.secondary:hover {
           // Move to bounce point
           currentX = Math.max(2, Math.min(this.width - 2, endX));
           currentY = Math.max(2, Math.min(this.height - 2, endY));
+        }
+
+        // Miss penalty if no targets hit
+        const hitCount = Object.keys(hitTargets).length;
+        if (hitCount === 0) {
+          agent.misses = (agent.misses || 0) + 1;
+          agent.lifeMisses = (agent.lifeMisses || 0) + 1;
         }
 
         // Event messages
@@ -3166,29 +3260,39 @@ button.secondary:hover {
         agent.chainTargets = chainTargets; // Store for animation
         agent.chainIndex = 0;
 
-        // Deal damage to all chain targets
+        // Deal damage to all chain targets (300 base + 50 per hop)
         let killCount = 0;
-        for (const chain of chainTargets) {
+        for (let i = 0; i < chainTargets.length; i++) {
+          const chain = chainTargets[i];
           const target = chain.target;
           if (!target.alive) continue;
 
+          const swordDamage = 300 + (i * 50); // 300, 350, 400, 450...
+
           if (target.team === agent.team) {
             if (this.friendlyFireRicochet) {
-              const killed = agent.takeDamage(999, agent, this);
+              const killed = agent.takeDamage(swordDamage, agent, this);
               this.teamRicochets[agent.team]++;
               if (killed) {
                 this.addEvent('🔄 ' + agent.name + ' SWORD RICOCHET!', 'sword');
               }
             } else if (this.friendlyFire) {
-              const killed = target.takeDamage(999, agent, this);
+              const killed = target.takeDamage(swordDamage, agent, this);
               if (killed) {
                 this.teamRicochets[agent.team]++;
                 this.addEvent('🗡️ ' + agent.name + ' TEAMKILLED ' + target.name + '!', 'sword');
               }
             }
           } else {
-            const killed = target.takeDamage(999, agent, this);
+            // Register combo hit (5x HP mode) - sword can hit same target multiple times in 5x HP mode
+            agent.registerComboHit(target, swordDamage);
+            agent.damageDealt += swordDamage;
+            agent.lifeDamageDealt += swordDamage;
+            const killed = target.takeDamage(swordDamage, agent, this);
             if (killed) {
+              // Get combo kill bonus before it resets
+              const comboKillBonus = agent.getComboKillBonus(target);
+              agent.comboScore += comboKillBonus;
               agent.kills++;
               agent.totalKills++;
               agent.lifeKills++;
@@ -4042,20 +4146,21 @@ button.secondary:hover {
         // Update explosions - SPLASH DAMAGE
         for (const e of this.explosions) {
           e.timer += dt;
-          
+
           if (!e.dealtDamage && e.timer >= 0.05) {
             e.dealtDamage = true;
-            
+            let hitEnemy = false; // Track if any enemy was damaged
+
             for (const agent of this.agents) {
               if (!agent.alive) continue;
-              
+
               const dist = Math.hypot(agent.x - e.x, agent.y - e.y);
               if (dist > e.splashRadius) continue;
-              
+
               // Damage falloff based on distance
               const falloff = 1 - (dist / e.splashRadius) * e.splashFalloff;
               const dmg = Math.floor(e.damage * falloff);
-              
+
               if (agent === e.owner) {
                 // Direct self-damage
                 const killed = agent.takeDamage(dmg, e.owner, this);
@@ -4084,11 +4189,17 @@ button.secondary:hover {
                 // Else: no friendly fire, skip
               } else {
                 // Enemy damage
+                hitEnemy = true;
                 const killed = agent.takeDamage(dmg, e.owner, this);
                 if (e.owner) {
+                  // Register combo hit (5x HP mode)
+                  const comboMultiplier = e.owner.registerComboHit(agent, dmg);
                   e.owner.damageDealt += dmg;
                   e.owner.lifeDamageDealt += dmg;
                   if (killed) {
+                    // Get combo kill bonus before it resets
+                    const comboKillBonus = e.owner.getComboKillBonus(agent);
+                    e.owner.comboScore += comboKillBonus;
                     e.owner.kills++;
                     e.owner.totalKills = (e.owner.totalKills || 0) + 1;
                     e.owner.lifeKills++;
@@ -4102,6 +4213,12 @@ button.secondary:hover {
                   }
                 }
               }
+            }
+
+            // Miss penalty if no enemy was hit
+            if (!hitEnemy && e.owner) {
+              e.owner.misses = (e.owner.misses || 0) + 1;
+              e.owner.lifeMisses = (e.owner.lifeMisses || 0) + 1;
             }
           }
         }
@@ -6187,6 +6304,8 @@ button.secondary:hover {
       toggleRicochet: document.getElementById('toggle-ricochet'),
       toggleNoRespawn: document.getElementById('toggle-no-respawn'),
       noRespawnRow: document.getElementById('no-respawn-row'),
+      toggle5xHp: document.getElementById('toggle-5x-hp'),
+      fiveXHpRow: document.getElementById('5x-hp-row'),
       // Mode selector
       modeRounds: document.getElementById('mode-rounds'),
       modePersistent: document.getElementById('mode-persistent'),
@@ -6438,6 +6557,18 @@ button.secondary:hover {
       ui.killLimit.parentElement.style.opacity = noRespawnMode ? '0.4' : '1';
     });
 
+    // 5x HP toggle
+    ui.toggle5xHp.addEventListener('click', () => {
+      ui.toggle5xHp.classList.toggle('active');
+      fiveXHpMode = ui.toggle5xHp.classList.contains('active');
+      // Update HP for all agents
+      const newMaxHealth = fiveXHpMode ? 500 : 100;
+      for (const agent of world.agents) {
+        agent.maxHealth = newMaxHealth;
+        agent.health = Math.min(agent.health, newMaxHealth);
+      }
+    });
+
     // Mode info content
     const modeInfo = {
       rounds: {
@@ -6536,6 +6667,7 @@ button.secondary:hover {
           agent.lifeStartTime = world.totalTime;
           agent.lifeKills = 0;
           agent.lifeDamageDealt = 0;
+          agent.lifeMisses = 0;
         }
       }
 
