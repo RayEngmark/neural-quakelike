@@ -605,9 +605,8 @@ body {
 }
 canvas {
   display: block;
-  position: absolute;
-  top: 0;
-  left: 0;
+  width: 100%;
+  height: 100%;
   touch-action: none;
 }
 
@@ -4719,74 +4718,99 @@ button.secondary:hover {
         this.ctx = canvas.getContext('2d', { alpha: false });
         this.world = world;
 
-        this.cameraX = 0;
-        this.cameraY = 0;
-        this.zoom = 1;
-        this.minZoom = 1.0; // 1.0 = map fills screen width (max zoom out)
-        this.maxZoom = 4;
-
-        this.isDragging = false;
-        this.baseScale = 1;
-        this.cssW = 0;
-        this.cssH = 0;
+        // Viewport state
+        this.viewportWidth = 0;
+        this.viewportHeight = 0;
         this.dpr = 1;
 
-        // Agent following
-        this.followAgent = null;
-        this.dragDistance = 0; // Track drag to distinguish click from drag
+        // Camera: position is CENTER of view in world coordinates
+        this.camX = world.width / 2;
+        this.camY = world.height / 2;
+        this.zoom = 1; // 1 = fit arena to screen
+        this.minZoom = 1;
+        this.maxZoom = 4;
 
-        this.setupControls();
+        // Interaction state
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.dragStartCamX = 0;
+        this.dragStartCamY = 0;
+        this.dragDistance = 0;
+        this.followAgent = null;
+
+        this.setupInput();
         this.resize();
       }
 
-      // Helper to get centering offset
-      getCenterOffset() {
-        const s = this.baseScale * this.zoom;
-        const worldW = this.world.width * s;
-        const worldH = this.world.height * s;
+      // Convert screen pixel to world coordinate
+      screenToWorld(screenX, screenY) {
+        const scale = this.getScale();
+        const [arenaScreenX, arenaScreenY] = this.getArenaScreenPosition();
         return {
-          x: Math.max(0, (this.cssW - worldW) / 2),
-          y: Math.max(0, (this.cssH - worldH) / 2)
+          x: (screenX - arenaScreenX) / scale,
+          y: (screenY - arenaScreenY) / scale
         };
       }
 
-      setupControls() {
-        const onWheel = (e) => {
+      // Get the scale factor (pixels per world unit)
+      getScale() {
+        const fitScale = Math.min(
+          this.viewportWidth / this.world.width,
+          this.viewportHeight / this.world.height
+        );
+        return fitScale * this.zoom;
+      }
+
+      // Get where arena's top-left corner appears on screen
+      getArenaScreenPosition() {
+        const scale = this.getScale();
+        const arenaPixelW = this.world.width * scale;
+        const arenaPixelH = this.world.height * scale;
+
+        // Center of arena in screen pixels (center of viewport + camera offset)
+        const centerScreenX = this.viewportWidth / 2 - (this.camX - this.world.width / 2) * scale;
+        const centerScreenY = this.viewportHeight / 2 - (this.camY - this.world.height / 2) * scale;
+
+        // Top-left of arena
+        return [
+          centerScreenX - arenaPixelW / 2,
+          centerScreenY - arenaPixelH / 2
+        ];
+      }
+
+      setupInput() {
+        // Mouse wheel zoom
+        this.canvas.addEventListener('wheel', (e) => {
           e.preventDefault();
           const rect = this.canvas.getBoundingClientRect();
           const mouseX = e.clientX - rect.left;
           const mouseY = e.clientY - rect.top;
 
-          // Account for centering offset
-          const offset = this.getCenterOffset();
-          const adjustedMouseX = mouseX - offset.x;
-          const adjustedMouseY = mouseY - offset.y;
+          // World position under mouse before zoom
+          const worldBefore = this.screenToWorld(mouseX, mouseY);
 
-          const worldX = this.cameraX + adjustedMouseX / (this.baseScale * this.zoom);
-          const worldY = this.cameraY + adjustedMouseY / (this.baseScale * this.zoom);
+          // Apply zoom
+          const zoomDelta = e.deltaY > 0 ? 0.9 : 1.1;
+          this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * zoomDelta));
 
-          const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-          this.zoom = clamp(this.zoom * zoomFactor, this.minZoom, this.maxZoom);
+          // World position under mouse after zoom
+          const worldAfter = this.screenToWorld(mouseX, mouseY);
 
-          // Recalculate offset after zoom change
-          const newOffset = this.getCenterOffset();
-          const newAdjustedMouseX = mouseX - newOffset.x;
-          const newAdjustedMouseY = mouseY - newOffset.y;
-
-          this.cameraX = worldX - newAdjustedMouseX / (this.baseScale * this.zoom);
-          this.cameraY = worldY - newAdjustedMouseY / (this.baseScale * this.zoom);
+          // Adjust camera to keep same world point under mouse
+          this.camX += worldBefore.x - worldAfter.x;
+          this.camY += worldBefore.y - worldAfter.y;
 
           this.clampCamera();
-        };
+        }, { passive: false });
 
-        this.canvas.addEventListener('wheel', onWheel, { passive: false });
-
+        // Drag to pan
         const startDrag = (x, y) => {
           this.isDragging = true;
           this.dragStartX = x;
           this.dragStartY = y;
-          this.dragCamX = this.cameraX;
-          this.dragCamY = this.cameraY;
+          this.dragStartCamX = this.camX;
+          this.dragStartCamY = this.camY;
           this.dragDistance = 0;
           this.canvas.style.cursor = 'grabbing';
         };
@@ -4796,10 +4820,12 @@ button.secondary:hover {
           const dx = x - this.dragStartX;
           const dy = y - this.dragStartY;
           this.dragDistance = Math.hypot(dx, dy);
-          this.cameraX = this.dragCamX - dx / (this.baseScale * this.zoom);
-          this.cameraY = this.dragCamY - dy / (this.baseScale * this.zoom);
+
+          const scale = this.getScale();
+          this.camX = this.dragStartCamX - dx / scale;
+          this.camY = this.dragStartCamY - dy / scale;
           this.clampCamera();
-          // Stop following when user drags
+
           if (this.dragDistance > 5) {
             this.followAgent = null;
           }
@@ -4810,19 +4836,21 @@ button.secondary:hover {
           this.isDragging = false;
           this.canvas.style.cursor = 'grab';
 
-          // Handle click to select agent
           if (wasClick && x !== undefined) {
             this.handleClick(x, y);
           }
         };
 
+        // Mouse events
         this.canvas.addEventListener('mousedown', (e) => startDrag(e.clientX, e.clientY));
         window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
         window.addEventListener('mouseup', (e) => endDrag(e.clientX, e.clientY));
 
-        // Touch (single finger pan)
+        // Touch events
         this.canvas.addEventListener('touchstart', (e) => {
-          if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+          if (e.touches.length === 1) {
+            startDrag(e.touches[0].clientX, e.touches[0].clientY);
+          }
         }, { passive: true });
 
         this.canvas.addEventListener('touchmove', (e) => {
@@ -4831,158 +4859,132 @@ button.secondary:hover {
           moveDrag(e.touches[0].clientX, e.touches[0].clientY);
         }, { passive: false });
 
-        this.canvas.addEventListener('touchend', endDrag);
+        this.canvas.addEventListener('touchend', (e) => endDrag());
 
         this.canvas.style.cursor = 'grab';
       }
 
       clampCamera() {
-        const s = this.baseScale * this.zoom;
-        const viewW = this.cssW / s; // Visible world width
-        const viewH = this.cssH / s; // Visible world height
+        const scale = this.getScale();
+        const viewW = this.viewportWidth / scale;
+        const viewH = this.viewportHeight / scale;
 
-        // Calculate black bars at zoom=1 (max zoom out)
-        const worldWAtBase = this.world.width * this.baseScale;
-        const worldHAtBase = this.world.height * this.baseScale;
-        const blackBarX = Math.max(0, (this.cssW - worldWAtBase) / 2);
-        const blackBarY = Math.max(0, (this.cssH - worldHAtBase) / 2);
+        // At zoom=1, camera should be centered (camX = world.width/2, camY = world.height/2)
+        // At higher zoom, allow panning but keep arena edges visible
 
-        // Convert black bars to world coordinates
-        const offsetX = blackBarX / this.baseScale;
-        const offsetY = blackBarY / this.baseScale;
+        const halfViewW = viewW / 2;
+        const halfViewH = viewH / 2;
 
-        // Constrain so edges can't go past where they are at max zoom out
-        const minX = -offsetX;
-        const maxX = Math.max(minX, this.world.width - viewW + offsetX);
-        this.cameraX = clamp(this.cameraX, minX, maxX);
+        // Minimum: camera can't go so far left that right edge of view goes past arena
+        // Maximum: camera can't go so far right that left edge of view goes past arena
+        const minX = Math.min(halfViewW, this.world.width / 2);
+        const maxX = Math.max(this.world.width - halfViewW, this.world.width / 2);
+        const minY = Math.min(halfViewH, this.world.height / 2);
+        const maxY = Math.max(this.world.height - halfViewH, this.world.height / 2);
 
-        const minY = -offsetY;
-        const maxY = Math.max(minY, this.world.height - viewH + offsetY);
-        this.cameraY = clamp(this.cameraY, minY, maxY);
+        this.camX = Math.max(minX, Math.min(maxX, this.camX));
+        this.camY = Math.max(minY, Math.min(maxY, this.camY));
       }
 
       handleClick(clientX, clientY) {
         const rect = this.canvas.getBoundingClientRect();
-        const mouseX = clientX - rect.left;
-        const mouseY = clientY - rect.top;
+        const screenX = clientX - rect.left;
+        const screenY = clientY - rect.top;
+        const world = this.screenToWorld(screenX, screenY);
 
-        // Convert to world coordinates
-        const offset = this.getCenterOffset();
-        const s = this.baseScale * this.zoom;
-        const worldX = this.cameraX + (mouseX - offset.x) / s;
-        const worldY = this.cameraY + (mouseY - offset.y) / s;
-
-        // Find clicked agent
         let closestAgent = null;
-        let closestDist = 30; // Click radius threshold
+        let closestDist = 30;
 
         for (const agent of this.world.agents) {
-          const dist = Math.hypot(agent.x - worldX, agent.y - worldY);
+          const dist = Math.hypot(agent.x - world.x, agent.y - world.y);
           if (dist < closestDist) {
             closestDist = dist;
             closestAgent = agent;
           }
         }
 
-        if (closestAgent) {
-          this.followAgent = closestAgent;
-        } else {
-          this.followAgent = null;
-        }
+        this.followAgent = closestAgent;
       }
 
       updateFollow() {
-        // Keep following agent even when dead - they'll respawn
         if (!this.followAgent) return;
-
-        // Only move camera if agent is alive
         if (this.followAgent.alive) {
-          // Center camera on followed agent
-          const vw = this.cssW / (this.baseScale * this.zoom);
-          const vh = this.cssH / (this.baseScale * this.zoom);
-          this.cameraX = this.followAgent.x - vw / 2;
-          this.cameraY = this.followAgent.y - vh / 2;
+          this.camX = this.followAgent.x;
+          this.camY = this.followAgent.y;
           this.clampCamera();
         }
-        // When dead, camera stays in place until respawn
       }
 
       resize() {
         const container = this.canvas.parentElement;
-        this.cssW = container.clientWidth;
-        this.cssH = container.clientHeight;
+        this.viewportWidth = container.clientWidth;
+        this.viewportHeight = container.clientHeight;
         this.dpr = window.devicePixelRatio || 1;
 
-        // Set canvas buffer size
-        this.canvas.width = Math.floor(this.cssW * this.dpr);
-        this.canvas.height = Math.floor(this.cssH * this.dpr);
+        // Set canvas buffer size (for sharp rendering)
+        this.canvas.width = Math.floor(this.viewportWidth * this.dpr);
+        this.canvas.height = Math.floor(this.viewportHeight * this.dpr);
 
-        // Set canvas CSS size to fill container
-        this.canvas.style.width = this.cssW + 'px';
-        this.canvas.style.height = this.cssH + 'px';
+        // Set canvas CSS size (actual display size)
+        this.canvas.style.width = this.viewportWidth + 'px';
+        this.canvas.style.height = this.viewportHeight + 'px';
 
-        // Fit arena to screen - use whichever dimension constrains it
-        const scaleX = this.cssW / this.world.width;
-        const scaleY = this.cssH / this.world.height;
-        this.baseScale = Math.min(scaleX, scaleY);
-
-        // Center camera on world
-        this.cameraX = 0;
-        this.cameraY = 0;
-
+        // Reset camera to center
+        this.camX = this.world.width / 2;
+        this.camY = this.world.height / 2;
         this.clampCamera();
       }
 
       render() {
         const ctx = this.ctx;
-        const s = this.baseScale * this.zoom;
+        const scale = this.getScale();
+        const [arenaX, arenaY] = this.getArenaScreenPosition();
 
-        // Draw in CSS pixels, with DPR scaling handled by transform.
+        // Apply DPR scaling
         ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
+        // Clear entire canvas with background color
         ctx.fillStyle = '#050510';
-        ctx.fillRect(0, 0, this.cssW, this.cssH);
+        ctx.fillRect(0, 0, this.viewportWidth, this.viewportHeight);
 
-        // Calculate centering offset (center world in canvas when zoomed out)
-        const worldW = this.world.width * s;
-        const worldH = this.world.height * s;
-        const offsetX = Math.max(0, (this.cssW - worldW) / 2);
-        const offsetY = Math.max(0, (this.cssH - worldH) / 2);
-
+        // Set up transform for world rendering
         ctx.save();
-        ctx.translate(offsetX - this.cameraX * s, offsetY - this.cameraY * s);
+        ctx.translate(arenaX, arenaY);
+        ctx.scale(scale, scale);
 
-        const maxX = this.world.width * s;
-        const maxY = this.world.height * s;
+        // Now all drawing is in world coordinates (0,0 is top-left of arena)
+        // Use worldW/worldH for sizes, coordinates are direct world units
+        const w = this.world.width;
+        const h = this.world.height;
 
         if (turboMode) {
           // TURBO: Simple solid background and border
           ctx.fillStyle = '#0a0b14';
-          ctx.fillRect(0, 0, maxX, maxY);
+          ctx.fillRect(0, 0, w, h);
           ctx.strokeStyle = 'rgba(0, 200, 255, 0.5)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(1, 1, maxX - 2, maxY - 2);
+          ctx.lineWidth = 2 / scale;
+          ctx.strokeRect(1, 1, w - 2, h - 2);
         } else {
           // Arena floor - deeper space gradient
-          const floorGrad = ctx.createRadialGradient(maxX / 2, maxY / 2, 0, maxX / 2, maxY / 2, maxX * 0.7);
+          const floorGrad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.7);
           floorGrad.addColorStop(0, '#0d0e1a');
           floorGrad.addColorStop(0.5, '#090a14');
           floorGrad.addColorStop(1, '#05060c');
           ctx.fillStyle = floorGrad;
-          ctx.fillRect(0, 0, maxX, maxY);
+          ctx.fillRect(0, 0, w, h);
 
           // Holodeck-style hex grid with cyan glow
-          const hexSize = 60 * s;
+          const hexSize = 60;
           const time = Date.now() / 3000;
-          ctx.lineWidth = 1;
-          for (let row = 0; row < maxY / (hexSize * 0.866) + 1; row++) {
-            for (let col = 0; col < maxX / hexSize + 1; col++) {
+          ctx.lineWidth = 1 / scale;
+          for (let row = 0; row < h / (hexSize * 0.866) + 1; row++) {
+            for (let col = 0; col < w / hexSize + 1; col++) {
               const cx = col * hexSize * 1.5 + (row % 2) * hexSize * 0.75;
               const cy = row * hexSize * 0.866;
-              if (cx > maxX + hexSize || cy > maxY + hexSize) continue;
+              if (cx > w + hexSize || cy > h + hexSize) continue;
 
               // Distance from center for intensity falloff
-              const distFromCenter = Math.hypot(cx - maxX/2, cy - maxY/2) / (maxX * 0.5);
+              const distFromCenter = Math.hypot(cx - w/2, cy - h/2) / (w * 0.5);
               const centerIntensity = Math.max(0, 1 - distFromCenter * 0.7);
 
               // Subtle pulse based on position
@@ -5004,102 +5006,102 @@ button.secondary:hover {
           }
 
           // Center danger zone glow (where weapons spawn)
-          const centerGlow = ctx.createRadialGradient(maxX / 2, maxY / 2, 30 * s, maxX / 2, maxY / 2, 350 * s);
+          const centerGlow = ctx.createRadialGradient(w / 2, h / 2, 30, w / 2, h / 2, 350);
           centerGlow.addColorStop(0, 'rgba(255, 50, 100, 0.12)');
           centerGlow.addColorStop(0.3, 'rgba(255, 50, 100, 0.06)');
           centerGlow.addColorStop(1, 'rgba(255, 50, 100, 0)');
           ctx.fillStyle = centerGlow;
-          ctx.fillRect(0, 0, maxX, maxY);
+          ctx.fillRect(0, 0, w, h);
 
           // Team spawn zone hints - enhanced glow
-          const redZone = ctx.createRadialGradient(100 * s, maxY / 2, 30 * s, 100 * s, maxY / 2, 250 * s);
+          const redZone = ctx.createRadialGradient(100, h / 2, 30, 100, h / 2, 250);
           redZone.addColorStop(0, 'rgba(255, 68, 102, 0.15)');
           redZone.addColorStop(0.5, 'rgba(255, 68, 102, 0.05)');
           redZone.addColorStop(1, 'rgba(255, 68, 102, 0)');
           ctx.fillStyle = redZone;
-          ctx.fillRect(0, 0, maxX, maxY);
+          ctx.fillRect(0, 0, w, h);
 
-          const blueZone = ctx.createRadialGradient(maxX - 100 * s, maxY / 2, 30 * s, maxX - 100 * s, maxY / 2, 250 * s);
+          const blueZone = ctx.createRadialGradient(w - 100, h / 2, 30, w - 100, h / 2, 250);
           blueZone.addColorStop(0, 'rgba(68, 153, 255, 0.15)');
           blueZone.addColorStop(0.5, 'rgba(68, 153, 255, 0.05)');
           blueZone.addColorStop(1, 'rgba(68, 153, 255, 0)');
           ctx.fillStyle = blueZone;
-          ctx.fillRect(0, 0, maxX, maxY);
+          ctx.fillRect(0, 0, w, h);
 
           // Border - glowing tech frame with softer color
-          ctx.shadowBlur = 20;
+          ctx.shadowBlur = 20 / scale;
           ctx.shadowColor = 'rgba(0, 200, 255, 0.5)';
           ctx.strokeStyle = 'rgba(0, 200, 255, 0.6)';
-          ctx.lineWidth = 2;
-          ctx.strokeRect(2, 2, maxX - 4, maxY - 4);
+          ctx.lineWidth = 2 / scale;
+          ctx.strokeRect(2, 2, w - 4, h - 4);
           ctx.shadowBlur = 0;
 
           // Corner accents - matching cyan theme
-          const cornerSize = 50 * s;
+          const cornerSize = 50;
           ctx.strokeStyle = 'rgba(0, 243, 255, 0.8)';
-          ctx.lineWidth = 2;
-          ctx.shadowBlur = 8;
+          ctx.lineWidth = 2 / scale;
+          ctx.shadowBlur = 8 / scale;
           ctx.shadowColor = 'rgba(0, 243, 255, 0.5)';
           // Top-left
           ctx.beginPath(); ctx.moveTo(0, cornerSize); ctx.lineTo(0, 0); ctx.lineTo(cornerSize, 0); ctx.stroke();
           // Top-right
-          ctx.beginPath(); ctx.moveTo(maxX - cornerSize, 0); ctx.lineTo(maxX, 0); ctx.lineTo(maxX, cornerSize); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(w - cornerSize, 0); ctx.lineTo(w, 0); ctx.lineTo(w, cornerSize); ctx.stroke();
           // Bottom-left
-          ctx.beginPath(); ctx.moveTo(0, maxY - cornerSize); ctx.lineTo(0, maxY); ctx.lineTo(cornerSize, maxY); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, h - cornerSize); ctx.lineTo(0, h); ctx.lineTo(cornerSize, h); ctx.stroke();
           // Bottom-right
-          ctx.beginPath(); ctx.moveTo(maxX - cornerSize, maxY); ctx.lineTo(maxX, maxY); ctx.lineTo(maxX, maxY - cornerSize); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(w - cornerSize, h); ctx.lineTo(w, h); ctx.lineTo(w, h - cornerSize); ctx.stroke();
           ctx.shadowBlur = 0;
         }
 
-        // Buildings/Obstacles
+        // Buildings/Obstacles (coordinates are already in world units)
         for (const b of this.world.buildings) {
-          const x = b.x * s, y = b.y * s, w = b.w * s, h = b.h * s;
+          const x = b.x, y = b.y, bw = b.w, bh = b.h;
 
           if (turboMode) {
             // TURBO: Simple solid rectangle
             ctx.fillStyle = '#1a1a2e';
-            ctx.fillRect(x, y, w, h);
+            ctx.fillRect(x, y, bw, bh);
           } else {
             // Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.fillRect(x + 6, y + 6, w, h);
+            ctx.fillRect(x + 6, y + 6, bw, bh);
 
             // Main body gradient
-            const obstacleGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+            const obstacleGrad = ctx.createLinearGradient(x, y, x + bw, y + bh);
             obstacleGrad.addColorStop(0, '#1a1a2e');
             obstacleGrad.addColorStop(0.5, '#12121f');
             obstacleGrad.addColorStop(1, '#0a0a15');
             ctx.fillStyle = obstacleGrad;
-            ctx.fillRect(x, y, w, h);
+            ctx.fillRect(x, y, bw, bh);
 
             // Top highlight
             ctx.fillStyle = 'rgba(255,255,255,0.05)';
-            ctx.fillRect(x, y, w, 3);
-            ctx.fillRect(x, y, 3, h);
+            ctx.fillRect(x, y, bw, 3);
+            ctx.fillRect(x, y, 3, bh);
 
             // Bottom shadow edge
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.fillRect(x, y + h - 3, w, 3);
-            ctx.fillRect(x + w - 3, y, 3, h);
+            ctx.fillRect(x, y + bh - 3, bw, 3);
+            ctx.fillRect(x + bw - 3, y, 3, bh);
 
             // Tech lines
             ctx.strokeStyle = 'rgba(0, 255, 200, 0.15)';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1 / scale;
             // Horizontal line
             ctx.beginPath();
-            ctx.moveTo(x + 5, y + h / 2);
-            ctx.lineTo(x + w - 5, y + h / 2);
+            ctx.moveTo(x + 5, y + bh / 2);
+            ctx.lineTo(x + bw - 5, y + bh / 2);
             ctx.stroke();
             // Vertical line
             ctx.beginPath();
-            ctx.moveTo(x + w / 2, y + 5);
-            ctx.lineTo(x + w / 2, y + h - 5);
+            ctx.moveTo(x + bw / 2, y + 5);
+            ctx.lineTo(x + bw / 2, y + bh - 5);
             ctx.stroke();
 
             // Corner brackets
-            const bracketSize = Math.min(w, h) * 0.2;
+            const bracketSize = Math.min(bw, bh) * 0.2;
             ctx.strokeStyle = 'rgba(0, 255, 200, 0.3)';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 / scale;
             // Top-left bracket
             ctx.beginPath();
             ctx.moveTo(x + bracketSize, y + 4);
@@ -5108,43 +5110,47 @@ button.secondary:hover {
             ctx.stroke();
             // Top-right bracket
             ctx.beginPath();
-            ctx.moveTo(x + w - bracketSize, y + 4);
-            ctx.lineTo(x + w - 4, y + 4);
-            ctx.lineTo(x + w - 4, y + bracketSize);
+            ctx.moveTo(x + bw - bracketSize, y + 4);
+            ctx.lineTo(x + bw - 4, y + 4);
+            ctx.lineTo(x + bw - 4, y + bracketSize);
             ctx.stroke();
             // Bottom-left bracket
             ctx.beginPath();
-            ctx.moveTo(x + bracketSize, y + h - 4);
-            ctx.lineTo(x + 4, y + h - 4);
-            ctx.lineTo(x + 4, y + h - bracketSize);
+            ctx.moveTo(x + bracketSize, y + bh - 4);
+            ctx.lineTo(x + 4, y + bh - 4);
+            ctx.lineTo(x + 4, y + bh - bracketSize);
             ctx.stroke();
             // Bottom-right bracket
             ctx.beginPath();
-            ctx.moveTo(x + w - bracketSize, y + h - 4);
-            ctx.lineTo(x + w - 4, y + h - 4);
-            ctx.lineTo(x + w - 4, y + h - bracketSize);
+            ctx.moveTo(x + bw - bracketSize, y + bh - 4);
+            ctx.lineTo(x + bw - 4, y + bh - 4);
+            ctx.lineTo(x + bw - 4, y + bh - bracketSize);
             ctx.stroke();
 
             // Outer glow
             ctx.strokeStyle = 'rgba(0, 200, 255, 0.2)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x - 1, y - 1, w + 2, h + 2);
+            ctx.lineWidth = 1 / scale;
+            ctx.strokeRect(x - 1, y - 1, bw + 2, bh + 2);
           }
         }
+
+        // Compatibility: s=1 since scale transform handles scaling
+        // Old code used x*s, y*s - now just x, y works (transform does it)
+        const s = 1;
 
         // Teleporters
         this.drawTeleporters(ctx, s);
 
-        // Pickups
+        // Pickups (coordinates are in world units, px for pixel-based values)
         for (const p of this.world.pickups) {
-          const px = p.x * s, py = p.y * s, pr = p.radius * s;
+          const pX = p.x, pY = p.y, pr = p.radius;
 
           if (turboMode) {
             // TURBO: Simple colored circles
             const colors = { health: '#00ff9d', armor: '#00aaff', laser: '#00ffff', sword: '#ff00ff' };
             ctx.fillStyle = colors[p.type] || '#fff';
             ctx.beginPath();
-            ctx.arc(px, py, pr, 0, Math.PI * 2);
+            ctx.arc(pX, pY, pr, 0, Math.PI * 2);
             ctx.fill();
           } else {
             // Glow effect
@@ -5152,77 +5158,77 @@ button.secondary:hover {
 
             if (p.type === 'health') {
               // Health pack - green cross shape
-              ctx.shadowBlur = 15 * pulse;
+              ctx.shadowBlur = 15 * pulse * px;
               ctx.shadowColor = '#00ff9d';
               ctx.fillStyle = '#00ff9d';
 
               // Horizontal bar of cross
-              ctx.fillRect(px - pr, py - pr * 0.3, pr * 2, pr * 0.6);
+              ctx.fillRect(pX - pr, pY - pr * 0.3, pr * 2, pr * 0.6);
               // Vertical bar of cross
-              ctx.fillRect(px - pr * 0.3, py - pr, pr * 0.6, pr * 2);
+              ctx.fillRect(pX - pr * 0.3, pY - pr, pr * 0.6, pr * 2);
 
             } else if (p.type === 'armor') {
               // Armor pack - blue kite shield
-              ctx.shadowBlur = 15 * pulse;
+              ctx.shadowBlur = 15 * pulse * px;
               ctx.shadowColor = '#00aaff';
               ctx.fillStyle = '#00aaff';
 
               // Kite shield shape (wider at top, pointed at bottom)
               ctx.beginPath();
-              ctx.moveTo(px, py - pr * 1.1);           // Top center
-              ctx.lineTo(px + pr * 0.8, py - pr * 0.3); // Top right
-              ctx.lineTo(px + pr * 0.6, py + pr * 0.4); // Mid right
-              ctx.lineTo(px, py + pr * 1.1);            // Bottom point
-              ctx.lineTo(px - pr * 0.6, py + pr * 0.4); // Mid left
-              ctx.lineTo(px - pr * 0.8, py - pr * 0.3); // Top left
+              ctx.moveTo(pX, pY - pr * 1.1);           // Top center
+              ctx.lineTo(pX + pr * 0.8, pY - pr * 0.3); // Top right
+              ctx.lineTo(pX + pr * 0.6, pY + pr * 0.4); // Mid right
+              ctx.lineTo(pX, pY + pr * 1.1);            // Bottom point
+              ctx.lineTo(pX - pr * 0.6, pY + pr * 0.4); // Mid left
+              ctx.lineTo(pX - pr * 0.8, pY - pr * 0.3); // Top left
               ctx.closePath();
               ctx.fill();
 
               // Inner highlight
               ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-              ctx.lineWidth = 2;
+              ctx.lineWidth = 2 * px;
               ctx.stroke();
             } else if (p.type === 'laser') {
               // Laser pickup - electric bolt shape
-              ctx.shadowBlur = 20 * pulse;
+              ctx.shadowBlur = 20 * pulse * px;
               ctx.shadowColor = '#00ffff';
               ctx.fillStyle = '#00ffff';
 
               // Lightning bolt shape
               ctx.beginPath();
-              ctx.moveTo(px + pr * 0.3, py - pr * 1.2);
-              ctx.lineTo(px - pr * 0.1, py - pr * 0.2);
-              ctx.lineTo(px + pr * 0.3, py - pr * 0.2);
-              ctx.lineTo(px - pr * 0.3, py + pr * 1.2);
-              ctx.lineTo(px + pr * 0.1, py + pr * 0.2);
-              ctx.lineTo(px - pr * 0.3, py + pr * 0.2);
+              ctx.moveTo(pX + pr * 0.3, pY - pr * 1.2);
+              ctx.lineTo(pX - pr * 0.1, pY - pr * 0.2);
+              ctx.lineTo(pX + pr * 0.3, pY - pr * 0.2);
+              ctx.lineTo(pX - pr * 0.3, pY + pr * 1.2);
+              ctx.lineTo(pX + pr * 0.1, pY + pr * 0.2);
+              ctx.lineTo(pX - pr * 0.3, pY + pr * 0.2);
               ctx.closePath();
               ctx.fill();
 
               // Inner glow
               ctx.strokeStyle = '#fff';
-              ctx.lineWidth = 2;
+              ctx.lineWidth = 2 * px;
               ctx.stroke();
             } else if (p.type === 'sword') {
               // Sword pickup - energy sword shape (neutral purple until picked up)
-              ctx.shadowBlur = 20 * pulse;
+              ctx.shadowBlur = 20 * pulse * px;
               ctx.shadowColor = '#ff00ff';
               ctx.fillStyle = '#ff00ff';
 
               // Sword blade shape
               ctx.beginPath();
-              ctx.moveTo(px, py - pr * 1.5);           // Tip
-              ctx.lineTo(px + pr * 0.3, py - pr * 0.5); // Right edge upper
-              ctx.lineTo(px + pr * 0.2, py + pr * 0.8); // Right edge lower
-              ctx.lineTo(px, py + pr * 1.2);            // Handle
-              ctx.lineTo(px - pr * 0.2, py + pr * 0.8); // Left edge lower
-              ctx.lineTo(px - pr * 0.3, py - pr * 0.5); // Left edge upper
+              ctx.moveTo(pX, pY - pr * 1.5);           // Tip
+              ctx.lineTo(pX + pr * 0.3, pY - pr * 0.5); // Right edge upper
+              ctx.lineTo(pX + pr * 0.2, pY + pr * 0.8); // Right edge lower
+              ctx.lineTo(pX, pY + pr * 1.2);            // Handle
+              ctx.lineTo(pX - pr * 0.2, pY + pr * 0.8); // Left edge lower
+              ctx.lineTo(pX - pr * 0.3, pY - pr * 0.5); // Left edge upper
               ctx.closePath();
               ctx.fill();
 
               // Inner glow line
               ctx.strokeStyle = '#fff';
-              ctx.lineWidth = 2;
+              ctx.lineWidth = 2 * px;
               ctx.stroke();
             }
             ctx.shadowBlur = 0;
