@@ -606,6 +606,10 @@ body {
   overflow: hidden;
   /* Ensure container doesn't exceed available space */
   min-height: 0;
+  /* Center canvas when it's smaller than container */
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 canvas {
   display: block;
