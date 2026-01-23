@@ -124,6 +124,51 @@ body {
 .team-block.red .team-wins { color: var(--team-red); }
 .team-block.blue .team-wins { color: var(--team-blue); }
 
+/* Top Lives display (persistent mode) */
+.team-top-lives {
+  display: none;
+  font-size: 0.7rem;
+  min-width: 100px;
+}
+body.persistent-mode .team-wins {
+  display: none;
+}
+body.persistent-mode .team-top-lives {
+  display: block;
+}
+.top-lives-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.top-life-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.top-life-entry .name {
+  opacity: 0.8;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.top-life-entry .kills {
+  font-weight: bold;
+}
+.team-block.red .top-life-entry .kills { color: var(--team-red); }
+.team-block.blue .top-life-entry .kills { color: var(--team-blue); }
+.top-lives-empty {
+  color: var(--text-dim);
+  font-size: 0.6rem;
+  padding: 4px;
+}
+
 #center-info {
   text-align: center;
   padding: 0 20px;
@@ -1272,6 +1317,9 @@ button.secondary:hover {
           <div class="wins" id="red-wins">0</div>
           <div class="label">wins</div>
         </div>
+        <div class="team-top-lives" id="red-top-lives">
+          <div class="top-lives-list"></div>
+        </div>
         <div class="team-score">
           <div class="score" id="red-score">0</div>
           <div class="label">🔴 RED</div>
@@ -1295,6 +1343,9 @@ button.secondary:hover {
     <div class="team-wins">
       <div class="wins" id="blue-wins">0</div>
       <div class="label">wins</div>
+    </div>
+    <div class="team-top-lives" id="blue-top-lives">
+      <div class="top-lives-list"></div>
     </div>
   </div>
 </div>
@@ -6695,6 +6746,8 @@ button.secondary:hover {
       blueScore: document.getElementById('blue-score'),
       redWins: document.getElementById('red-wins'),
       blueWins: document.getElementById('blue-wins'),
+      redTopLives: document.querySelector('#red-top-lives .top-lives-list'),
+      blueTopLives: document.querySelector('#blue-top-lives .top-lives-list'),
 
       // Modifiers (now in dropdown menu)
       toggleHealth: document.getElementById('mod-health'),
@@ -7120,6 +7173,9 @@ button.secondary:hover {
       if (persistentMode === toPersistent) return;
 
       persistentMode = toPersistent;
+
+      // Toggle body class for CSS
+      document.body.classList.toggle('persistent-mode', persistentMode);
 
       // Update button states
       ui.modeRounds.classList.toggle('active', !persistentMode);
@@ -7588,6 +7644,23 @@ button.secondary:hover {
             return '<div class="hof-entry"><span>' + medal + ' ' + e.kills + 'K</span><span style="color:#00ff9d">' + e.score + '</span></div>';
           }).join('')
         : '<div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>';
+
+      // Update top lives in top-bar (persistent mode only)
+      if (persistentMode) {
+        ui.redTopLives.innerHTML = hallOfFame[0].length > 0
+          ? hallOfFame[0].slice(0, 5).map((e, i) => {
+              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+              return '<div class="top-life-entry"><span class="name">' + medal + '</span><span class="kills">' + e.kills + 'K</span></div>';
+            }).join('')
+          : '<div class="top-lives-empty">-</div>';
+
+        ui.blueTopLives.innerHTML = hallOfFame[1].length > 0
+          ? hallOfFame[1].slice(0, 5).map((e, i) => {
+              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
+              return '<div class="top-life-entry"><span class="name">' + medal + '</span><span class="kills">' + e.kills + 'K</span></div>';
+            }).join('')
+          : '<div class="top-lives-empty">-</div>';
+      }
 
       // Update header display in persistent mode
       if (persistentMode) {
