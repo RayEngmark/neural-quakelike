@@ -2368,7 +2368,7 @@ button.secondary:hover {
         // Edge camping tracking (for danger zone system)
         this.edgeCampTime = 0;
 
-        this.radius = 24;
+        this.radius = 16;
         this.color = team === 0 ? '#ff4444' : '#4488ff';
       }
       
@@ -3008,9 +3008,6 @@ button.secondary:hover {
       }
 
       takeDamage(amount, attacker, world) {
-        // Track damage time for visual feedback
-        this.lastDamageTime = Date.now();
-
         // Armor absorbs damage first
         if (this.armor > 0) {
           const armorDamage = Math.min(this.armor, amount);
@@ -3129,10 +3126,6 @@ button.secondary:hover {
 
         // Dodge trail animations
         this.dodgeTrails = [];
-
-        // Blood effects
-        this.bloodSplats = []; // Hit splats that spray on impact
-        this.bloodPools = []; // Death pools under dead agents
 
         this.roundTime = 180; // 3 minutes
         this.timeLeft = this.roundTime;
@@ -3366,11 +3359,8 @@ button.secondary:hover {
                   agent.registerComboHit(target, laserDmg);
                   agent.damageDealt += laserDmg;
                   agent.lifeDamageDealt += laserDmg;
-                  // Blood splat in laser direction
-                  this.spawnBloodSplat(target.x, target.y, angle, 2.5);
                   var killed = target.takeDamage(laserDmg, agent, this);
                   if (killed) {
-                    this.spawnBloodPool(target.x, target.y, target.team);
                     // Get combo kill bonus before it resets
                     const comboKillBonus = agent.getComboKillBonus(target);
                     agent.comboScore += comboKillBonus;
@@ -3633,12 +3623,8 @@ button.secondary:hover {
             agent.registerComboHit(target, swordDamage);
             agent.damageDealt += swordDamage;
             agent.lifeDamageDealt += swordDamage;
-            // Blood splat in slash direction
-            const slashAngle = Math.atan2(chain.toY - chain.fromY, chain.toX - chain.fromX);
-            this.spawnBloodSplat(target.x, target.y, slashAngle, 2.0);
             const killed = target.takeDamage(swordDamage, agent, this);
             if (killed) {
-              this.spawnBloodPool(target.x, target.y, target.team);
               // Get combo kill bonus before it resets
               const comboKillBonus = agent.getComboKillBonus(target);
               agent.comboScore += comboKillBonus;
@@ -4100,8 +4086,6 @@ button.secondary:hover {
         this.droppedWeapons = [];
         this.dodgeTrails = [];
         this.dangerZones = [];
-        this.bloodSplats = [];
-        this.bloodPools = [];
 
         // Reset pit spawn flags and timers, then spawn initial pickups
         for (const pit of this.pickupPits) {
@@ -4230,9 +4214,7 @@ button.secondary:hover {
         this.swordSlashes = [];
         this.droppedWeapons = []; // Weapons dropped by dead players or weapon swaps
         this.dodgeTrails = [];
-        this.dangerZones = [];
-        this.bloodSplats = [];
-        this.bloodPools = [];
+        this.dangerZones = []; // Reset edge camping danger zones
 
         // Reset pit spawn flags and timers, then spawn initial pickups
         for (const pit of this.pickupPits) {
@@ -4568,11 +4550,8 @@ button.secondary:hover {
                 const comboMultiplier = b.owner.registerComboHit(hitAgent, damage);
                 b.owner.damageDealt += damage;
                 b.owner.lifeDamageDealt += damage;
-                // Blood splat in bullet direction
-                this.spawnBloodSplat(hitAgent.x, hitAgent.y, b.angle, damage / 30);
                 const killed = hitAgent.takeDamage(damage, b.owner, this);
                 if (killed) {
-                  this.spawnBloodPool(hitAgent.x, hitAgent.y, hitAgent.team);
                   const comboKillBonus = b.owner.getComboKillBonus(hitAgent);
                   b.owner.comboScore += comboKillBonus;
                   b.owner.kills++;
@@ -4606,28 +4585,6 @@ button.secondary:hover {
           p.size += dt * 10; // Expand
         }
         this.smokeParticles = this.smokeParticles.filter(p => p.life > 0);
-
-        // Update blood splats
-        for (const splat of this.bloodSplats) {
-          splat.timer += dt;
-          splat.x += splat.vx * dt;
-          splat.y += splat.vy * dt;
-          splat.vx *= 0.92; // Friction
-          splat.vy *= 0.92;
-        }
-        this.bloodSplats = this.bloodSplats.filter(s => s.timer < s.maxTime);
-
-        // Update blood pools
-        for (const pool of this.bloodPools) {
-          pool.timer += dt;
-          // Expand pool over first 0.5 seconds
-          if (pool.timer < 0.5) {
-            pool.radius = pool.maxRadius * (pool.timer / 0.5);
-          } else {
-            pool.radius = pool.maxRadius;
-          }
-        }
-        this.bloodPools = this.bloodPools.filter(p => p.timer < p.maxTime);
 
         // Update explosions - SPLASH DAMAGE
         for (const e of this.explosions) {
@@ -4676,13 +4633,7 @@ button.secondary:hover {
               } else {
                 // Enemy damage
                 hitEnemy = true;
-                // Blood splat away from explosion
-                const bloodAngle = Math.atan2(agent.y - e.y, agent.x - e.x);
-                this.spawnBloodSplat(agent.x, agent.y, bloodAngle, dmg / 25);
                 const killed = agent.takeDamage(dmg, e.owner, this);
-                if (killed) {
-                  this.spawnBloodPool(agent.x, agent.y, agent.team);
-                }
                 if (e.owner) {
                   // Register combo hit (5x HP mode)
                   const comboMultiplier = e.owner.registerComboHit(agent, dmg);
@@ -4989,39 +4940,6 @@ button.secondary:hover {
         });
 
         this.addEvent('💫 ' + weaponType.toUpperCase() + ' DROPPED!', weaponType);
-      }
-
-      // Blood splat on hit - sprays in direction of impact
-      spawnBloodSplat(x, y, angle, intensity = 1) {
-        const particleCount = Math.floor(5 + intensity * 10);
-        for (let i = 0; i < particleCount; i++) {
-          const spread = (Math.random() - 0.5) * 1.2; // Spread angle
-          const speed = 80 + Math.random() * 120 * intensity;
-          const size = 3 + Math.random() * 6 * intensity;
-          this.bloodSplats.push({
-            x: x,
-            y: y,
-            vx: Math.cos(angle + spread) * speed,
-            vy: Math.sin(angle + spread) * speed,
-            size: size,
-            timer: 0,
-            maxTime: 1.5 + Math.random() * 1.0, // 1.5-2.5 seconds
-            rotation: Math.random() * Math.PI * 2
-          });
-        }
-      }
-
-      // Blood pool on death
-      spawnBloodPool(x, y, team) {
-        this.bloodPools.push({
-          x: x,
-          y: y,
-          radius: 0,
-          maxRadius: 25 + Math.random() * 15,
-          timer: 0,
-          maxTime: 8, // Stays for 8 seconds
-          team: team
-        });
       }
 
       addEvent(text, type) {
@@ -5753,71 +5671,24 @@ button.secondary:hover {
           ctx.restore();
         }
 
-        // Blood pools (under agents) - skip in turbo mode
-        if (!turboMode) {
-          for (const pool of this.world.bloodPools) {
-            const progress = pool.timer / pool.maxTime;
-            const fadeOut = progress > 0.7 ? 1 - ((progress - 0.7) / 0.3) : 1;
-            const alpha = fadeOut * 0.6;
-
-            const poolColor = pool.team === 0 ?
-              `rgba(180, 20, 20, ${alpha})` :
-              `rgba(20, 60, 180, ${alpha})`;
-
-            // Main pool
-            const grad = ctx.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.radius);
-            grad.addColorStop(0, poolColor);
-            grad.addColorStop(0.7, poolColor.replace(alpha, alpha * 0.6));
-            grad.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(pool.x, pool.y, pool.radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Darker center
-            ctx.fillStyle = pool.team === 0 ?
-              `rgba(100, 0, 0, ${alpha * 0.5})` :
-              `rgba(0, 20, 100, ${alpha * 0.5})`;
-            ctx.beginPath();
-            ctx.arc(pool.x, pool.y, pool.radius * 0.3, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-
         // Agents with class-based rendering
         for (const agent of this.world.agents) {
           if (!agent.alive) continue;
           const x = agent.x * s, y = agent.y * s, r = agent.radius * s;
 
           if (turboMode) {
-            // TURBO: Simple colored circle with big googly eyes
+            // TURBO: Simple colored circle with direction line
             ctx.fillStyle = agent.team === 0 ? '#ff4466' : '#4499ff';
             ctx.beginPath();
             ctx.arc(x, y, r, 0, Math.PI * 2);
             ctx.fill();
-            // Big googly eyes
-            const eyeR = r * 0.38;
-            const eyeDist = r * 0.3;
-            const eyeSpread = r * 0.38;
-            const cosR = Math.cos(agent.rotation);
-            const sinR = Math.sin(agent.rotation);
-            for (const side of [-1, 1]) {
-              const ex = x + cosR * eyeDist - sinR * eyeSpread * side;
-              const ey = y + sinR * eyeDist + cosR * eyeSpread * side;
-              // White eye
-              ctx.fillStyle = '#fff';
-              ctx.beginPath();
-              ctx.arc(ex, ey, eyeR, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.strokeStyle = '#222';
-              ctx.lineWidth = 1;
-              ctx.stroke();
-              // Pupil looking forward
-              ctx.fillStyle = '#111';
-              ctx.beginPath();
-              ctx.arc(ex + cosR * eyeR * 0.3, ey + sinR * eyeR * 0.3, eyeR * 0.45, 0, Math.PI * 2);
-              ctx.fill();
-            }
+            // Direction indicator
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + Math.cos(agent.rotation) * r * 1.5, y + Math.sin(agent.rotation) * r * 1.5);
+            ctx.stroke();
             continue; // Skip detailed rendering
           }
 
@@ -5878,94 +5749,6 @@ button.secondary:hover {
           ctx.shadowBlur = 0;
           ctx.fillStyle = activeColor + '20';
           ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.fill();
-
-          // Dynamic googly eyes - big and expressive!
-          const eyeRadius = r * 0.42;
-          const eyeOffsetX = r * 0.3; // Forward position
-          const eyeOffsetY = r * 0.38; // Spacing between eyes
-          const pupilRadius = eyeRadius * 0.45; // Smaller pupil for googly look
-
-          // Calculate pupil look direction based on velocity and threats
-          let lookX = 0, lookY = 0;
-          const speed = Math.hypot(agent.vx, agent.vy);
-          if (speed > 10) {
-            // Look in movement direction (relative to body rotation)
-            const moveAngle = Math.atan2(agent.vy, agent.vx) - agent.rotation;
-            lookX = Math.cos(moveAngle) * eyeRadius * 0.4;
-            lookY = Math.sin(moveAngle) * eyeRadius * 0.4;
-          }
-
-          // Find nearest enemy and look at them if close
-          let nearestEnemy = null;
-          let nearestDist = 200;
-          for (const other of this.world.agents) {
-            if (other === agent || !other.alive || other.team === agent.team) continue;
-            const d = Math.hypot(other.x - agent.x, other.y - agent.y);
-            if (d < nearestDist) {
-              nearestDist = d;
-              nearestEnemy = other;
-            }
-          }
-          if (nearestEnemy) {
-            const enemyAngle = Math.atan2(nearestEnemy.y - agent.y, nearestEnemy.x - agent.x) - agent.rotation;
-            const intensity = 1 - (nearestDist / 200);
-            lookX = Math.cos(enemyAngle) * eyeRadius * 0.45 * intensity;
-            lookY = Math.sin(enemyAngle) * eyeRadius * 0.45 * intensity;
-          }
-
-          // Blinking animation
-          const blinkCycle = (Date.now() / 1000 + agent.id * 0.7) % 4;
-          const isBlinking = blinkCycle > 3.85;
-          const blinkSquish = isBlinking ? 0.1 : 1;
-
-          // Surprised look when taking damage recently
-          const recentDamage = agent.lastDamageTime && (Date.now() - agent.lastDamageTime) < 300;
-          const eyeScale = recentDamage ? 1.2 : 1;
-
-          // Draw both eyes
-          for (const side of [-1, 1]) {
-            const eyeX = eyeOffsetX;
-            const eyeY = eyeOffsetY * side;
-
-            // Eye shadow for depth
-            ctx.fillStyle = 'rgba(0,0,0,0.3)';
-            ctx.beginPath();
-            ctx.ellipse(eyeX + 2, eyeY + 2, eyeRadius * eyeScale, eyeRadius * eyeScale * blinkSquish, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eye white (sclera) with slight gradient
-            const eyeGrad = ctx.createRadialGradient(eyeX - eyeRadius * 0.3, eyeY - eyeRadius * 0.3, 0, eyeX, eyeY, eyeRadius * eyeScale);
-            eyeGrad.addColorStop(0, '#ffffff');
-            eyeGrad.addColorStop(1, '#e8e8e8');
-            ctx.fillStyle = eyeGrad;
-            ctx.beginPath();
-            ctx.ellipse(eyeX, eyeY, eyeRadius * eyeScale, eyeRadius * eyeScale * blinkSquish, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Eye outline
-            ctx.strokeStyle = '#222';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            if (!isBlinking) {
-              // Pupil - constrain to eye bounds
-              const maxPupilMove = (eyeRadius - pupilRadius) * 0.8;
-              const pupilX = eyeX + Math.max(-maxPupilMove, Math.min(maxPupilMove, lookX));
-              const pupilY = eyeY + Math.max(-maxPupilMove, Math.min(maxPupilMove, lookY * side));
-
-              // Pupil
-              ctx.fillStyle = '#111';
-              ctx.beginPath();
-              ctx.arc(pupilX, pupilY, pupilRadius * eyeScale, 0, Math.PI * 2);
-              ctx.fill();
-
-              // Pupil highlight - gives life to the eyes
-              ctx.fillStyle = '#fff';
-              ctx.beginPath();
-              ctx.arc(pupilX + pupilRadius * 0.35, pupilY - pupilRadius * 0.35, pupilRadius * 0.4, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
 
           if (agent.weapon === 'rocket') {
             // Rocket launcher on right shoulder
@@ -6395,37 +6178,6 @@ button.secondary:hover {
             ctx.arc(0, 0, 3 * s, 0, Math.PI * 2);
             ctx.fill();
             ctx.shadowBlur = 0;
-
-            ctx.restore();
-          }
-        }
-
-        // Blood splats (flying droplets) - skip in turbo mode
-        if (!turboMode) {
-          for (const splat of this.world.bloodSplats) {
-            const progress = splat.timer / splat.maxTime;
-            const fadeOut = progress > 0.5 ? 1 - ((progress - 0.5) / 0.5) : 1;
-            const alpha = fadeOut * 0.9;
-
-            // Draw blood droplet
-            ctx.save();
-            ctx.translate(splat.x, splat.y);
-            ctx.rotate(splat.rotation);
-
-            // Stretched droplet shape based on velocity
-            const speed = Math.hypot(splat.vx, splat.vy);
-            const stretch = 1 + Math.min(speed / 100, 1.5);
-            ctx.scale(stretch, 1);
-
-            // Dark red blood with slight gradient
-            const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, splat.size);
-            grad.addColorStop(0, `rgba(150, 0, 0, ${alpha})`);
-            grad.addColorStop(0.6, `rgba(100, 0, 0, ${alpha * 0.8})`);
-            grad.addColorStop(1, `rgba(60, 0, 0, 0)`);
-            ctx.fillStyle = grad;
-            ctx.beginPath();
-            ctx.arc(0, 0, splat.size, 0, Math.PI * 2);
-            ctx.fill();
 
             ctx.restore();
           }
