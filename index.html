@@ -3262,7 +3262,7 @@ button.secondary:hover {
 
         // Edge camping danger zones
         this.dangerZones = [];
-        this.edgeCampThreshold = 3; // Seconds near edge before danger zone spawns
+        this.edgeCampThreshold = 6; // Seconds near edge before danger zone spawns
         this.edgeCampDistance = 100; // Distance from edge considered "camping"
         this.dangerZoneRadius = 120; // Size of danger zone
         this.dangerZoneDuration = 5; // How long zone lasts
@@ -3273,7 +3273,7 @@ button.secondary:hover {
 
         // Edge camping danger zones
         this.dangerZones = []; // {x, y, radius, lifetime, maxLifetime}
-        this.edgeCampThreshold = 3; // Seconds before danger zone spawns
+        this.edgeCampThreshold = 6; // Seconds before danger zone spawns
         this.edgeCampDistance = 100; // Distance from edge considered "camping"
         this.dangerZoneDamagePercent = 0.3; // 30% of max HP per second when in danger zone
         this.dangerZoneDuration = 5; // How long zones last
@@ -4925,6 +4925,7 @@ button.secondary:hover {
         this.dodgeTrails = this.dodgeTrails.filter(t => t.timer < t.maxTime);
 
         // Edge camping detection and danger zone spawning (only if enabled)
+        // Focuses on CORNER CLUSTERING rather than just being near edges
         if (antiEdgeCamping) {
           for (const agent of this.agents) {
             if (!agent.alive) {
@@ -4932,18 +4933,40 @@ button.secondary:hover {
               continue;
             }
 
-            // Check distance to nearest edge
-            const distToEdge = Math.min(
-              agent.x,                    // left edge
-              this.width - agent.x,       // right edge
-              agent.y,                    // top edge
-              this.height - agent.y       // bottom edge
-            );
+            // Check distance to each edge
+            const distLeft = agent.x;
+            const distRight = this.width - agent.x;
+            const distTop = agent.y;
+            const distBottom = this.height - agent.y;
+            const distToEdge = Math.min(distLeft, distRight, distTop, distBottom);
 
-            if (distToEdge < this.edgeCampDistance) {
-              agent.edgeCampTime += dt;
+            // Check if in a corner (near TWO edges)
+            const edgeDist = this.edgeCampDistance;
+            const nearLeft = distLeft < edgeDist;
+            const nearRight = distRight < edgeDist;
+            const nearTop = distTop < edgeDist;
+            const nearBottom = distBottom < edgeDist;
+            const inCorner = (nearLeft || nearRight) && (nearTop || nearBottom);
 
-              // Spawn danger zone after threshold
+            // Count nearby teammates clustering at edge
+            let nearbyCluster = 0;
+            if (distToEdge < edgeDist) {
+              for (const other of this.agents) {
+                if (other === agent || !other.alive || other.team !== agent.team) continue;
+                const dist = Math.hypot(other.x - agent.x, other.y - agent.y);
+                if (dist < 80) nearbyCluster++; // Within 80px
+              }
+            }
+
+            // Trigger conditions: corner OR clustering (3+ teammates nearby at edge)
+            const shouldTrigger = distToEdge < edgeDist && (inCorner || nearbyCluster >= 2);
+
+            if (shouldTrigger) {
+              // Faster accumulation if clustering
+              const rate = nearbyCluster >= 2 ? 1.5 : 1.0;
+              agent.edgeCampTime += dt * rate;
+
+              // Spawn danger zone after threshold (6 seconds base)
               if (agent.edgeCampTime >= this.edgeCampThreshold) {
                 // Check if there's already a zone near this agent
                 const hasNearbyZone = this.dangerZones.some(z =>
@@ -4963,7 +4986,7 @@ button.secondary:hover {
                 }
               }
             } else {
-              // Decay camping time when away from edge
+              // Decay camping time when not in problematic position
               agent.edgeCampTime = Math.max(0, agent.edgeCampTime - dt * 2);
             }
           }
