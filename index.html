@@ -5545,7 +5545,7 @@ button.secondary:hover {
 
             if (p.type === 'health') {
               // Health pack - green cross shape
-              ctx.shadowBlur = 15 * pulse * px;
+              ctx.shadowBlur = 8 * pulse * px;
               ctx.shadowColor = '#00ff9d';
               ctx.fillStyle = '#00ff9d';
 
@@ -5556,7 +5556,7 @@ button.secondary:hover {
 
             } else if (p.type === 'armor') {
               // Armor pack - blue kite shield
-              ctx.shadowBlur = 15 * pulse * px;
+              ctx.shadowBlur = 8 * pulse * px;
               ctx.shadowColor = '#00aaff';
               ctx.fillStyle = '#00aaff';
 
@@ -5577,7 +5577,7 @@ button.secondary:hover {
               ctx.stroke();
             } else if (p.type === 'laser') {
               // Laser pickup - electric bolt shape
-              ctx.shadowBlur = 20 * pulse * px;
+              ctx.shadowBlur = 10 * pulse * px;
               ctx.shadowColor = '#00ffff';
               ctx.fillStyle = '#00ffff';
 
@@ -5598,7 +5598,7 @@ button.secondary:hover {
               ctx.stroke();
             } else if (p.type === 'sword') {
               // Sword pickup - energy sword shape (neutral purple until picked up)
-              ctx.shadowBlur = 20 * pulse * px;
+              ctx.shadowBlur = 10 * pulse * px;
               ctx.shadowColor = '#ff00ff';
               ctx.fillStyle = '#ff00ff';
 
@@ -5633,7 +5633,7 @@ button.secondary:hover {
 
             if (w.type === 'laser') {
               // Dropped laser - cyan lightning bolt with flash effect
-              ctx.shadowBlur = 25 * pulse;
+              ctx.shadowBlur = 12 * pulse;
               ctx.shadowColor = '#00ffff';
               ctx.fillStyle = `rgba(0, 255, 255, ${0.7 + pulse * 0.3})`;
 
@@ -5662,7 +5662,7 @@ button.secondary:hover {
 
             } else if (w.type === 'sword') {
               // Dropped sword - magenta sword shape with flash effect
-              ctx.shadowBlur = 25 * pulse;
+              ctx.shadowBlur = 12 * pulse;
               ctx.shadowColor = '#ff00ff';
               ctx.fillStyle = `rgba(255, 0, 255, ${0.7 + pulse * 0.3})`;
 
@@ -5860,23 +5860,19 @@ button.secondary:hover {
           const laserColor = agent.team === 0 ? '#ff00aa' : '#00aaff';
           const activeColor = agent.weapon === 'laser' ? laserColor : (agent.weapon === 'sword' ? swordColor : baseColor);
 
-          // Outer glow
-          ctx.shadowBlur = 20;
+          // Outer glow (reduced blur for performance)
+          ctx.shadowBlur = 10;
           ctx.shadowColor = activeColor;
           ctx.fillStyle = '#0a0a12';
           ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
 
-          // Inner ring with gradient
-          const ringGrad = ctx.createRadialGradient(0, 0, r * 0.7, 0, 0, r);
-          ringGrad.addColorStop(0, 'transparent');
-          ringGrad.addColorStop(0.8, activeColor + '40');
-          ringGrad.addColorStop(1, activeColor);
-          ctx.strokeStyle = ringGrad;
-          ctx.lineWidth = 3;
+          // Inner ring (simplified - solid stroke instead of gradient)
+          ctx.shadowBlur = 0;
+          ctx.strokeStyle = activeColor;
+          ctx.lineWidth = 2;
           ctx.stroke();
 
           // Core highlight
-          ctx.shadowBlur = 0;
           ctx.fillStyle = activeColor + '20';
           ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.fill();
 
