@@ -2455,6 +2455,10 @@ button.secondary:hover {
         this.comboTimer = 0;
         this.comboScore = 0;
 
+        // Reset edge camping
+        this.edgeCampTime = 0;
+        this.inDangerZone = false;
+
         // Spawn at back of team's side
         const clusterX = this.team === 0 ? 80 : world.width - 80;
         this.x = clusterX + (Math.random() - 0.5) * 100;
@@ -3167,7 +3171,7 @@ button.secondary:hover {
         // Edge camping danger zones
         this.dangerZones = []; // {x, y, radius, lifetime, maxLifetime}
         this.edgeCampThreshold = 3; // Seconds before danger zone spawns
-        this.edgeCampDistance = 80; // Distance from edge considered "camping"
+        this.edgeCampDistance = 50; // Distance from edge considered "camping" (spawns are at 80px)
         this.dangerZoneDamagePercent = 0.3; // 30% of max HP per second when in danger zone
         this.dangerZoneDuration = 5; // How long zones last
 
