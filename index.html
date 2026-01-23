@@ -5262,6 +5262,7 @@ button.secondary:hover {
 
       render() {
         const ctx = this.ctx;
+        const now = Date.now(); // Cache timestamp for entire frame
         const scale = this.getScale();
         const [arenaX, arenaY] = this.getArenaScreenPosition();
 
@@ -5313,7 +5314,7 @@ button.secondary:hover {
 
           // Holodeck-style hex grid with cyan glow
           const hexSize = 60;
-          const time = Date.now() / 3000;
+          const time = now / 3000;
           ctx.lineWidth = 1 / scale;
           for (let row = 0; row < h / (hexSize * 0.866) + 1; row++) {
             for (let col = 0; col < w / hexSize + 1; col++) {
@@ -5369,7 +5370,7 @@ button.secondary:hover {
           // Edge camping danger zones
           for (const zone of this.world.dangerZones) {
             const progress = zone.timer / zone.maxTime;
-            const pulse = Math.sin(Date.now() / 100) * 0.15 + 0.85;
+            const pulse = Math.sin(now / 100) * 0.15 + 0.85;
             const fadeIn = Math.min(1, zone.timer * 3);
             const fadeOut = progress > 0.8 ? (1 - progress) * 5 : 1;
             const alpha = fadeIn * fadeOut * pulse;
@@ -5398,7 +5399,7 @@ button.secondary:hover {
             ctx.strokeStyle = `rgba(255, 80, 80, ${0.7 * alpha})`;
             ctx.lineWidth = 3 / scale;
             ctx.setLineDash([15, 10]);
-            ctx.lineDashOffset = -Date.now() / 40;
+            ctx.lineDashOffset = -now / 40;
             ctx.beginPath();
             ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
             ctx.stroke();
@@ -5540,7 +5541,7 @@ button.secondary:hover {
             ctx.fill();
           } else {
             // Glow effect
-            const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+            const pulse = Math.sin(now / 200) * 0.3 + 0.7;
 
             if (p.type === 'health') {
               // Health pack - green cross shape
@@ -5627,8 +5628,8 @@ button.secondary:hover {
             const wx = w.x * s, wy = w.y * s, wr = w.radius * s;
 
             // Faster pulse for dropped weapons + slight bounce effect
-            const pulse = Math.sin(Date.now() / 100) * 0.4 + 0.6;
-            const bounce = Math.abs(Math.sin(Date.now() / 300)) * 3 * s;
+            const pulse = Math.sin(now / 100) * 0.4 + 0.6;
+            const bounce = Math.abs(Math.sin(now / 300)) * 3 * s;
 
             if (w.type === 'laser') {
               // Dropped laser - cyan lightning bolt with flash effect
@@ -5914,12 +5915,12 @@ button.secondary:hover {
           }
 
           // Blinking animation
-          const blinkCycle = (Date.now() / 1000 + agent.id * 0.7) % 4;
+          const blinkCycle = (now / 1000 + agent.id * 0.7) % 4;
           const isBlinking = blinkCycle > 3.85;
           const blinkSquish = isBlinking ? 0.1 : 1;
 
           // Surprised look when taking damage recently
-          const recentDamage = agent.lastDamageTime && (Date.now() - agent.lastDamageTime) < 300;
+          const recentDamage = agent.lastDamageTime && (now - agent.lastDamageTime) < 300;
           const eyeScale = recentDamage ? 1.2 : 1;
 
           // Draw both eyes
@@ -6093,7 +6094,7 @@ button.secondary:hover {
 
               // Rotating energy particles converging to barrel tip
               for (let i = 0; i < 8; i++) {
-                const angle = (Date.now() / 120 + i * Math.PI / 4) % (Math.PI * 2);
+                const angle = (now / 120 + i * Math.PI / 4) % (Math.PI * 2);
                 const dist = (1 - chargeProgress * 0.7) * r * 0.9;
                 const px = r * 1.7 + Math.cos(angle) * dist;
                 const py = Math.sin(angle) * dist;
@@ -6107,7 +6108,7 @@ button.secondary:hover {
 
               // Secondary particle ring
               for (let i = 0; i < 4; i++) {
-                const angle = (Date.now() / 200 + i * Math.PI / 2 + Math.PI / 4) % (Math.PI * 2);
+                const angle = (now / 200 + i * Math.PI / 2 + Math.PI / 4) % (Math.PI * 2);
                 const dist = (1 - chargeProgress * 0.5) * r * 1.2;
                 const px = r * 1.7 + Math.cos(angle) * dist;
                 const py = Math.sin(angle) * dist;
@@ -6126,7 +6127,7 @@ button.secondary:hover {
 
               // Warning indicator - pulsing ring
               if (chargeProgress > 0.7) {
-                const pulse = (Math.sin(Date.now() / 50) + 1) * 0.5;
+                const pulse = (Math.sin(now / 50) + 1) * 0.5;
                 ctx.strokeStyle = `rgba(255, 255, 255, ${pulse})`;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -6135,7 +6136,7 @@ button.secondary:hover {
 
                 // Additional warning particles
                 for (let i = 0; i < 3; i++) {
-                  const sparkAngle = Date.now() / 30 + i * Math.PI * 2 / 3;
+                  const sparkAngle = now / 30 + i * Math.PI * 2 / 3;
                   const sparkDist = (10 + chargeProgress * 5) * s;
                   ctx.fillStyle = `rgba(${primaryRGB}, ${pulse})`;
                   ctx.beginPath();
