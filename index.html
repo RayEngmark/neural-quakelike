@@ -5092,6 +5092,13 @@ button.secondary:hover {
         this.dragDistance = 0;
         this.followAgent = null;
 
+        // Pre-compute hex grid vertex angles (avoid sin/cos in render loop)
+        this.hexAngles = [];
+        for (let i = 0; i < 6; i++) {
+          const angle = i * Math.PI / 3 - Math.PI / 6;
+          this.hexAngles.push({ cos: Math.cos(angle), sin: Math.sin(angle) });
+        }
+
         this.setupInput();
         this.resize();
       }
@@ -5359,13 +5366,12 @@ button.secondary:hover {
               const alpha = pulse * 0.4 * (0.3 + centerIntensity * 0.4);
               ctx.strokeStyle = `rgba(0, 180, 220, ${alpha})`;
 
+              // Use pre-computed hex angles
+              const hexScale = hexSize * 0.4;
               ctx.beginPath();
-              for (let i = 0; i < 6; i++) {
-                const angle = i * Math.PI / 3 - Math.PI / 6;
-                const hx = cx + Math.cos(angle) * hexSize * 0.4;
-                const hy = cy + Math.sin(angle) * hexSize * 0.4;
-                if (i === 0) ctx.moveTo(hx, hy);
-                else ctx.lineTo(hx, hy);
+              ctx.moveTo(cx + this.hexAngles[0].cos * hexScale, cy + this.hexAngles[0].sin * hexScale);
+              for (let i = 1; i < 6; i++) {
+                ctx.lineTo(cx + this.hexAngles[i].cos * hexScale, cy + this.hexAngles[i].sin * hexScale);
               }
               ctx.closePath();
               ctx.stroke();
