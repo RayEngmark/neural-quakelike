@@ -3149,6 +3149,8 @@ button.secondary:hover {
 
         this.population = 100; // 50 per team
         this.aliveCount = 0;
+        this.redAliveCount = 0;
+        this.blueAliveCount = 0;
         
         // Team Deathmatch specific
         this.teamKills = [0, 0]; // [red kills, blue kills] - NET score (kills - ricochets)
@@ -5102,32 +5104,8 @@ button.secondary:hover {
       }
 
       initCachedGradients() {
-        const ctx = this.ctx;
-        const w = this.world.width;
-        const h = this.world.height;
-
-        // Floor gradient (arena background)
-        this.floorGradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.7);
-        this.floorGradient.addColorStop(0, '#0d0e1a');
-        this.floorGradient.addColorStop(0.5, '#090a14');
-        this.floorGradient.addColorStop(1, '#05060c');
-
-        // Center glow
-        this.centerGlowGradient = ctx.createRadialGradient(w / 2, h / 2, 30, w / 2, h / 2, 350);
-        this.centerGlowGradient.addColorStop(0, 'rgba(0, 200, 255, 0.08)');
-        this.centerGlowGradient.addColorStop(0.5, 'rgba(0, 150, 200, 0.03)');
-        this.centerGlowGradient.addColorStop(1, 'rgba(0, 100, 150, 0)');
-
-        // Team zone gradients
-        this.redZoneGradient = ctx.createRadialGradient(100, h / 2, 30, 100, h / 2, 250);
-        this.redZoneGradient.addColorStop(0, 'rgba(255, 50, 50, 0.15)');
-        this.redZoneGradient.addColorStop(0.5, 'rgba(255, 30, 30, 0.05)');
-        this.redZoneGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-
-        this.blueZoneGradient = ctx.createRadialGradient(w - 100, h / 2, 30, w - 100, h / 2, 250);
-        this.blueZoneGradient.addColorStop(0, 'rgba(50, 100, 255, 0.15)');
-        this.blueZoneGradient.addColorStop(0.5, 'rgba(30, 80, 255, 0.05)');
-        this.blueZoneGradient.addColorStop(1, 'rgba(0, 50, 255, 0)');
+        // Note: Canvas gradients can't be cached because they're tied to the coordinate
+        // system at creation time. We only cache pre-computed values here.
 
         // Pre-compute hex grid vertex angles (always 60° apart)
         this.hexAngles = [];
@@ -5376,8 +5354,12 @@ button.secondary:hover {
             ctx.stroke();
           }
         } else {
-          // Arena floor - use cached gradient
-          ctx.fillStyle = this.floorGradient;
+          // Arena floor - deeper space gradient
+          const floorGrad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.7);
+          floorGrad.addColorStop(0, '#0d0e1a');
+          floorGrad.addColorStop(0.5, '#090a14');
+          floorGrad.addColorStop(1, '#05060c');
+          ctx.fillStyle = floorGrad;
           ctx.fillRect(0, 0, w, h);
 
           // Holodeck-style hex grid with cyan glow (optimized with pre-computed angles)
@@ -5416,15 +5398,27 @@ button.secondary:hover {
             }
           }
 
-          // Center danger zone glow (where weapons spawn) - cached gradient
-          ctx.fillStyle = this.centerGlowGradient;
+          // Center danger zone glow (where weapons spawn)
+          const centerGlow = ctx.createRadialGradient(w / 2, h / 2, 30, w / 2, h / 2, 350);
+          centerGlow.addColorStop(0, 'rgba(255, 50, 100, 0.12)');
+          centerGlow.addColorStop(0.3, 'rgba(255, 50, 100, 0.06)');
+          centerGlow.addColorStop(1, 'rgba(255, 50, 100, 0)');
+          ctx.fillStyle = centerGlow;
           ctx.fillRect(0, 0, w, h);
 
-          // Team spawn zone hints - cached gradients
-          ctx.fillStyle = this.redZoneGradient;
+          // Team spawn zone hints - enhanced glow
+          const redZone = ctx.createRadialGradient(100, h / 2, 30, 100, h / 2, 250);
+          redZone.addColorStop(0, 'rgba(255, 68, 102, 0.15)');
+          redZone.addColorStop(0.5, 'rgba(255, 68, 102, 0.05)');
+          redZone.addColorStop(1, 'rgba(255, 68, 102, 0)');
+          ctx.fillStyle = redZone;
           ctx.fillRect(0, 0, w, h);
 
-          ctx.fillStyle = this.blueZoneGradient;
+          const blueZone = ctx.createRadialGradient(w - 100, h / 2, 30, w - 100, h / 2, 250);
+          blueZone.addColorStop(0, 'rgba(68, 153, 255, 0.15)');
+          blueZone.addColorStop(0.5, 'rgba(68, 153, 255, 0.05)');
+          blueZone.addColorStop(1, 'rgba(68, 153, 255, 0)');
+          ctx.fillStyle = blueZone;
           ctx.fillRect(0, 0, w, h);
 
           // Edge camping danger zones
