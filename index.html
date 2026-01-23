@@ -4876,11 +4876,18 @@ button.secondary:hover {
         // Agent-agent collision (push apart) and nearest enemy calculation
         const aliveAgents = this.agents.filter(a => a.alive);
 
-        // Reset nearest enemy for all agents
+        // Reset nearest enemy and count alive per team in one pass
+        let redAliveCount = 0, blueAliveCount = 0;
         for (const agent of aliveAgents) {
           agent.nearestEnemy = null;
           agent.nearestEnemyDist = Infinity;
+          if (agent.team === 0) redAliveCount++;
+          else blueAliveCount++;
         }
+
+        // Cache the counts on the world object for use elsewhere
+        this.redAliveCount = redAliveCount;
+        this.blueAliveCount = blueAliveCount;
 
         for (let i = 0; i < aliveAgents.length; i++) {
           for (let j = i + 1; j < aliveAgents.length; j++) {
@@ -4924,13 +4931,11 @@ button.secondary:hover {
           }
         }
 
-        // Check win condition (only in generational mode)
+        // Check win condition (only in generational mode, use cached counts)
         if (!persistentMode) {
           // In no respawn mode, check if one team is eliminated
           if (noRespawnMode) {
-            const redAlive = this.agents.filter(a => a.team === 0 && a.alive).length;
-            const blueAlive = this.agents.filter(a => a.team === 1 && a.alive).length;
-            if (redAlive === 0 || blueAlive === 0 || this.timeLeft <= 0) {
+            if (this.redAliveCount === 0 || this.blueAliveCount === 0 || this.timeLeft <= 0) {
               this.endRound();
             }
           } else if (this.teamKills[0] >= this.killLimit || this.teamKills[1] >= this.killLimit || this.timeLeft <= 0) {
@@ -4941,9 +4946,9 @@ button.secondary:hover {
       endRound() {
         // Determine winner
         if (noRespawnMode) {
-          // In no respawn mode, check which team was eliminated
-          const redAlive = this.agents.filter(a => a.team === 0 && a.alive).length;
-          const blueAlive = this.agents.filter(a => a.team === 1 && a.alive).length;
+          // In no respawn mode, check which team was eliminated (use cached counts)
+          const redAlive = this.redAliveCount;
+          const blueAlive = this.blueAliveCount;
           if (blueAlive === 0 && redAlive > 0) {
             this.winningTeam = 0;
             this.teamWins[0]++;
@@ -8034,7 +8039,7 @@ button.secondary:hover {
       if (!persistentMode) {
         ui.gen.textContent = world.generation;
       }
-      ui.alive.textContent = world.agents.filter(a => a.alive).length;
+      ui.alive.textContent = (world.redAliveCount || 0) + (world.blueAliveCount || 0);
       ui.time.textContent = persistentMode
         ? formatTime(world.totalTime)
         : Math.ceil(world.timeLeft) + 's';
