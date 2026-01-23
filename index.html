@@ -1341,6 +1341,10 @@ button.secondary:hover {
             <label for="mod-ricochet">🔄 FF Ricochet</label>
             <div class="toggle" id="mod-ricochet"></div>
           </div>
+          <div class="menu-item">
+            <label for="mod-edge-camp">🔴 Anti Edge Camping</label>
+            <div class="toggle" id="mod-edge-camp"></div>
+          </div>
           <div class="menu-divider"></div>
           <div class="menu-category">Mode</div>
           <div class="menu-item" id="mod-no-respawn-row">
@@ -1712,6 +1716,7 @@ button.secondary:hover {
     let persistentMode = false; // Persistent per-life evolution mode
     let noRespawnMode = false; // Rounds mode only: no respawns, round ends when team eliminated
     let fiveXHpMode = false; // 5x HP mode: 500 HP, combo system enabled
+    let antiEdgeCamping = false; // Spawn danger zones on agents camping near edges
 
     // --------------------
     // Hall of Fame (for persistent mode)
@@ -4743,73 +4748,75 @@ button.secondary:hover {
         }
         this.dodgeTrails = this.dodgeTrails.filter(t => t.timer < t.maxTime);
 
-        // Edge camping detection and danger zone spawning
-        for (const agent of this.agents) {
-          if (!agent.alive) {
-            agent.edgeCampTime = 0;
-            continue;
-          }
-
-          // Check distance to nearest edge
-          const distToEdge = Math.min(
-            agent.x,                    // left edge
-            this.width - agent.x,       // right edge
-            agent.y,                    // top edge
-            this.height - agent.y       // bottom edge
-          );
-
-          if (distToEdge < this.edgeCampDistance) {
-            agent.edgeCampTime += dt;
-
-            // Spawn danger zone after threshold
-            if (agent.edgeCampTime >= this.edgeCampThreshold) {
-              // Check if there's already a zone near this agent
-              const hasNearbyZone = this.dangerZones.some(z =>
-                Math.hypot(z.x - agent.x, z.y - agent.y) < z.radius
-              );
-
-              if (!hasNearbyZone) {
-                this.dangerZones.push({
-                  x: agent.x,
-                  y: agent.y,
-                  radius: this.dangerZoneRadius,
-                  timer: 0,
-                  maxTime: this.dangerZoneDuration
-                });
-                this.addEvent('⚠️ DANGER ZONE on ' + agent.name + '!', 'damage');
-                agent.edgeCampTime = 0; // Reset so they don't spam zones
-              }
-            }
-          } else {
-            // Decay camping time when away from edge
-            agent.edgeCampTime = Math.max(0, agent.edgeCampTime - dt * 2);
-          }
-        }
-
-        // Update danger zones and apply damage
-        for (let i = this.dangerZones.length - 1; i >= 0; i--) {
-          const zone = this.dangerZones[i];
-          zone.timer += dt;
-
-          // Apply damage to agents inside zone
+        // Edge camping detection and danger zone spawning (only if enabled)
+        if (antiEdgeCamping) {
           for (const agent of this.agents) {
-            if (!agent.alive) continue;
+            if (!agent.alive) {
+              agent.edgeCampTime = 0;
+              continue;
+            }
 
-            const dist = Math.hypot(agent.x - zone.x, agent.y - zone.y);
-            if (dist < zone.radius) {
-              // Damage scales with proximity to center (more damage at center)
-              const intensity = 1 - (dist / zone.radius);
-              const damage = agent.maxHealth * this.dangerZoneDamagePercent * intensity * dt;
-              const killed = agent.takeDamage(damage, null, this);
-              if (killed) {
-                this.addEvent('☠️ ' + agent.name + ' died in DANGER ZONE!', 'death');
+            // Check distance to nearest edge
+            const distToEdge = Math.min(
+              agent.x,                    // left edge
+              this.width - agent.x,       // right edge
+              agent.y,                    // top edge
+              this.height - agent.y       // bottom edge
+            );
+
+            if (distToEdge < this.edgeCampDistance) {
+              agent.edgeCampTime += dt;
+
+              // Spawn danger zone after threshold
+              if (agent.edgeCampTime >= this.edgeCampThreshold) {
+                // Check if there's already a zone near this agent
+                const hasNearbyZone = this.dangerZones.some(z =>
+                  Math.hypot(z.x - agent.x, z.y - agent.y) < z.radius
+                );
+
+                if (!hasNearbyZone) {
+                  this.dangerZones.push({
+                    x: agent.x,
+                    y: agent.y,
+                    radius: this.dangerZoneRadius,
+                    timer: 0,
+                    maxTime: this.dangerZoneDuration
+                  });
+                  this.addEvent('⚠️ DANGER ZONE on ' + agent.name + '!', 'damage');
+                  agent.edgeCampTime = 0; // Reset so they don't spam zones
+                }
               }
+            } else {
+              // Decay camping time when away from edge
+              agent.edgeCampTime = Math.max(0, agent.edgeCampTime - dt * 2);
             }
           }
 
-          // Remove expired zones
-          if (zone.timer >= zone.maxTime) {
-            this.dangerZones.splice(i, 1);
+          // Update danger zones and apply damage
+          for (let i = this.dangerZones.length - 1; i >= 0; i--) {
+            const zone = this.dangerZones[i];
+            zone.timer += dt;
+
+            // Apply damage to agents inside zone
+            for (const agent of this.agents) {
+              if (!agent.alive) continue;
+
+              const dist = Math.hypot(agent.x - zone.x, agent.y - zone.y);
+              if (dist < zone.radius) {
+                // Damage scales with proximity to center (more damage at center)
+                const intensity = 1 - (dist / zone.radius);
+                const damage = agent.maxHealth * this.dangerZoneDamagePercent * intensity * dt;
+                const killed = agent.takeDamage(damage, null, this);
+                if (killed) {
+                  this.addEvent('☠️ ' + agent.name + ' died in DANGER ZONE!', 'death');
+                }
+              }
+            }
+
+            // Remove expired zones
+            if (zone.timer >= zone.maxTime) {
+              this.dangerZones.splice(i, 1);
+            }
           }
         }
 
@@ -6958,6 +6965,7 @@ button.secondary:hover {
       toggleTeleporter: document.getElementById('mod-teleporter'),
       toggleFf: document.getElementById('mod-ff'),
       toggleRicochet: document.getElementById('mod-ricochet'),
+      toggleEdgeCamp: document.getElementById('mod-edge-camp'),
       toggleNoRespawn: document.getElementById('mod-no-respawn'),
       noRespawnRow: document.getElementById('mod-no-respawn-row'),
       toggle5xHp: document.getElementById('mod-5x-hp'),
@@ -7239,6 +7247,11 @@ button.secondary:hover {
       } else {
         ui.toggleFf.classList.remove('disabled');
       }
+    });
+
+    ui.toggleEdgeCamp.addEventListener('click', () => {
+      ui.toggleEdgeCamp.classList.toggle('active');
+      antiEdgeCamping = ui.toggleEdgeCamp.classList.contains('active');
     });
 
     // Respawn time slider
