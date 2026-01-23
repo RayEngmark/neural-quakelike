@@ -2368,10 +2368,6 @@ button.secondary:hover {
         // Edge camping tracking (for danger zone system)
         this.edgeCampTime = 0;
 
-        // Cached nearest enemy for rendering (updated in World.update)
-        this.nearestEnemy = null;
-        this.nearestEnemyDist = Infinity;
-
         this.radius = 24;
         this.color = team === 0 ? '#ff4444' : '#4488ff';
       }
@@ -3149,8 +3145,6 @@ button.secondary:hover {
 
         this.population = 100; // 50 per team
         this.aliveCount = 0;
-        this.redAliveCount = 0;
-        this.blueAliveCount = 0;
         
         // Team Deathmatch specific
         this.teamKills = [0, 0]; // [red kills, blue kills] - NET score (kills - ricochets)
@@ -4875,57 +4869,29 @@ button.secondary:hover {
           }
         }
 
-        // Agent-agent collision (push apart) and nearest enemy calculation
+        // Agent-agent collision (push apart)
         const aliveAgents = this.agents.filter(a => a.alive);
-
-        // Count alive per team (cached for win condition checks)
-        let redAliveCount = 0, blueAliveCount = 0;
-
-        // Reset nearest enemy for all agents and count teams in one pass
-        for (const agent of aliveAgents) {
-          agent.nearestEnemy = null;
-          agent.nearestEnemyDist = Infinity;
-          if (agent.team === 0) redAliveCount++;
-          else blueAliveCount++;
-        }
-
-        // Cache the counts on the world object for use elsewhere
-        this.redAliveCount = redAliveCount;
-        this.blueAliveCount = blueAliveCount;
-
         for (let i = 0; i < aliveAgents.length; i++) {
           for (let j = i + 1; j < aliveAgents.length; j++) {
             const a = aliveAgents[i];
             const b = aliveAgents[j];
-
+            
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const dist = Math.hypot(dx, dy);
-
-            // Track nearest enemy for eye rendering (only enemies within 200 units)
-            if (a.team !== b.team && dist < 200) {
-              if (dist < a.nearestEnemyDist) {
-                a.nearestEnemy = b;
-                a.nearestEnemyDist = dist;
-              }
-              if (dist < b.nearestEnemyDist) {
-                b.nearestEnemy = a;
-                b.nearestEnemyDist = dist;
-              }
-            }
-
             const minDist = a.radius + b.radius;
+            
             if (dist < minDist && dist > 0) {
               // Push apart
               const overlap = minDist - dist;
               const pushX = (dx / dist) * overlap * 0.5;
               const pushY = (dy / dist) * overlap * 0.5;
-
+              
               a.x -= pushX;
               a.y -= pushY;
               b.x += pushX;
               b.y += pushY;
-
+              
               // Clamp to world bounds
               a.x = clamp(a.x, a.radius, this.width - a.radius);
               a.y = clamp(a.y, a.radius, this.height - a.radius);
@@ -4937,9 +4903,11 @@ button.secondary:hover {
 
         // Check win condition (only in generational mode)
         if (!persistentMode) {
-          // In no respawn mode, check if one team is eliminated (use cached counts)
+          // In no respawn mode, check if one team is eliminated
           if (noRespawnMode) {
-            if (this.redAliveCount === 0 || this.blueAliveCount === 0 || this.timeLeft <= 0) {
+            const redAlive = this.agents.filter(a => a.team === 0 && a.alive).length;
+            const blueAlive = this.agents.filter(a => a.team === 1 && a.alive).length;
+            if (redAlive === 0 || blueAlive === 0 || this.timeLeft <= 0) {
               this.endRound();
             }
           } else if (this.teamKills[0] >= this.killLimit || this.teamKills[1] >= this.killLimit || this.timeLeft <= 0) {
@@ -4950,9 +4918,9 @@ button.secondary:hover {
       endRound() {
         // Determine winner
         if (noRespawnMode) {
-          // In no respawn mode, check which team was eliminated (use cached counts)
-          const redAlive = this.redAliveCount;
-          const blueAlive = this.blueAliveCount;
+          // In no respawn mode, check which team was eliminated
+          const redAlive = this.agents.filter(a => a.team === 0 && a.alive).length;
+          const blueAlive = this.agents.filter(a => a.team === 1 && a.alive).length;
           if (blueAlive === 0 && redAlive > 0) {
             this.winningTeam = 0;
             this.teamWins[0]++;
@@ -5098,24 +5066,6 @@ button.secondary:hover {
 
         this.setupInput();
         this.resize();
-
-        // Cache static gradients (created once, reused every frame)
-        this.initCachedGradients();
-      }
-
-      initCachedGradients() {
-        // Note: Canvas gradients can't be cached because they're tied to the coordinate
-        // system at creation time. We only cache pre-computed values here.
-
-        // Pre-compute hex grid vertex angles (always 60° apart)
-        this.hexAngles = [];
-        for (let i = 0; i < 6; i++) {
-          const angle = i * Math.PI / 3 - Math.PI / 6;
-          this.hexAngles.push({
-            cos: Math.cos(angle),
-            sin: Math.sin(angle)
-          });
-        }
       }
 
       // Convert screen pixel to world coordinate
@@ -5312,7 +5262,6 @@ button.secondary:hover {
 
       render() {
         const ctx = this.ctx;
-        const now = Date.now(); // Cache timestamp for entire frame
         const scale = this.getScale();
         const [arenaX, arenaY] = this.getArenaScreenPosition();
 
@@ -5362,24 +5311,18 @@ button.secondary:hover {
           ctx.fillStyle = floorGrad;
           ctx.fillRect(0, 0, w, h);
 
-          // Holodeck-style hex grid with cyan glow (optimized with pre-computed angles)
+          // Holodeck-style hex grid with cyan glow
           const hexSize = 60;
-          const hexScale = hexSize * 0.4;
-          const time = now / 3000;
+          const time = Date.now() / 3000;
           ctx.lineWidth = 1 / scale;
-          const halfW = w / 2, halfH = h / 2;
-          const invHalfW = 1 / (w * 0.5);
           for (let row = 0; row < h / (hexSize * 0.866) + 1; row++) {
-            const rowEven = row % 2;
-            const cy = row * hexSize * 0.866;
-            if (cy > h + hexSize) continue;
             for (let col = 0; col < w / hexSize + 1; col++) {
-              const cx = col * hexSize * 1.5 + rowEven * hexSize * 0.75;
-              if (cx > w + hexSize) continue;
+              const cx = col * hexSize * 1.5 + (row % 2) * hexSize * 0.75;
+              const cy = row * hexSize * 0.866;
+              if (cx > w + hexSize || cy > h + hexSize) continue;
 
               // Distance from center for intensity falloff
-              const dx = cx - halfW, dy = cy - halfH;
-              const distFromCenter = Math.sqrt(dx * dx + dy * dy) * invHalfW;
+              const distFromCenter = Math.hypot(cx - w/2, cy - h/2) / (w * 0.5);
               const centerIntensity = Math.max(0, 1 - distFromCenter * 0.7);
 
               // Subtle pulse based on position
@@ -5387,22 +5330,13 @@ button.secondary:hover {
               const alpha = pulse * 0.4 * (0.3 + centerIntensity * 0.4);
               ctx.strokeStyle = `rgba(0, 180, 220, ${alpha})`;
 
-              // Use pre-computed hex angles (with fallback)
               ctx.beginPath();
-              if (this.hexAngles && this.hexAngles.length === 6) {
-                ctx.moveTo(cx + this.hexAngles[0].cos * hexScale, cy + this.hexAngles[0].sin * hexScale);
-                for (let i = 1; i < 6; i++) {
-                  ctx.lineTo(cx + this.hexAngles[i].cos * hexScale, cy + this.hexAngles[i].sin * hexScale);
-                }
-              } else {
-                // Fallback: compute on the fly
-                for (let i = 0; i < 6; i++) {
-                  const angle = i * Math.PI / 3 - Math.PI / 6;
-                  const hx = cx + Math.cos(angle) * hexScale;
-                  const hy = cy + Math.sin(angle) * hexScale;
-                  if (i === 0) ctx.moveTo(hx, hy);
-                  else ctx.lineTo(hx, hy);
-                }
+              for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3 - Math.PI / 6;
+                const hx = cx + Math.cos(angle) * hexSize * 0.4;
+                const hy = cy + Math.sin(angle) * hexSize * 0.4;
+                if (i === 0) ctx.moveTo(hx, hy);
+                else ctx.lineTo(hx, hy);
               }
               ctx.closePath();
               ctx.stroke();
@@ -5435,7 +5369,7 @@ button.secondary:hover {
           // Edge camping danger zones
           for (const zone of this.world.dangerZones) {
             const progress = zone.timer / zone.maxTime;
-            const pulse = Math.sin(now / 100) * 0.15 + 0.85;
+            const pulse = Math.sin(Date.now() / 100) * 0.15 + 0.85;
             const fadeIn = Math.min(1, zone.timer * 3);
             const fadeOut = progress > 0.8 ? (1 - progress) * 5 : 1;
             const alpha = fadeIn * fadeOut * pulse;
@@ -5464,7 +5398,7 @@ button.secondary:hover {
             ctx.strokeStyle = `rgba(255, 80, 80, ${0.7 * alpha})`;
             ctx.lineWidth = 3 / scale;
             ctx.setLineDash([15, 10]);
-            ctx.lineDashOffset = -now / 40;
+            ctx.lineDashOffset = -Date.now() / 40;
             ctx.beginPath();
             ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
             ctx.stroke();
@@ -5606,11 +5540,11 @@ button.secondary:hover {
             ctx.fill();
           } else {
             // Glow effect
-            const pulse = Math.sin(now / 200) * 0.3 + 0.7;
+            const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
 
             if (p.type === 'health') {
               // Health pack - green cross shape
-              ctx.shadowBlur = 8 * pulse * px;
+              ctx.shadowBlur = 15 * pulse * px;
               ctx.shadowColor = '#00ff9d';
               ctx.fillStyle = '#00ff9d';
 
@@ -5621,7 +5555,7 @@ button.secondary:hover {
 
             } else if (p.type === 'armor') {
               // Armor pack - blue kite shield
-              ctx.shadowBlur = 8 * pulse * px;
+              ctx.shadowBlur = 15 * pulse * px;
               ctx.shadowColor = '#00aaff';
               ctx.fillStyle = '#00aaff';
 
@@ -5642,7 +5576,7 @@ button.secondary:hover {
               ctx.stroke();
             } else if (p.type === 'laser') {
               // Laser pickup - electric bolt shape
-              ctx.shadowBlur = 10 * pulse * px;
+              ctx.shadowBlur = 20 * pulse * px;
               ctx.shadowColor = '#00ffff';
               ctx.fillStyle = '#00ffff';
 
@@ -5663,7 +5597,7 @@ button.secondary:hover {
               ctx.stroke();
             } else if (p.type === 'sword') {
               // Sword pickup - energy sword shape (neutral purple until picked up)
-              ctx.shadowBlur = 10 * pulse * px;
+              ctx.shadowBlur = 20 * pulse * px;
               ctx.shadowColor = '#ff00ff';
               ctx.fillStyle = '#ff00ff';
 
@@ -5693,12 +5627,12 @@ button.secondary:hover {
             const wx = w.x * s, wy = w.y * s, wr = w.radius * s;
 
             // Faster pulse for dropped weapons + slight bounce effect
-            const pulse = Math.sin(now / 100) * 0.4 + 0.6;
-            const bounce = Math.abs(Math.sin(now / 300)) * 3 * s;
+            const pulse = Math.sin(Date.now() / 100) * 0.4 + 0.6;
+            const bounce = Math.abs(Math.sin(Date.now() / 300)) * 3 * s;
 
             if (w.type === 'laser') {
               // Dropped laser - cyan lightning bolt with flash effect
-              ctx.shadowBlur = 12 * pulse;
+              ctx.shadowBlur = 25 * pulse;
               ctx.shadowColor = '#00ffff';
               ctx.fillStyle = `rgba(0, 255, 255, ${0.7 + pulse * 0.3})`;
 
@@ -5727,7 +5661,7 @@ button.secondary:hover {
 
             } else if (w.type === 'sword') {
               // Dropped sword - magenta sword shape with flash effect
-              ctx.shadowBlur = 12 * pulse;
+              ctx.shadowBlur = 25 * pulse;
               ctx.shadowColor = '#ff00ff';
               ctx.fillStyle = `rgba(255, 0, 255, ${0.7 + pulse * 0.3})`;
 
@@ -5919,24 +5853,29 @@ button.secondary:hover {
           ctx.arc(0, 0, viewDist, -fov / 2, fov / 2);
           ctx.fill();
 
-          // Body with glow (optimized - reduced shadowBlur, simplified ring)
+          // Body with enhanced glow
           const baseColor = agent.team === 0 ? '#ff4466' : '#4499ff';
+          const swordColor = agent.team === 0 ? '#ff4466' : '#4499ff';
           const laserColor = agent.team === 0 ? '#ff00aa' : '#00aaff';
-          const activeColor = agent.weapon === 'laser' ? laserColor : baseColor;
+          const activeColor = agent.weapon === 'laser' ? laserColor : (agent.weapon === 'sword' ? swordColor : baseColor);
 
-          // Outer glow (reduced blur for performance)
-          ctx.shadowBlur = 10;
+          // Outer glow
+          ctx.shadowBlur = 20;
           ctx.shadowColor = activeColor;
           ctx.fillStyle = '#0a0a12';
           ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
 
-          // Inner ring (simplified - solid stroke instead of gradient)
-          ctx.shadowBlur = 0;
-          ctx.strokeStyle = activeColor;
-          ctx.lineWidth = 2;
+          // Inner ring with gradient
+          const ringGrad = ctx.createRadialGradient(0, 0, r * 0.7, 0, 0, r);
+          ringGrad.addColorStop(0, 'transparent');
+          ringGrad.addColorStop(0.8, activeColor + '40');
+          ringGrad.addColorStop(1, activeColor);
+          ctx.strokeStyle = ringGrad;
+          ctx.lineWidth = 3;
           ctx.stroke();
 
           // Core highlight
+          ctx.shadowBlur = 0;
           ctx.fillStyle = activeColor + '20';
           ctx.beginPath(); ctx.arc(0, 0, r * 0.6, 0, Math.PI * 2); ctx.fill();
 
@@ -5956,21 +5895,31 @@ button.secondary:hover {
             lookY = Math.sin(moveAngle) * eyeRadius * 0.4;
           }
 
-          // Use cached nearest enemy from World.update()
-          if (agent.nearestEnemy) {
-            const enemyAngle = Math.atan2(agent.nearestEnemy.y - agent.y, agent.nearestEnemy.x - agent.x) - agent.rotation;
-            const intensity = 1 - (agent.nearestEnemyDist / 200);
+          // Find nearest enemy and look at them if close
+          let nearestEnemy = null;
+          let nearestDist = 200;
+          for (const other of this.world.agents) {
+            if (other === agent || !other.alive || other.team === agent.team) continue;
+            const d = Math.hypot(other.x - agent.x, other.y - agent.y);
+            if (d < nearestDist) {
+              nearestDist = d;
+              nearestEnemy = other;
+            }
+          }
+          if (nearestEnemy) {
+            const enemyAngle = Math.atan2(nearestEnemy.y - agent.y, nearestEnemy.x - agent.x) - agent.rotation;
+            const intensity = 1 - (nearestDist / 200);
             lookX = Math.cos(enemyAngle) * eyeRadius * 0.45 * intensity;
             lookY = Math.sin(enemyAngle) * eyeRadius * 0.45 * intensity;
           }
 
           // Blinking animation
-          const blinkCycle = (now / 1000 + agent.id * 0.7) % 4;
+          const blinkCycle = (Date.now() / 1000 + agent.id * 0.7) % 4;
           const isBlinking = blinkCycle > 3.85;
           const blinkSquish = isBlinking ? 0.1 : 1;
 
           // Surprised look when taking damage recently
-          const recentDamage = agent.lastDamageTime && (now - agent.lastDamageTime) < 300;
+          const recentDamage = agent.lastDamageTime && (Date.now() - agent.lastDamageTime) < 300;
           const eyeScale = recentDamage ? 1.2 : 1;
 
           // Draw both eyes
@@ -6144,7 +6093,7 @@ button.secondary:hover {
 
               // Rotating energy particles converging to barrel tip
               for (let i = 0; i < 8; i++) {
-                const angle = (now / 120 + i * Math.PI / 4) % (Math.PI * 2);
+                const angle = (Date.now() / 120 + i * Math.PI / 4) % (Math.PI * 2);
                 const dist = (1 - chargeProgress * 0.7) * r * 0.9;
                 const px = r * 1.7 + Math.cos(angle) * dist;
                 const py = Math.sin(angle) * dist;
@@ -6158,7 +6107,7 @@ button.secondary:hover {
 
               // Secondary particle ring
               for (let i = 0; i < 4; i++) {
-                const angle = (now / 200 + i * Math.PI / 2 + Math.PI / 4) % (Math.PI * 2);
+                const angle = (Date.now() / 200 + i * Math.PI / 2 + Math.PI / 4) % (Math.PI * 2);
                 const dist = (1 - chargeProgress * 0.5) * r * 1.2;
                 const px = r * 1.7 + Math.cos(angle) * dist;
                 const py = Math.sin(angle) * dist;
@@ -6177,7 +6126,7 @@ button.secondary:hover {
 
               // Warning indicator - pulsing ring
               if (chargeProgress > 0.7) {
-                const pulse = (Math.sin(now / 50) + 1) * 0.5;
+                const pulse = (Math.sin(Date.now() / 50) + 1) * 0.5;
                 ctx.strokeStyle = `rgba(255, 255, 255, ${pulse})`;
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -6186,7 +6135,7 @@ button.secondary:hover {
 
                 // Additional warning particles
                 for (let i = 0; i < 3; i++) {
-                  const sparkAngle = now / 30 + i * Math.PI * 2 / 3;
+                  const sparkAngle = Date.now() / 30 + i * Math.PI * 2 / 3;
                   const sparkDist = (10 + chargeProgress * 5) * s;
                   ctx.fillStyle = `rgba(${primaryRGB}, ${pulse})`;
                   ctx.beginPath();
@@ -6890,7 +6839,7 @@ button.secondary:hover {
 
         const isEnabled = world.teleportersEnabled;
         const isActive = world.teleporterActive;
-        const time = now / 1000; // For animations
+        const time = Date.now() / 1000; // For animations
 
         // TURBO MODE: Simple circles for teleporters
         if (turboMode) {
@@ -8075,7 +8024,7 @@ button.secondary:hover {
       if (!persistentMode) {
         ui.gen.textContent = world.generation;
       }
-      ui.alive.textContent = (world.redAliveCount || 0) + (world.blueAliveCount || 0);
+      ui.alive.textContent = world.agents.filter(a => a.alive).length;
       ui.time.textContent = persistentMode
         ? formatTime(world.totalTime)
         : Math.ceil(world.timeLeft) + 's';
