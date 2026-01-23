@@ -2360,6 +2360,10 @@ button.secondary:hover {
         this.dodgeEndX = 0;
         this.dodgeEndY = 0;
 
+        // Edge camping detection
+        this.edgeCampTime = 0; // Time spent near edges
+        this.inDangerZone = false; // Currently taking damage from danger zone
+
         this.radius = 16;
         this.color = team === 0 ? '#ff4444' : '#4488ff';
       }
@@ -2404,6 +2408,10 @@ button.secondary:hover {
         this.health = this.maxHealth;
         this.armor = 0;
         this.stamina = this.maxStamina;
+
+        // Reset edge camping tracking
+        this.edgeCampTime = 0;
+        this.inDangerZone = false;
       }
 
       // Respawn after death
@@ -3155,6 +3163,13 @@ button.secondary:hover {
 
         // Team brains (evolved separately)
         this.teamBrains = [null, null];
+
+        // Edge camping danger zones
+        this.dangerZones = []; // {x, y, radius, lifetime, maxLifetime}
+        this.edgeCampThreshold = 3; // Seconds before danger zone spawns
+        this.edgeCampDistance = 80; // Distance from edge considered "camping"
+        this.dangerZoneDamagePercent = 0.3; // 30% of max HP per second when in danger zone
+        this.dangerZoneDuration = 5; // How long zones last
 
         this.spatialAgents = new SpatialHash(120);
 
@@ -4056,6 +4071,7 @@ button.secondary:hover {
         this.swordSlashes = [];
         this.droppedWeapons = [];
         this.dodgeTrails = [];
+        this.dangerZones = [];
 
         // Reset pit spawn flags and timers, then spawn initial pickups
         for (const pit of this.pickupPits) {
@@ -4183,6 +4199,7 @@ button.secondary:hover {
         this.swordSlashes = [];
         this.droppedWeapons = []; // Weapons dropped by dead players or weapon swaps
         this.dodgeTrails = [];
+        this.dangerZones = []; // Reset edge camping danger zones
 
         // Reset pit spawn flags and timers, then spawn initial pickups
         for (const pit of this.pickupPits) {
@@ -4716,6 +4733,84 @@ button.secondary:hover {
         }
         this.dodgeTrails = this.dodgeTrails.filter(t => t.timer < t.maxTime);
 
+        // Edge camping detection and danger zone spawning
+        for (const agent of this.agents) {
+          if (!agent.alive) {
+            agent.edgeCampTime = 0;
+            agent.inDangerZone = false;
+            continue;
+          }
+
+          // Check if agent is near any edge
+          const distToLeft = agent.x;
+          const distToRight = this.width - agent.x;
+          const distToTop = agent.y;
+          const distToBottom = this.height - agent.y;
+          const minDistToEdge = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+
+          if (minDistToEdge < this.edgeCampDistance) {
+            agent.edgeCampTime += dt;
+
+            // Spawn danger zone after threshold
+            if (agent.edgeCampTime >= this.edgeCampThreshold) {
+              // Check if there's already a danger zone near this agent
+              const hasNearbyZone = this.dangerZones.some(z =>
+                Math.hypot(z.x - agent.x, z.y - agent.y) < z.radius
+              );
+
+              if (!hasNearbyZone) {
+                this.dangerZones.push({
+                  x: agent.x,
+                  y: agent.y,
+                  radius: 100,
+                  lifetime: 0,
+                  maxLifetime: this.dangerZoneDuration,
+                  targetTeam: agent.team // Only damages the camping team
+                });
+                this.addEvent('⚠️ DANGER ZONE spawned on ' + agent.name + '!', 'damage');
+              }
+            }
+          } else {
+            // Reset timer when not near edge
+            agent.edgeCampTime = Math.max(0, agent.edgeCampTime - dt * 2); // Decay faster than buildup
+          }
+        }
+
+        // Update danger zones and apply damage
+        for (let i = this.dangerZones.length - 1; i >= 0; i--) {
+          const zone = this.dangerZones[i];
+          zone.lifetime += dt;
+
+          // Apply damage to agents in zone
+          for (const agent of this.agents) {
+            if (!agent.alive) continue;
+
+            const dist = Math.hypot(agent.x - zone.x, agent.y - zone.y);
+            if (dist < zone.radius) {
+              agent.inDangerZone = true;
+              // Damage scales with how deep in the zone (more damage at center)
+              // 30% of max HP per second at center, less at edges
+              const intensity = 1 - (dist / zone.radius);
+              const damage = agent.maxHealth * this.dangerZoneDamagePercent * intensity * dt;
+              agent.health -= damage;
+              agent.lifeDamageTaken += damage;
+
+              if (agent.health <= 0) {
+                agent.health = 0;
+                agent.die(this, null); // Environmental death
+                this.addEvent('☠️ ' + agent.name + ' died in DANGER ZONE!', 'death');
+              }
+            } else if (agent.inDangerZone) {
+              agent.inDangerZone = false;
+            }
+          }
+
+          // Remove expired zones
+          if (zone.lifetime >= zone.maxLifetime) {
+            this.dangerZones.splice(i, 1);
+          }
+        }
+
         // Agent-agent collision (push apart)
         const aliveAgents = this.agents.filter(a => a.alive);
         for (let i = 0; i < aliveAgents.length; i++) {
@@ -5166,6 +5261,52 @@ button.secondary:hover {
           blueZone.addColorStop(1, 'rgba(68, 153, 255, 0)');
           ctx.fillStyle = blueZone;
           ctx.fillRect(0, 0, w, h);
+
+          // Edge camping danger zones - pulsing red warning zones
+          for (const zone of this.world.dangerZones) {
+            const progress = zone.lifetime / zone.maxLifetime;
+            const pulse = Math.sin(Date.now() / 100) * 0.2 + 0.8;
+            const fadeIn = Math.min(1, zone.lifetime * 3); // Quick fade in
+            const fadeOut = zone.lifetime > zone.maxLifetime - 0.5 ? (zone.maxLifetime - zone.lifetime) * 2 : 1;
+            const alpha = fadeIn * fadeOut * pulse;
+
+            // Outer warning ring
+            const outerGrad = ctx.createRadialGradient(zone.x, zone.y, zone.radius * 0.6, zone.x, zone.y, zone.radius);
+            outerGrad.addColorStop(0, `rgba(255, 0, 50, 0)`);
+            outerGrad.addColorStop(0.7, `rgba(255, 0, 50, ${0.2 * alpha})`);
+            outerGrad.addColorStop(1, `rgba(255, 0, 50, ${0.4 * alpha})`);
+            ctx.fillStyle = outerGrad;
+            ctx.beginPath();
+            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inner danger core
+            const innerGrad = ctx.createRadialGradient(zone.x, zone.y, 0, zone.x, zone.y, zone.radius * 0.5);
+            innerGrad.addColorStop(0, `rgba(255, 50, 100, ${0.5 * alpha})`);
+            innerGrad.addColorStop(0.5, `rgba(255, 0, 50, ${0.3 * alpha})`);
+            innerGrad.addColorStop(1, `rgba(255, 0, 50, 0)`);
+            ctx.fillStyle = innerGrad;
+            ctx.beginPath();
+            ctx.arc(zone.x, zone.y, zone.radius * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Warning ring stroke
+            ctx.strokeStyle = `rgba(255, 100, 100, ${0.8 * alpha})`;
+            ctx.lineWidth = 3 * px;
+            ctx.setLineDash([10 * px, 10 * px]);
+            ctx.lineDashOffset = -Date.now() / 50; // Animated dash
+            ctx.beginPath();
+            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Skull/warning icon at center
+            ctx.font = `${24 * px}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.7 * alpha})`;
+            ctx.fillText('☠️', zone.x, zone.y);
+          }
 
           // Border - glowing tech frame with softer color
           ctx.shadowBlur = 20 / scale;
