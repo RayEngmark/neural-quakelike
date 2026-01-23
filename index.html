@@ -5876,18 +5876,6 @@ button.secondary:hover {
           ctx.translate(x, y);
           ctx.rotate(agent.rotation);
 
-          // Vision cone
-          const fov = Math.PI * 0.4;
-          const viewDist = 200 * s;
-          const grad = ctx.createRadialGradient(0, 0, r, 0, 0, viewDist);
-          grad.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-          grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.arc(0, 0, viewDist, -fov / 2, fov / 2);
-          ctx.fill();
-
           // Body with enhanced glow
           const baseColor = agent.team === 0 ? '#ff4466' : '#4499ff';
           const swordColor = agent.team === 0 ? '#ff4466' : '#4499ff';
