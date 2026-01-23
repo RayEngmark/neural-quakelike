@@ -2240,9 +2240,21 @@ button.secondary:hover {
         if (!arr) { arr = []; this.map.set(k, arr); }
         arr.push(obj);
       }
+      // Insert a rectangle into all cells it overlaps
+      insertRect(obj, x, y, w, h) {
+        const minCx = this.cell(x), maxCx = this.cell(x + w);
+        const minCy = this.cell(y), maxCy = this.cell(y + h);
+        for (let cx = minCx; cx <= maxCx; cx++) {
+          for (let cy = minCy; cy <= maxCy; cy++) {
+            const k = this.key(cx, cy);
+            let arr = this.map.get(k);
+            if (!arr) { arr = []; this.map.set(k, arr); }
+            arr.push(obj);
+          }
+        }
+      }
       query(x, y, radius) {
         const r = radius;
-        const cs = this.cellSize;
         const minX = this.cell(x - r), maxX = this.cell(x + r);
         const minY = this.cell(y - r), maxY = this.cell(y + r);
         const out = [];
@@ -2253,6 +2265,55 @@ button.secondary:hover {
           }
         }
         return out;
+      }
+      // Query cells along a ray using DDA algorithm
+      queryRay(x, y, angle, maxDist) {
+        const dx = Math.cos(angle);
+        const dy = Math.sin(angle);
+        const cs = this.cellSize;
+        const out = new Set(); // Use Set to avoid duplicates
+
+        // DDA ray marching through grid cells
+        let cx = this.cell(x), cy = this.cell(y);
+        const endX = x + dx * maxDist, endY = y + dy * maxDist;
+        const targetCx = this.cell(endX), targetCy = this.cell(endY);
+
+        // Step sizes for DDA
+        const stepX = dx > 0 ? 1 : -1;
+        const stepY = dy > 0 ? 1 : -1;
+
+        // Distance to next cell boundary
+        const tDeltaX = dx !== 0 ? Math.abs(cs / dx) : Infinity;
+        const tDeltaY = dy !== 0 ? Math.abs(cs / dy) : Infinity;
+
+        // Initial distance to first cell boundary
+        let tMaxX = dx !== 0 ? ((dx > 0 ? (cx + 1) * cs - x : cx * cs - x) / dx) : Infinity;
+        let tMaxY = dy !== 0 ? ((dy > 0 ? (cy + 1) * cs - y : cy * cs - y) / dy) : Infinity;
+
+        // Add objects from starting cell
+        const startArr = this.map.get(this.key(cx, cy));
+        if (startArr) for (const obj of startArr) out.add(obj);
+
+        // March through cells until we reach max distance or target cell
+        let t = 0;
+        while (t < maxDist) {
+          if (tMaxX < tMaxY) {
+            t = tMaxX;
+            tMaxX += tDeltaX;
+            cx += stepX;
+          } else {
+            t = tMaxY;
+            tMaxY += tDeltaY;
+            cy += stepY;
+          }
+
+          if (t > maxDist) break;
+
+          const arr = this.map.get(this.key(cx, cy));
+          if (arr) for (const obj of arr) out.add(obj);
+        }
+
+        return Array.from(out);
       }
     }
 
@@ -2525,44 +2586,63 @@ button.secondary:hover {
       }
 
       castRays(world, numRays = 16, fov = Math.PI * 0.6) {
-        const { agents, obstacles, pickups, width: worldWidth, height: worldHeight } = world;
+        const { width: worldWidth, height: worldHeight } = world;
         const rayData = [];
 
         const startAngle = this.rotation - fov / 2;
         const angleStep = fov / (numRays - 1);
         const maxDist = Math.hypot(worldWidth, worldHeight);
 
-        // Check all alive agents for raycasts (full map visibility)
-        const nearCandidates = agents.filter(a => a.alive && a !== this);
-
         for (let i = 0; i < numRays; i++) {
           const angle = startAngle + angleStep * i;
           let closestDist = maxDist;
           let closestType = 0;
 
+          // Map edge is always checked (cheap calculation)
           const edgeDist = this.raycastMapEdge(angle, worldWidth, worldHeight);
           if (edgeDist < closestDist) { closestDist = edgeDist; closestType = 0; }
 
-          for (const obs of obstacles) {
+          // Query obstacles along the ray path (static geometry)
+          const nearObstacles = world.spatialObstacles.queryRay(this.x, this.y, angle, closestDist);
+          for (const obs of nearObstacles) {
             const dist = this.raycastRect(angle, closestDist, obs);
             if (dist < closestDist) { closestDist = dist; closestType = 0.5; }
           }
 
-          // Check pickups (weapons, health, armor)
-          for (const pickup of pickups) {
+          // Query pickups along the ray path
+          const nearPickups = world.spatialPickups.queryRay(this.x, this.y, angle, closestDist);
+          for (const pickup of nearPickups) {
+            // Early-out: skip if too far
+            const dx = pickup.x - this.x, dy = pickup.y - this.y;
+            const centerDist = Math.sqrt(dx * dx + dy * dy);
+            if (centerDist - pickup.radius > closestDist) continue;
+
             const dist = this.raycastCircle(angle, closestDist, pickup.x, pickup.y, pickup.radius);
             if (dist < closestDist) { closestDist = dist; closestType = 0.25; }
           }
 
-          // Check enemy rockets (type 0.75)
-          for (const rocket of world.rockets) {
+          // Query enemy rockets along the ray path
+          const nearRockets = world.spatialRockets.queryRay(this.x, this.y, angle, closestDist);
+          for (const rocket of nearRockets) {
             if (rocket.owner && rocket.owner.team === this.team) continue; // Ignore own team's rockets
-            const dist = this.raycastCircle(angle, closestDist, rocket.x, rocket.y, 8); // 8 = rocket radius
+            // Early-out: skip if too far
+            const dx = rocket.x - this.x, dy = rocket.y - this.y;
+            const centerDist = Math.sqrt(dx * dx + dy * dy);
+            if (centerDist - 8 > closestDist) continue;
+
+            const dist = this.raycastCircle(angle, closestDist, rocket.x, rocket.y, 8);
             if (dist < closestDist) { closestDist = dist; closestType = 0.75; }
           }
 
-          for (const other of nearCandidates) {
+          // Query agents along the ray path
+          const nearAgents = world.spatialAgents.queryRay(this.x, this.y, angle, closestDist);
+          for (const other of nearAgents) {
             if (other === this || !other.alive) continue;
+            // Early-out: skip if too far
+            const dx = other.x - this.x, dy = other.y - this.y;
+            const centerDist = Math.sqrt(dx * dx + dy * dy);
+            if (centerDist - other.radius > closestDist) continue;
+
             const dist = this.raycastCircle(angle, closestDist, other.x, other.y, other.radius);
             if (dist < closestDist) { closestDist = dist; closestType = 1; }
           }
@@ -3199,6 +3279,9 @@ button.secondary:hover {
         this.dangerZoneDuration = 5; // How long zones last
 
         this.spatialAgents = new SpatialHash(120);
+        this.spatialObstacles = new SpatialHash(120); // Static - built once
+        this.spatialPickups = new SpatialHash(120);   // Rebuilt each frame
+        this.spatialRockets = new SpatialHash(120);   // Rebuilt each frame
 
         this.generateObstacles();
       }
@@ -3950,6 +4033,16 @@ button.secondary:hover {
 
         // Schedule first activation at random time (leaving 30s buffer at end)
         this.scheduleTeleporterActivation();
+
+        // Build spatial hash for obstacles (static - only needs to be done once)
+        this.buildObstacleSpatialHash();
+      }
+
+      buildObstacleSpatialHash() {
+        this.spatialObstacles.clear();
+        for (const obs of this.obstacles) {
+          this.spatialObstacles.insertRect(obs, obs.x, obs.y, obs.w, obs.h);
+        }
       }
 
       scheduleTeleporterActivation() {
@@ -4289,8 +4382,17 @@ button.secondary:hover {
       }
 
       rebuildSpatial() {
+        // Agents (dynamic)
         this.spatialAgents.clear();
         for (const a of this.agents) if (a.alive) this.spatialAgents.insert(a, a.x, a.y);
+
+        // Pickups (dynamic - spawn/despawn during game)
+        this.spatialPickups.clear();
+        for (const p of this.pickups) this.spatialPickups.insert(p, p.x, p.y);
+
+        // Rockets (highly dynamic)
+        this.spatialRockets.clear();
+        for (const r of this.rockets) this.spatialRockets.insert(r, r.x, r.y);
       }
 
       update(dt) {
@@ -4399,11 +4501,10 @@ button.secondary:hover {
           }
         }
 
-        // Update alive count + spatial hash
+        // Update alive count
         let alive = 0;
         for (const a of this.agents) if (a.alive) alive++;
         this.aliveCount = alive;
-        this.rebuildSpatial();
         
         // Handle respawns (skip in no respawn mode)
         if (!noRespawnMode) {
@@ -4722,6 +4823,9 @@ button.secondary:hover {
           }
         }
         this.explosions = this.explosions.filter(e => e.timer < e.maxTime);
+
+        // Rebuild spatial hashes right before AI decisions for fresh data
+        this.rebuildSpatial();
 
         // Get decisions (staggered updates when >= 100 agents for performance)
         const decisions = new Array(this.agents.length);
