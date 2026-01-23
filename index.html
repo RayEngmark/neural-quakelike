@@ -2334,10 +2334,10 @@ button.secondary:hover {
         // Weapon kill stats (lifetime)
         this.totalWeaponKills = { rocket: 0, laser: 0, sword: 0, rifle: 0 };
 
-        // Network: 54 inputs → 16 hidden → 5 outputs
-        // Inputs: 42 raycast (21 rays × 2) + 12 state (health, cooldown, velocity, weapon type, rocket awareness, etc)
+        // Network: 44 inputs → 16 hidden → 5 outputs
+        // Inputs: 32 raycast (16 rays × 2) + 12 state (health, cooldown, velocity, weapon type, rocket awareness, etc)
         // Outputs: turn, move speed, shoot, strafe, dash
-        this.brain = brain || new NeuralNetwork(54, 16, 5);
+        this.brain = brain || new NeuralNetwork(44, 16, 5);
 
         // Track if agent has picked up a special weapon this round (can only pick up once)
         this.hasPickedUpWeapon = false;
@@ -2524,7 +2524,7 @@ button.secondary:hover {
         return bonus;
       }
 
-      castRays(world, numRays = 21, fov = Math.PI * 0.8) {
+      castRays(world, numRays = 16, fov = Math.PI * 0.6) {
         const { agents, obstacles, pickups, width: worldWidth, height: worldHeight } = world;
         const rayData = [];
 
@@ -2684,7 +2684,7 @@ button.secondary:hover {
         const hasSword = this.weapon === 'sword' ? 1 : 0;
         const dodgeReady = this.dodgeCooldown <= 0 ? 1 : 0;
 
-        // Inputs: 54 total (42 rays + 12 internal)
+        // Inputs: 44 total (32 rays + 12 internal)
         const internal = [
           this.health / this.maxHealth,
           speedNorm,
@@ -5741,8 +5741,8 @@ button.secondary:hover {
           const agent = this.followAgent;
           const x = agent.x * s, y = agent.y * s;
           const rayData = agent.lastRayData;
-          const numRays = 21;
-          const fov = Math.PI * 0.8; // 144 degree FOV
+          const numRays = 16;
+          const fov = Math.PI * 0.6; // 108 degree FOV
           const startAngle = agent.rotation - fov / 2;
           const angleStep = fov / (numRays - 1);
           const maxDist = Math.hypot(this.world.width, this.world.height);
