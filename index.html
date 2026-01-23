@@ -128,13 +128,53 @@ body {
 .team-top-lives {
   display: none;
   font-size: 0.7rem;
-  min-width: 100px;
+  align-items: stretch;
+  gap: 10px;
 }
 body.persistent-mode .team-wins {
   display: none;
 }
 body.persistent-mode .team-top-lives {
-  display: block;
+  display: flex;
+}
+
+/* Section labels */
+.team-top-lives .section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+/* Average score section */
+.avg-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  min-width: 60px;
+}
+.avg-section .avg-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.3rem;
+  font-weight: bold;
+  line-height: 1;
+}
+.team-block.red .avg-section .avg-value { color: var(--team-red); text-shadow: 0 0 10px var(--team-red-glow); }
+.team-block.blue .avg-section .avg-value { color: var(--team-blue); text-shadow: 0 0 10px var(--team-blue-glow); }
+
+/* Gene pool section */
+.gene-pool-section {
+  display: flex;
+  flex-direction: column;
 }
 .top-lives-list {
   display: flex;
@@ -145,49 +185,39 @@ body.persistent-mode .team-top-lives {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  padding: 2px 6px;
-  background: rgba(255,255,255,0.03);
+  gap: 10px;
+  padding: 2px 8px;
+  background: rgba(255,255,255,0.02);
   border-radius: 3px;
   font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+}
+.top-life-entry .rank {
+  opacity: 0.6;
+  min-width: 18px;
 }
 .top-life-entry .name {
-  opacity: 0.8;
-  max-width: 60px;
+  flex: 1;
+  opacity: 0.9;
+  max-width: 70px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .top-life-entry .kills {
   font-weight: bold;
+  min-width: 30px;
+  text-align: right;
 }
 .team-block.red .top-life-entry .kills { color: var(--team-red); }
 .team-block.blue .top-life-entry .kills { color: var(--team-blue); }
 .top-lives-empty {
   color: var(--text-dim);
   font-size: 0.6rem;
-  padding: 4px;
-}
-.avg-life {
+  font-style: italic;
+  padding: 8px;
   text-align: center;
-  padding: 4px 10px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 4px;
-  margin-bottom: 4px;
 }
-.avg-life .avg-value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 1.1rem;
-  font-weight: bold;
-}
-.avg-life .avg-label {
-  font-size: 0.5rem;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.team-block.red .avg-life .avg-value { color: var(--team-red); }
-.team-block.blue .avg-life .avg-value { color: var(--team-blue); }
 
 #center-info {
   text-align: center;
@@ -1338,11 +1368,14 @@ button.secondary:hover {
           <div class="label">wins</div>
         </div>
         <div class="team-top-lives" id="red-top-lives">
-          <div class="avg-life">
+          <div class="avg-section">
+            <div class="section-label">AVG</div>
             <div class="avg-value" id="red-avg-life">0</div>
-            <div class="avg-label">avg score</div>
           </div>
-          <div class="top-lives-list"></div>
+          <div class="gene-pool-section">
+            <div class="section-label">GENE POOL TOP 5</div>
+            <div class="top-lives-list"></div>
+          </div>
         </div>
         <div class="team-score">
           <div class="score" id="red-score">0</div>
@@ -1369,10 +1402,13 @@ button.secondary:hover {
           <div class="label">wins</div>
         </div>
         <div class="team-top-lives" id="blue-top-lives">
-          <div class="top-lives-list"></div>
-          <div class="avg-life">
+          <div class="gene-pool-section">
+            <div class="section-label">GENE POOL TOP 5</div>
+            <div class="top-lives-list"></div>
+          </div>
+          <div class="avg-section">
+            <div class="section-label">AVG</div>
             <div class="avg-value" id="blue-avg-life">0</div>
-            <div class="avg-label">avg score</div>
           </div>
         </div>
       </div>
@@ -2999,6 +3035,7 @@ button.secondary:hover {
 
           // Add to Hall of Fame
           const entry = {
+            name: this.name,
             score: lifeScore,
             brain: this.brain.clone(),
             kills: this.lifeKills,
@@ -7621,23 +7658,27 @@ button.secondary:hover {
       // Update top lives and avg score in top-bar (persistent mode only)
       if (persistentMode) {
         // Average life scores
-        ui.redAvgLife.textContent = getAverageScoreAtDeath(0).toFixed(1);
-        ui.blueAvgLife.textContent = getAverageScoreAtDeath(1).toFixed(1);
+        ui.redAvgLife.textContent = getAverageScoreAtDeath(0).toFixed(0);
+        ui.blueAvgLife.textContent = getAverageScoreAtDeath(1).toFixed(0);
 
         // Top 5 lives with names
-        ui.redTopLives.innerHTML = hallOfFame[0].length > 0
-          ? hallOfFame[0].slice(0, 5).map((e, i) => {
-              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i + 1) + '.'));
-              return '<div class="top-life-entry"><span class="name">' + medal + ' ' + (e.name || 'Agent') + '</span><span class="kills">' + e.kills + 'K</span></div>';
-            }).join('')
-          : '<div class="top-lives-empty">No lives yet</div>';
+        function renderTopLives(hofList) {
+          if (hofList.length === 0) {
+            return '<div class="top-lives-empty">Waiting for data...</div>';
+          }
+          return hofList.slice(0, 5).map((e, i) => {
+            const rank = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : '#' + (i + 1)));
+            const name = e.name || 'Unknown';
+            return '<div class="top-life-entry">' +
+              '<span class="rank">' + rank + '</span>' +
+              '<span class="name">' + name + '</span>' +
+              '<span class="kills">' + e.kills + 'K</span>' +
+            '</div>';
+          }).join('');
+        }
 
-        ui.blueTopLives.innerHTML = hallOfFame[1].length > 0
-          ? hallOfFame[1].slice(0, 5).map((e, i) => {
-              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i + 1) + '.'));
-              return '<div class="top-life-entry"><span class="name">' + medal + ' ' + (e.name || 'Agent') + '</span><span class="kills">' + e.kills + 'K</span></div>';
-            }).join('')
-          : '<div class="top-lives-empty">No lives yet</div>';
+        ui.redTopLives.innerHTML = renderTopLives(hallOfFame[0]);
+        ui.blueTopLives.innerHTML = renderTopLives(hallOfFame[1]);
       }
 
       // Update header display in persistent mode
