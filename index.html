@@ -168,6 +168,26 @@ body.persistent-mode .team-top-lives {
   font-size: 0.6rem;
   padding: 4px;
 }
+.avg-life {
+  text-align: center;
+  padding: 4px 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+.avg-life .avg-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+.avg-life .avg-label {
+  font-size: 0.5rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.team-block.red .avg-life .avg-value { color: var(--team-red); }
+.team-block.blue .avg-life .avg-value { color: var(--team-blue); }
 
 #center-info {
   text-align: center;
@@ -1318,6 +1338,10 @@ button.secondary:hover {
           <div class="label">wins</div>
         </div>
         <div class="team-top-lives" id="red-top-lives">
+          <div class="avg-life">
+            <div class="avg-value" id="red-avg-life">0</div>
+            <div class="avg-label">avg score</div>
+          </div>
           <div class="top-lives-list"></div>
         </div>
         <div class="team-score">
@@ -1336,18 +1360,22 @@ button.secondary:hover {
       </div>
 
       <div class="team-block blue">
-    <div class="team-score">
-      <div class="score" id="blue-score">0</div>
-      <div class="label">BLUE 🔵</div>
-    </div>
-    <div class="team-wins">
-      <div class="wins" id="blue-wins">0</div>
-      <div class="label">wins</div>
-    </div>
-    <div class="team-top-lives" id="blue-top-lives">
-      <div class="top-lives-list"></div>
-    </div>
-  </div>
+        <div class="team-score">
+          <div class="score" id="blue-score">0</div>
+          <div class="label">BLUE 🔵</div>
+        </div>
+        <div class="team-wins">
+          <div class="wins" id="blue-wins">0</div>
+          <div class="label">wins</div>
+        </div>
+        <div class="team-top-lives" id="blue-top-lives">
+          <div class="top-lives-list"></div>
+          <div class="avg-life">
+            <div class="avg-value" id="blue-avg-life">0</div>
+            <div class="avg-label">avg score</div>
+          </div>
+        </div>
+      </div>
 </div>
 
 <!-- MAIN AREA -->
@@ -1580,29 +1608,6 @@ button.secondary:hover {
     <div style="opacity: 0.5; font-size: 0.75rem;">No data yet</div>
   </div>
 
-  <div id="hof-section">
-    <h3>📊 Average Life Score</h3>
-    <div class="stat-row">
-      <span style="color: var(--team-red);">🔴 Red</span>
-      <span class="stat-value" id="stats-red-avg-score">0</span>
-    </div>
-    <div class="stat-row">
-      <span style="color: var(--team-blue);">🔵 Blue</span>
-      <span class="stat-value" id="stats-blue-avg-score">0</span>
-    </div>
-
-    <h3>🔴 Red Hall of Fame</h3>
-    <div id="stats-red-hof" class="team-section">
-      <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
-    </div>
-
-    <h3>🔵 Blue Hall of Fame</h3>
-    <div id="stats-blue-hof" class="team-section">
-      <div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>
-    </div>
-
-    <button id="clear-hof-btn" style="width: 100%; margin-top: 5px; background: rgba(255, 50, 50, 0.2); border: 1px solid #ff3333; color: #ff6666; padding: 8px; border-radius: 4px; cursor: pointer;">🗑️ Clear Hall of Fame</button>
-  </div>
 
   <h3>📜 Combat Log</h3>
   <div id="stats-combat-log" style="max-height: 200px; overflow-y: auto; font-size: 0.75rem;"></div>
@@ -6748,6 +6753,8 @@ button.secondary:hover {
       blueWins: document.getElementById('blue-wins'),
       redTopLives: document.querySelector('#red-top-lives .top-lives-list'),
       blueTopLives: document.querySelector('#blue-top-lives .top-lives-list'),
+      redAvgLife: document.getElementById('red-avg-life'),
+      blueAvgLife: document.getElementById('blue-avg-life'),
 
       // Modifiers (now in dropdown menu)
       toggleHealth: document.getElementById('mod-health'),
@@ -6787,11 +6794,6 @@ button.secondary:hover {
       statsRocketKills: document.getElementById('stats-rocket-kills'),
       statsLaserKills: document.getElementById('stats-laser-kills'),
       statsSwordKills: document.getElementById('stats-sword-kills'),
-      statsRedHof: document.getElementById('stats-red-hof'),
-      statsBlueHof: document.getElementById('stats-blue-hof'),
-      statsRedAvgScore: document.getElementById('stats-red-avg-score'),
-      statsBlueAvgScore: document.getElementById('stats-blue-avg-score'),
-      clearHofBtn: document.getElementById('clear-hof-btn'),
 
       // Respawn time slider
       respawnTime: document.getElementById('respawn-time'),
@@ -6843,7 +6845,6 @@ button.secondary:hover {
       statsUps: document.getElementById('stats-ups'),
       statsLeaderboard: document.getElementById('stats-leaderboard'),
       statsCombatLog: document.getElementById('stats-combat-log'),
-      hofSection: document.getElementById('hof-section'),
       statsTotalLivesRow: document.getElementById('stats-total-lives-row'),
 
       // Sidebar toggles
@@ -7345,14 +7346,6 @@ button.secondary:hover {
     updateHeadlessButton();
     updatePerformanceButton();
 
-    // Clear Hall of Fame button
-    ui.clearHofBtn.addEventListener('click', () => {
-      if (confirm('Clear all Hall of Fame entries? This cannot be undone.')) {
-        clearHallOfFame();
-        world.addEvent('🗑️ Hall of Fame cleared!', 'kill');
-      }
-    });
-
     // Sliders
     ui.zoom.addEventListener('input', (e) => {
       renderer.zoom = parseInt(e.target.value, 10) / 100;
@@ -7605,8 +7598,7 @@ button.secondary:hover {
         ui.statsUps.style.color = '#ff4444';
       }
 
-      // Show/hide Hall of Fame section based on mode
-      ui.hofSection.style.display = persistentMode ? 'block' : 'none';
+      // Show/hide Total Lives row based on mode (only relevant in persistent mode)
       ui.statsTotalLivesRow.style.display = persistentMode ? 'flex' : 'none';
 
       // Update Overall Kill Leaderboard in stats panel (works in both modes)
@@ -7626,40 +7618,26 @@ button.secondary:hover {
         return '<div style="color: ' + color + '; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">' + e.text + '</div>';
       }).join('');
 
-      // Update Average Life Score
-      ui.statsRedAvgScore.textContent = getAverageScoreAtDeath(0).toFixed(1);
-      ui.statsBlueAvgScore.textContent = getAverageScoreAtDeath(1).toFixed(1);
-
-      // Update Hall of Fame in stats panel (only shown in persistent mode)
-      ui.statsRedHof.innerHTML = hallOfFame[0].length > 0
-        ? hallOfFame[0].slice(0, 5).map((e, i) => {
-            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
-            return '<div class="hof-entry"><span>' + medal + ' ' + e.kills + 'K</span><span style="color:#00ff9d">' + e.score + '</span></div>';
-          }).join('')
-        : '<div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>';
-
-      ui.statsBlueHof.innerHTML = hallOfFame[1].length > 0
-        ? hallOfFame[1].slice(0, 5).map((e, i) => {
-            const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
-            return '<div class="hof-entry"><span>' + medal + ' ' + e.kills + 'K</span><span style="color:#00ff9d">' + e.score + '</span></div>';
-          }).join('')
-        : '<div style="opacity: 0.5; font-size: 0.75rem;">No entries yet</div>';
-
-      // Update top lives in top-bar (persistent mode only)
+      // Update top lives and avg score in top-bar (persistent mode only)
       if (persistentMode) {
+        // Average life scores
+        ui.redAvgLife.textContent = getAverageScoreAtDeath(0).toFixed(1);
+        ui.blueAvgLife.textContent = getAverageScoreAtDeath(1).toFixed(1);
+
+        // Top 5 lives with names
         ui.redTopLives.innerHTML = hallOfFame[0].length > 0
           ? hallOfFame[0].slice(0, 5).map((e, i) => {
-              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
-              return '<div class="top-life-entry"><span class="name">' + medal + '</span><span class="kills">' + e.kills + 'K</span></div>';
+              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i + 1) + '.'));
+              return '<div class="top-life-entry"><span class="name">' + medal + ' ' + (e.name || 'Agent') + '</span><span class="kills">' + e.kills + 'K</span></div>';
             }).join('')
-          : '<div class="top-lives-empty">-</div>';
+          : '<div class="top-lives-empty">No lives yet</div>';
 
         ui.blueTopLives.innerHTML = hallOfFame[1].length > 0
           ? hallOfFame[1].slice(0, 5).map((e, i) => {
-              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : ''));
-              return '<div class="top-life-entry"><span class="name">' + medal + '</span><span class="kills">' + e.kills + 'K</span></div>';
+              const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i + 1) + '.'));
+              return '<div class="top-life-entry"><span class="name">' + medal + ' ' + (e.name || 'Agent') + '</span><span class="kills">' + e.kills + 'K</span></div>';
             }).join('')
-          : '<div class="top-lives-empty">-</div>';
+          : '<div class="top-lives-empty">No lives yet</div>';
       }
 
       // Update header display in persistent mode
@@ -7792,7 +7770,67 @@ button.secondary:hover {
       }
     }
 
+    // Background tab support - keep simulation running when tab is hidden
+    let pageHidden = document.hidden;
+    let backgroundLoopId = null;
+
+    document.addEventListener('visibilitychange', () => {
+      pageHidden = document.hidden;
+      if (pageHidden) {
+        // Start background loop when tab is hidden
+        lastTime = performance.now();
+        backgroundLoop();
+      } else {
+        // Stop background loop, RAF will take over
+        if (backgroundLoopId) {
+          clearTimeout(backgroundLoopId);
+          backgroundLoopId = null;
+        }
+        lastTime = performance.now();
+      }
+    });
+
+    // Background loop using setTimeout (not throttled as much as RAF)
+    function backgroundLoop() {
+      if (!pageHidden) return;
+
+      const curr = performance.now();
+      const realDt = Math.min((curr - lastTime) / 1000, 0.1);
+      lastTime = curr;
+
+      // UPS tracking
+      upsTimer += realDt;
+      if (upsTimer >= 1.0) {
+        currentUps = upsCounter;
+        upsCounter = 0;
+        upsTimer = 0;
+      }
+
+      // scale by simSpeed into the simulation accumulator
+      accumulator += realDt * simSpeed;
+
+      // In background, allow many more steps since we're not rendering
+      const maxSteps = 200;
+      let steps = 0;
+      while (accumulator >= FIXED_DT && steps < maxSteps) {
+        world.update(FIXED_DT);
+        accumulator -= FIXED_DT;
+        steps++;
+        upsCounter++;
+      }
+      if (steps === maxSteps) accumulator = 0;
+
+      // Schedule next background tick (setTimeout is less throttled than RAF)
+      backgroundLoopId = setTimeout(backgroundLoop, 16);
+    }
+
     function gameLoop(curr) {
+      // Skip if page is hidden (background loop handles it)
+      if (pageHidden) {
+        requestAnimationFrame(gameLoop);
+        return;
+      }
+
       const realDt = Math.min((curr - lastTime) / 1000, 0.1);
       lastTime = curr;
 
