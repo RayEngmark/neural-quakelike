@@ -2368,6 +2368,10 @@ button.secondary:hover {
         // Edge camping tracking (for danger zone system)
         this.edgeCampTime = 0;
 
+        // Cached nearest enemy for rendering (updated in World.update)
+        this.nearestEnemy = null;
+        this.nearestEnemyDist = Infinity;
+
         this.radius = 24;
         this.color = team === 0 ? '#ff4444' : '#4488ff';
       }
@@ -4869,18 +4873,37 @@ button.secondary:hover {
           }
         }
 
-        // Agent-agent collision (push apart)
+        // Agent-agent collision (push apart) and nearest enemy calculation
         const aliveAgents = this.agents.filter(a => a.alive);
+
+        // Reset nearest enemy for all agents
+        for (const agent of aliveAgents) {
+          agent.nearestEnemy = null;
+          agent.nearestEnemyDist = Infinity;
+        }
+
         for (let i = 0; i < aliveAgents.length; i++) {
           for (let j = i + 1; j < aliveAgents.length; j++) {
             const a = aliveAgents[i];
             const b = aliveAgents[j];
-            
+
             const dx = b.x - a.x;
             const dy = b.y - a.y;
             const dist = Math.hypot(dx, dy);
+
+            // Track nearest enemy for eye rendering (only enemies within 200 units)
+            if (a.team !== b.team && dist < 200) {
+              if (dist < a.nearestEnemyDist) {
+                a.nearestEnemy = b;
+                a.nearestEnemyDist = dist;
+              }
+              if (dist < b.nearestEnemyDist) {
+                b.nearestEnemy = a;
+                b.nearestEnemyDist = dist;
+              }
+            }
+
             const minDist = a.radius + b.radius;
-            
             if (dist < minDist && dist > 0) {
               // Push apart
               const overlap = minDist - dist;
@@ -5892,20 +5915,10 @@ button.secondary:hover {
             lookY = Math.sin(moveAngle) * eyeRadius * 0.4;
           }
 
-          // Find nearest enemy and look at them if close
-          let nearestEnemy = null;
-          let nearestDist = 200;
-          for (const other of this.world.agents) {
-            if (other === agent || !other.alive || other.team === agent.team) continue;
-            const d = Math.hypot(other.x - agent.x, other.y - agent.y);
-            if (d < nearestDist) {
-              nearestDist = d;
-              nearestEnemy = other;
-            }
-          }
-          if (nearestEnemy) {
-            const enemyAngle = Math.atan2(nearestEnemy.y - agent.y, nearestEnemy.x - agent.x) - agent.rotation;
-            const intensity = 1 - (nearestDist / 200);
+          // Use cached nearest enemy from World.update()
+          if (agent.nearestEnemy) {
+            const enemyAngle = Math.atan2(agent.nearestEnemy.y - agent.y, agent.nearestEnemy.x - agent.x) - agent.rotation;
+            const intensity = 1 - (agent.nearestEnemyDist / 200);
             lookX = Math.cos(enemyAngle) * eyeRadius * 0.45 * intensity;
             lookY = Math.sin(enemyAngle) * eyeRadius * 0.45 * intensity;
           }
