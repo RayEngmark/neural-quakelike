@@ -3147,6 +3147,9 @@ button.secondary:hover {
         this.events = [];
         this.paused = false;
 
+        // Staggered AI updates - only compute half the agents per frame when >= 100 agents
+        this.staggerFrame = 0;
+
         this.population = 100; // 50 per team
         this.aliveCount = 0;
         
@@ -4720,10 +4723,26 @@ button.secondary:hover {
         }
         this.explosions = this.explosions.filter(e => e.timer < e.maxTime);
 
-        // Get decisions
+        // Get decisions (staggered updates when >= 100 agents for performance)
         const decisions = new Array(this.agents.length);
-        for (let i = 0; i < this.agents.length; i++) {
-          decisions[i] = this.agents[i].think(this);
+        const useStaggered = this.agents.length >= 100;
+
+        if (useStaggered) {
+          // Only half the agents think each frame, others reuse last decision
+          for (let i = 0; i < this.agents.length; i++) {
+            if (i % 2 === this.staggerFrame) {
+              decisions[i] = this.agents[i].think(this);
+            } else {
+              // Reuse cached decision from last frame
+              decisions[i] = this.agents[i].lastDecision || this.agents[i].think(this);
+            }
+          }
+          this.staggerFrame = 1 - this.staggerFrame; // Toggle between 0 and 1
+        } else {
+          // Normal mode: all agents think every frame
+          for (let i = 0; i < this.agents.length; i++) {
+            decisions[i] = this.agents[i].think(this);
+          }
         }
 
         // Update agents
