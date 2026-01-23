@@ -3168,7 +3168,7 @@ button.secondary:hover {
         this.dangerZones = []; // {x, y, radius, lifetime, maxLifetime}
         this.edgeCampThreshold = 3; // Seconds before danger zone spawns
         this.edgeCampDistance = 80; // Distance from edge considered "camping"
-        this.dangerZoneDamage = 15; // DPS when in danger zone
+        this.dangerZoneDamagePercent = 0.3; // 30% of max HP per second when in danger zone
         this.dangerZoneDuration = 5; // How long zones last
 
         this.spatialAgents = new SpatialHash(120);
@@ -4789,8 +4789,9 @@ button.secondary:hover {
             if (dist < zone.radius) {
               agent.inDangerZone = true;
               // Damage scales with how deep in the zone (more damage at center)
+              // 30% of max HP per second at center, less at edges
               const intensity = 1 - (dist / zone.radius);
-              const damage = this.dangerZoneDamage * intensity * dt;
+              const damage = agent.maxHealth * this.dangerZoneDamagePercent * intensity * dt;
               agent.health -= damage;
               agent.lifeDamageTaken += damage;
 
