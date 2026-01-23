@@ -5750,33 +5750,35 @@ button.secondary:hover {
           ctx.restore();
         }
 
-        // Blood pools (under agents)
-        for (const pool of this.world.bloodPools) {
-          const progress = pool.timer / pool.maxTime;
-          const fadeOut = progress > 0.7 ? 1 - ((progress - 0.7) / 0.3) : 1;
-          const alpha = fadeOut * 0.6;
+        // Blood pools (under agents) - skip in turbo mode
+        if (!turboMode) {
+          for (const pool of this.world.bloodPools) {
+            const progress = pool.timer / pool.maxTime;
+            const fadeOut = progress > 0.7 ? 1 - ((progress - 0.7) / 0.3) : 1;
+            const alpha = fadeOut * 0.6;
 
-          const poolColor = pool.team === 0 ?
-            `rgba(180, 20, 20, ${alpha})` :
-            `rgba(20, 60, 180, ${alpha})`;
+            const poolColor = pool.team === 0 ?
+              `rgba(180, 20, 20, ${alpha})` :
+              `rgba(20, 60, 180, ${alpha})`;
 
-          // Main pool
-          const grad = ctx.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.radius);
-          grad.addColorStop(0, poolColor);
-          grad.addColorStop(0.7, poolColor.replace(alpha, alpha * 0.6));
-          grad.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(pool.x, pool.y, pool.radius, 0, Math.PI * 2);
-          ctx.fill();
+            // Main pool
+            const grad = ctx.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.radius);
+            grad.addColorStop(0, poolColor);
+            grad.addColorStop(0.7, poolColor.replace(alpha, alpha * 0.6));
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(pool.x, pool.y, pool.radius, 0, Math.PI * 2);
+            ctx.fill();
 
-          // Darker center
-          ctx.fillStyle = pool.team === 0 ?
-            `rgba(100, 0, 0, ${alpha * 0.5})` :
-            `rgba(0, 20, 100, ${alpha * 0.5})`;
-          ctx.beginPath();
-          ctx.arc(pool.x, pool.y, pool.radius * 0.3, 0, Math.PI * 2);
-          ctx.fill();
+            // Darker center
+            ctx.fillStyle = pool.team === 0 ?
+              `rgba(100, 0, 0, ${alpha * 0.5})` :
+              `rgba(0, 20, 100, ${alpha * 0.5})`;
+            ctx.beginPath();
+            ctx.arc(pool.x, pool.y, pool.radius * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
 
         // Agents with class-based rendering
@@ -6291,33 +6293,35 @@ button.secondary:hover {
           }
         }
 
-        // Blood splats (flying droplets)
-        for (const splat of this.world.bloodSplats) {
-          const progress = splat.timer / splat.maxTime;
-          const fadeOut = progress > 0.5 ? 1 - ((progress - 0.5) / 0.5) : 1;
-          const alpha = fadeOut * 0.9;
+        // Blood splats (flying droplets) - skip in turbo mode
+        if (!turboMode) {
+          for (const splat of this.world.bloodSplats) {
+            const progress = splat.timer / splat.maxTime;
+            const fadeOut = progress > 0.5 ? 1 - ((progress - 0.5) / 0.5) : 1;
+            const alpha = fadeOut * 0.9;
 
-          // Draw blood droplet
-          ctx.save();
-          ctx.translate(splat.x, splat.y);
-          ctx.rotate(splat.rotation);
+            // Draw blood droplet
+            ctx.save();
+            ctx.translate(splat.x, splat.y);
+            ctx.rotate(splat.rotation);
 
-          // Stretched droplet shape based on velocity
-          const speed = Math.hypot(splat.vx, splat.vy);
-          const stretch = 1 + Math.min(speed / 100, 1.5);
-          ctx.scale(stretch, 1);
+            // Stretched droplet shape based on velocity
+            const speed = Math.hypot(splat.vx, splat.vy);
+            const stretch = 1 + Math.min(speed / 100, 1.5);
+            ctx.scale(stretch, 1);
 
-          // Dark red blood with slight gradient
-          const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, splat.size);
-          grad.addColorStop(0, `rgba(150, 0, 0, ${alpha})`);
-          grad.addColorStop(0.6, `rgba(100, 0, 0, ${alpha * 0.8})`);
-          grad.addColorStop(1, `rgba(60, 0, 0, 0)`);
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(0, 0, splat.size, 0, Math.PI * 2);
-          ctx.fill();
+            // Dark red blood with slight gradient
+            const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, splat.size);
+            grad.addColorStop(0, `rgba(150, 0, 0, ${alpha})`);
+            grad.addColorStop(0.6, `rgba(100, 0, 0, ${alpha * 0.8})`);
+            grad.addColorStop(1, `rgba(60, 0, 0, 0)`);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(0, 0, splat.size, 0, Math.PI * 2);
+            ctx.fill();
 
-          ctx.restore();
+            ctx.restore();
+          }
         }
 
         // Explosions
