@@ -7792,7 +7792,67 @@ button.secondary:hover {
       }
     }
 
+    // Background tab support - keep simulation running when tab is hidden
+    let pageHidden = document.hidden;
+    let backgroundLoopId = null;
+
+    document.addEventListener('visibilitychange', () => {
+      pageHidden = document.hidden;
+      if (pageHidden) {
+        // Start background loop when tab is hidden
+        lastTime = performance.now();
+        backgroundLoop();
+      } else {
+        // Stop background loop, RAF will take over
+        if (backgroundLoopId) {
+          clearTimeout(backgroundLoopId);
+          backgroundLoopId = null;
+        }
+        lastTime = performance.now();
+      }
+    });
+
+    // Background loop using setTimeout (not throttled as much as RAF)
+    function backgroundLoop() {
+      if (!pageHidden) return;
+
+      const curr = performance.now();
+      const realDt = Math.min((curr - lastTime) / 1000, 0.1);
+      lastTime = curr;
+
+      // UPS tracking
+      upsTimer += realDt;
+      if (upsTimer >= 1.0) {
+        currentUps = upsCounter;
+        upsCounter = 0;
+        upsTimer = 0;
+      }
+
+      // scale by simSpeed into the simulation accumulator
+      accumulator += realDt * simSpeed;
+
+      // In background, allow many more steps since we're not rendering
+      const maxSteps = 200;
+      let steps = 0;
+      while (accumulator >= FIXED_DT && steps < maxSteps) {
+        world.update(FIXED_DT);
+        accumulator -= FIXED_DT;
+        steps++;
+        upsCounter++;
+      }
+      if (steps === maxSteps) accumulator = 0;
+
+      // Schedule next background tick (setTimeout is less throttled than RAF)
+      backgroundLoopId = setTimeout(backgroundLoop, 16);
+    }
+
     function gameLoop(curr) {
+      // Skip if page is hidden (background loop handles it)
+      if (pageHidden) {
+        requestAnimationFrame(gameLoop);
+        return;
+      }
+
       const realDt = Math.min((curr - lastTime) / 1000, 0.1);
       lastTime = curr;
 
