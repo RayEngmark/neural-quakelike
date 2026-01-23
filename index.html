@@ -5387,11 +5387,22 @@ button.secondary:hover {
               const alpha = pulse * 0.4 * (0.3 + centerIntensity * 0.4);
               ctx.strokeStyle = `rgba(0, 180, 220, ${alpha})`;
 
-              // Use pre-computed hex angles
+              // Use pre-computed hex angles (with fallback)
               ctx.beginPath();
-              ctx.moveTo(cx + this.hexAngles[0].cos * hexScale, cy + this.hexAngles[0].sin * hexScale);
-              for (let i = 1; i < 6; i++) {
-                ctx.lineTo(cx + this.hexAngles[i].cos * hexScale, cy + this.hexAngles[i].sin * hexScale);
+              if (this.hexAngles && this.hexAngles.length === 6) {
+                ctx.moveTo(cx + this.hexAngles[0].cos * hexScale, cy + this.hexAngles[0].sin * hexScale);
+                for (let i = 1; i < 6; i++) {
+                  ctx.lineTo(cx + this.hexAngles[i].cos * hexScale, cy + this.hexAngles[i].sin * hexScale);
+                }
+              } else {
+                // Fallback: compute on the fly
+                for (let i = 0; i < 6; i++) {
+                  const angle = i * Math.PI / 3 - Math.PI / 6;
+                  const hx = cx + Math.cos(angle) * hexScale;
+                  const hy = cy + Math.sin(angle) * hexScale;
+                  if (i === 0) ctx.moveTo(hx, hy);
+                  else ctx.lineTo(hx, hy);
+                }
               }
               ctx.closePath();
               ctx.stroke();
