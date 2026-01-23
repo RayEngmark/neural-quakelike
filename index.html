@@ -5198,6 +5198,18 @@ button.secondary:hover {
           ctx.strokeStyle = 'rgba(0, 200, 255, 0.5)';
           ctx.lineWidth = 2 / scale;
           ctx.strokeRect(1, 1, w - 2, h - 2);
+
+          // Danger zones (simplified for turbo)
+          for (const zone of this.world.dangerZones) {
+            const alpha = Math.min(1, zone.lifetime * 3) * (zone.lifetime > zone.maxLifetime - 0.5 ? (zone.maxLifetime - zone.lifetime) * 2 : 1);
+            ctx.fillStyle = `rgba(255, 0, 50, ${0.3 * alpha})`;
+            ctx.beginPath();
+            ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = `rgba(255, 100, 100, ${0.6 * alpha})`;
+            ctx.lineWidth = 2 / scale;
+            ctx.stroke();
+          }
         } else {
           // Arena floor - deeper space gradient
           const floorGrad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.7);
