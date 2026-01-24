@@ -648,6 +648,44 @@ body.persistent-mode .team-top-lives {
   display: block;
 }
 
+/* Labeled buttons in control bar */
+#control-bar button.labeled-btn {
+  width: auto;
+  min-width: 46px;
+  height: auto;
+  min-height: 46px;
+  border-radius: 23px;
+  padding: 8px 14px;
+  flex-direction: column;
+  gap: 2px;
+}
+#control-bar button.labeled-btn svg {
+  width: 22px;
+  height: 22px;
+}
+#control-bar button.labeled-btn .btn-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Speed button specific styling */
+#control-bar #ctrl-speed {
+  background: rgba(255, 200, 0, 0.1);
+  border-color: rgba(255, 200, 0, 0.4);
+  color: #ffc800;
+}
+#control-bar #ctrl-speed:hover {
+  background: rgba(255, 200, 0, 0.25);
+  border-color: #ffc800;
+  box-shadow: 0 0 20px rgba(255, 200, 0, 0.3), inset 0 0 10px rgba(255, 200, 0, 0.1);
+}
+#control-bar #ctrl-speed .btn-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 /* MAIN AREA - Canvas + Sidebars */
 #main-area {
   display: flex;
@@ -1038,6 +1076,12 @@ button.secondary:hover {
   gap: 10px;
 }
 .btn-row button { flex: 1; }
+.btn-row button.active {
+  background: rgba(0, 255, 157, 0.3) !important;
+  border-color: #00ff9d !important;
+  color: #00ff9d !important;
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+}
 
 /* SCROLLBARS */
 ::-webkit-scrollbar {
@@ -1488,6 +1532,10 @@ button.secondary:hover {
     <div class="panel" data-panel-id="controls">
       <h2>// Advanced</h2>
       <div class="btn-row">
+        <button id="ctrl-save" style="background: rgba(0, 200, 255, 0.2); border-color: #00c8ff; color: #00c8ff;">💾 SAVE</button>
+        <button id="ctrl-load" style="background: rgba(0, 200, 255, 0.2); border-color: #00c8ff; color: #00c8ff;">📂 LOAD</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
         <button id="copy-btn" style="background: rgba(0, 255, 100, 0.2); border-color: #00ff64; color: #00ff64;">📋 COPY</button>
         <button id="demo-btn" style="background: rgba(255, 200, 0, 0.2); border-color: #ffc800; color: #ffc800;">🎮 DEMO</button>
       </div>
@@ -1656,11 +1704,9 @@ button.secondary:hover {
 <!-- Floating Control Bar -->
 <div id="control-bar">
   <div class="control-group">
-    <button id="ctrl-save" title="Save checkpoint">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-    </button>
-    <button id="ctrl-load" title="Load checkpoint">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
+    <button id="ctrl-speed" class="labeled-btn" title="Simulation Speed">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44z"/><path d="M10.59 15.41a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
+      <span class="btn-label" id="speed-label">1x</span>
     </button>
   </div>
 
@@ -1675,11 +1721,13 @@ button.secondary:hover {
   </div>
 
   <div class="control-group">
-    <button id="ctrl-headless" title="Headless Mode" data-tooltip="Headless Mode">
+    <button id="ctrl-headless" class="labeled-btn" title="Headless Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
+      <span class="btn-label">Headless</span>
     </button>
-    <button id="ctrl-performance" title="Performance Mode" data-tooltip="Performance Mode">
+    <button id="ctrl-performance" class="labeled-btn" title="Performance Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.16 8.78L6 22h5v-5l-2.28 2.28C6.08 18 4.5 15.21 4.5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/></svg>
+      <span class="btn-label">Turbo</span>
     </button>
   </div>
 </div>
@@ -7438,12 +7486,15 @@ button.secondary:hover {
       awarenessAlly: document.getElementById('awareness-ally'),
 
       // Control bar
-      ctrlSave: document.getElementById('ctrl-save'),
-      ctrlLoad: document.getElementById('ctrl-load'),
+      ctrlSpeed: document.getElementById('ctrl-speed'),
+      speedLabel: document.getElementById('speed-label'),
       ctrlReset: document.getElementById('ctrl-reset'),
       ctrlPlay: document.getElementById('ctrl-play'),
       ctrlHeadless: document.getElementById('ctrl-headless'),
       ctrlPerformance: document.getElementById('ctrl-performance'),
+      // Sidebar save/load
+      ctrlSave: document.getElementById('ctrl-save'),
+      ctrlLoad: document.getElementById('ctrl-load'),
 
       // Stats panel elements
       statsUps: document.getElementById('stats-ups'),
@@ -7867,6 +7918,22 @@ button.secondary:hover {
       forceWeapon = null;
       updateDebugButtonStyles();
       world.spawnAgents(population);
+    });
+
+    // Speed cycle button: 1x -> 2x -> 4x -> 8x -> 12x -> 1x
+    const speedSteps = [1, 2, 4, 8, 12];
+    let speedIndex = 0;
+
+    function updateSpeedButton() {
+      simSpeed = speedSteps[speedIndex];
+      ui.speedLabel.textContent = simSpeed + 'x';
+      ui.speedValue.textContent = simSpeed + 'x';
+      ui.speed.value = simSpeed;
+    }
+
+    ui.ctrlSpeed.addEventListener('click', () => {
+      speedIndex = (speedIndex + 1) % speedSteps.length;
+      updateSpeedButton();
     });
 
     ui.ctrlSave.addEventListener('click', () => {
