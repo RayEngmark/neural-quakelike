@@ -2016,17 +2016,10 @@ button.secondary:hover {
           while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
           if (Math.abs(angleDiff) > this.spreadAngle) continue;
 
-          const killed = agent.takeDamage(damage, this.owner, world);
+          agent.takeDamage(damage, this.owner, world);
           this.owner.damageDealt += damage;
           this.owner.lifeDamageDealt += damage;
           world.addEvent(this.owner.name + ' blasted ' + agent.name, 'damage');
-          if (killed) {
-            this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
-            this.owner.lifeKills++;
-            world.teamKills[this.owner.team]++;
-            this.owner.killScore += 50;
-            world.addEvent(this.owner.name + ' killed ' + agent.name + '!', 'kill');
-          }
         }
       }
     }
@@ -2182,23 +2175,11 @@ button.secondary:hover {
             const falloff = 1 - (dist / this.radius) * 0.5;
             const finalDamage = Math.floor(this.damage * falloff);
             
-            const killed = agent.takeDamage(finalDamage, this.owner, world);
+            agent.takeDamage(finalDamage, this.owner, world);
             if (this.owner) {
               this.owner.damageDealt += finalDamage;
               this.owner.lifeDamageDealt += finalDamage;
-              if (killed) {
-                this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
-                this.owner.lifeKills++;
-                this.owner.weaponKills.rocket++;
-                this.owner.totalWeaponKills.rocket++;
-                world.weaponKills.rocket++;
-                world.totalWeaponKills.rocket++;
-                world.teamKills[this.owner.team]++;
-                this.owner.killScore += 50;
-                world.addEvent('💥 ' + this.owner.name + ' OBLITERATED ' + agent.name + '!', 'kill');
-              } else {
-                world.addEvent(this.owner.name + ' rocket hit ' + agent.name, 'damage');
-              }
+              world.addEvent(this.owner.name + ' rocket hit ' + agent.name, 'damage');
             }
           }
         }
@@ -2432,7 +2413,8 @@ button.secondary:hover {
         this.kills = 0;
         this.assists = 0;
         this.lastHitBy = null; // For assist tracking
-        
+        this.damageReceivedFrom = new Map(); // Track damage from each attacker for kill credit
+
         // Lifetime stats (persist across rounds)
         this.totalKills = 0;
         this.totalDeaths = 0;
@@ -2511,7 +2493,8 @@ button.secondary:hover {
         this.swordCharging = false;
         this.swordLunging = false;
         this.lastHitBy = null;
-        
+        this.damageReceivedFrom = new Map(); // Reset damage tracking
+
         // Reset round stats but not lifetime stats
         this.damageDealt = 0;
         this.damageTaken = 0;
@@ -2556,6 +2539,7 @@ button.secondary:hover {
         this.swordCharging = false;
         this.swordLunging = false;
         this.lastHitBy = null;
+        this.damageReceivedFrom = new Map(); // Reset damage tracking
 
         // Reset life stats for persistent mode
         this.lifeStartTime = world ? world.totalTime : 0;
@@ -2583,10 +2567,8 @@ button.secondary:hover {
       }
 
       get score() {
-        const killPoints = this.kills * 50;
-        const assistPoints = this.assists * 25;
-        const damagePoints = this.damageDealt;
-        return killPoints + assistPoints + damagePoints - this.damageTaken;
+        // Fitness is STRICTLY based on kills only
+        return this.kills;
       }
 
       // Handle combo hit (5x HP mode) - returns combo multiplier for damage score
@@ -3149,25 +3131,59 @@ button.secondary:hover {
           this.armor -= armorDamage;
           amount -= armorDamage;
         }
-        
+
         this.health -= amount;
         this.damageTaken += amount;
         this.lifeDamageTaken += amount;
 
-        // Track who hit us for assists
-        if (attacker && attacker !== this.lastHitBy) {
-          if (this.lastHitBy && this.health <= 0 && this.lastHitBy !== attacker) {
-            this.lastHitBy.assists++;
-          }
+        // Track damage from each attacker for kill credit (most damage = kill)
+        if (attacker) {
+          const currentDamage = this.damageReceivedFrom.get(attacker) || 0;
+          this.damageReceivedFrom.set(attacker, currentDamage + amount);
           this.lastHitBy = attacker;
         }
 
         if (this.health > 0) return false;
 
-        // Death
+        // Death - find who dealt the most damage (they get the kill)
         this.alive = false;
         this.deaths++;
         this.totalDeaths++;
+
+        // Credit kill to whoever dealt the MOST damage (not last hit)
+        let killer = null;
+        let maxDamage = 0;
+        for (const [agent, damage] of this.damageReceivedFrom) {
+          if (damage > maxDamage) {
+            maxDamage = damage;
+            killer = agent;
+          }
+        }
+
+        if (killer && world) {
+          killer.kills++;
+          killer.totalKills = (killer.totalKills || 0) + 1;
+          killer.lifeKills++;
+          world.teamKills[killer.team]++;
+          if (world.teamRawKills) {
+            world.teamRawKills[killer.team]++;
+          }
+          world.addEvent(killer.name + ' killed ' + this.name + '!', 'kill');
+
+          // Track weapon kills based on killer's current weapon
+          if (killer.weaponKills) {
+            killer.weaponKills[killer.weapon] = (killer.weaponKills[killer.weapon] || 0) + 1;
+          }
+          if (killer.totalWeaponKills) {
+            killer.totalWeaponKills[killer.weapon] = (killer.totalWeaponKills[killer.weapon] || 0) + 1;
+          }
+          if (world.weaponKills) {
+            world.weaponKills[killer.weapon] = (world.weaponKills[killer.weapon] || 0) + 1;
+          }
+          if (world.totalWeaponKills) {
+            world.totalWeaponKills[killer.weapon] = (world.totalWeaponKills[killer.weapon] || 0) + 1;
+          }
+        }
 
         // Drop special weapon on death (unless forceWeapon debug mode is active)
         if (world && !forceWeapon && (this.weapon === 'laser' || this.weapon === 'sword')) {
@@ -3176,10 +3192,8 @@ button.secondary:hover {
 
         // Persistent mode: evaluate this life and evolve
         if (persistentMode && world) {
-          const survivalTime = world.totalTime - this.lifeStartTime;
-          const missPenalty = (this.lifeMisses || 0) * 20; // 20 points per missed shot
-          const comboBonus = this.comboScore || 0; // Extra score from combos (5x HP mode)
-          const lifeScore = this.lifeKills * 100 + this.lifeDamageDealt - (this.lifeDamageTaken * 0.3) - missPenalty + comboBonus;
+          // Fitness is STRICTLY based on kills only
+          const lifeScore = this.lifeKills * 100;
 
           // Add to Hall of Fame
           const entry = {
@@ -3188,7 +3202,7 @@ button.secondary:hover {
             brain: this.brain.clone(),
             kills: this.lifeKills,
             damageDealt: this.lifeDamageDealt,
-            survivalTime: survivalTime,
+            survivalTime: world.totalTime - this.lifeStartTime,
             timestamp: Date.now()
           };
           addToHallOfFame(this.team, entry);
@@ -3509,18 +3523,6 @@ button.secondary:hover {
                   var killed = target.takeDamage(laserDmg, agent, this);
                   if (killed) {
                     this.spawnBloodPool(target.x, target.y, target.team);
-                    // Get combo kill bonus before it resets
-                    const comboKillBonus = agent.getComboKillBonus(target);
-                    agent.comboScore += comboKillBonus;
-                    agent.kills++;
-                    agent.totalKills++;
-                    agent.lifeKills++;
-                    agent.weaponKills.laser++;
-                    agent.totalWeaponKills.laser++;
-                    this.weaponKills.laser++;
-                    this.totalWeaponKills.laser++;
-                    this.teamKills[agent.team]++;
-                    this.teamRawKills[agent.team]++;
                     killCount++;
                   }
                 }
@@ -3592,20 +3594,8 @@ button.secondary:hover {
                 target.takeDamage(actualDmg, owner, this);
               }
             } else {
-              const killed = target.takeDamage(actualDmg, owner, this);
+              target.takeDamage(actualDmg, owner, this);
               owner.lifeDamageDealt += actualDmg;
-              if (killed) {
-                owner.kills++;
-                owner.totalKills++;
-                owner.lifeKills++;
-                owner.weaponKills.laser++;
-                owner.totalWeaponKills.laser++;
-                this.weaponKills.laser++;
-                this.totalWeaponKills.laser++;
-                this.teamKills[owner.team]++;
-                this.teamRawKills[owner.team]++;
-                this.addEvent('💥 ' + owner.name + ' LASER EXPLOSION KILL!', 'laser');
-              }
             }
           }
         }
@@ -3777,18 +3767,6 @@ button.secondary:hover {
             const killed = target.takeDamage(swordDamage, agent, this);
             if (killed) {
               this.spawnBloodPool(target.x, target.y, target.team);
-              // Get combo kill bonus before it resets
-              const comboKillBonus = agent.getComboKillBonus(target);
-              agent.comboScore += comboKillBonus;
-              agent.kills++;
-              agent.totalKills++;
-              agent.lifeKills++;
-              agent.weaponKills.sword++;
-              agent.totalWeaponKills.sword++;
-              this.weaponKills.sword++;
-              this.totalWeaponKills.sword++;
-              this.teamKills[agent.team]++;
-              this.teamRawKills[agent.team]++;
               killCount++;
             }
           }
@@ -4729,18 +4707,6 @@ button.secondary:hover {
                 const killed = hitAgent.takeDamage(damage, b.owner, this);
                 if (killed) {
                   this.spawnBloodPool(hitAgent.x, hitAgent.y, hitAgent.team);
-                  const comboKillBonus = b.owner.getComboKillBonus(hitAgent);
-                  b.owner.comboScore += comboKillBonus;
-                  b.owner.kills++;
-                  b.owner.totalKills = (b.owner.totalKills || 0) + 1;
-                  b.owner.lifeKills++;
-                  b.owner.weaponKills.rifle = (b.owner.weaponKills.rifle || 0) + 1;
-                  b.owner.totalWeaponKills.rifle = (b.owner.totalWeaponKills.rifle || 0) + 1;
-                  this.weaponKills.rifle = (this.weaponKills.rifle || 0) + 1;
-                  this.totalWeaponKills.rifle = (this.totalWeaponKills.rifle || 0) + 1;
-                  this.teamKills[b.owner.team]++;
-                  this.teamRawKills[b.owner.team]++;
-                  this.addEvent('🎯 ' + b.owner.name + ' SHOT ' + hitAgent.name + '!', 'kill');
                 }
               }
             } else if (!hitAgent && b.owner) {
@@ -4844,21 +4810,6 @@ button.secondary:hover {
                   const comboMultiplier = e.owner.registerComboHit(agent, dmg);
                   e.owner.damageDealt += dmg;
                   e.owner.lifeDamageDealt += dmg;
-                  if (killed) {
-                    // Get combo kill bonus before it resets
-                    const comboKillBonus = e.owner.getComboKillBonus(agent);
-                    e.owner.comboScore += comboKillBonus;
-                    e.owner.kills++;
-                    e.owner.totalKills = (e.owner.totalKills || 0) + 1;
-                    e.owner.lifeKills++;
-                    e.owner.weaponKills.rocket++;
-                    e.owner.totalWeaponKills.rocket++;
-                    this.weaponKills.rocket++;
-                    this.totalWeaponKills.rocket++;
-                    this.teamKills[e.owner.team]++;
-                    this.teamRawKills[e.owner.team]++;
-                    this.addEvent('🚀 ' + e.owner.name + ' FRAGGED ' + agent.name + '!', 'kill');
-                  }
                 }
               }
             }
