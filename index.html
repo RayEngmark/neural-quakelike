@@ -648,6 +648,44 @@ body.persistent-mode .team-top-lives {
   display: block;
 }
 
+/* Labeled buttons in control bar */
+#control-bar button.labeled-btn {
+  width: auto;
+  min-width: 46px;
+  height: auto;
+  min-height: 46px;
+  border-radius: 23px;
+  padding: 8px 14px;
+  flex-direction: column;
+  gap: 2px;
+}
+#control-bar button.labeled-btn svg {
+  width: 22px;
+  height: 22px;
+}
+#control-bar button.labeled-btn .btn-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Speed button specific styling */
+#control-bar #ctrl-speed {
+  background: rgba(255, 200, 0, 0.1);
+  border-color: rgba(255, 200, 0, 0.4);
+  color: #ffc800;
+}
+#control-bar #ctrl-speed:hover {
+  background: rgba(255, 200, 0, 0.25);
+  border-color: #ffc800;
+  box-shadow: 0 0 20px rgba(255, 200, 0, 0.3), inset 0 0 10px rgba(255, 200, 0, 0.1);
+}
+#control-bar #ctrl-speed .btn-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 /* MAIN AREA - Canvas + Sidebars */
 #main-area {
   display: flex;
@@ -1038,6 +1076,12 @@ button.secondary:hover {
   gap: 10px;
 }
 .btn-row button { flex: 1; }
+.btn-row button.active {
+  background: rgba(0, 255, 157, 0.3) !important;
+  border-color: #00ff9d !important;
+  color: #00ff9d !important;
+  box-shadow: 0 0 15px rgba(0, 255, 157, 0.4);
+}
 
 /* SCROLLBARS */
 ::-webkit-scrollbar {
@@ -1488,6 +1532,10 @@ button.secondary:hover {
     <div class="panel" data-panel-id="controls">
       <h2>// Advanced</h2>
       <div class="btn-row">
+        <button id="ctrl-save" style="background: rgba(0, 200, 255, 0.2); border-color: #00c8ff; color: #00c8ff;">💾 SAVE</button>
+        <button id="ctrl-load" style="background: rgba(0, 200, 255, 0.2); border-color: #00c8ff; color: #00c8ff;">📂 LOAD</button>
+      </div>
+      <div class="btn-row" style="margin-top:10px;">
         <button id="copy-btn" style="background: rgba(0, 255, 100, 0.2); border-color: #00ff64; color: #00ff64;">📋 COPY</button>
         <button id="demo-btn" style="background: rgba(255, 200, 0, 0.2); border-color: #ffc800; color: #ffc800;">🎮 DEMO</button>
       </div>
@@ -1656,11 +1704,9 @@ button.secondary:hover {
 <!-- Floating Control Bar -->
 <div id="control-bar">
   <div class="control-group">
-    <button id="ctrl-save" title="Save checkpoint">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
-    </button>
-    <button id="ctrl-load" title="Load checkpoint">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 12v7H5v-7H3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7h-2zm-6 .67l2.59-2.58L17 11.5l-5 5-5-5 1.41-1.41L11 12.67V3h2z"/></svg>
+    <button id="ctrl-speed" class="labeled-btn" title="Simulation Speed">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44z"/><path d="M10.59 15.41a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
+      <span class="btn-label" id="speed-label">1x</span>
     </button>
   </div>
 
@@ -1675,11 +1721,13 @@ button.secondary:hover {
   </div>
 
   <div class="control-group">
-    <button id="ctrl-headless" title="Headless Mode" data-tooltip="Headless Mode">
+    <button id="ctrl-headless" class="labeled-btn" title="Headless Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg>
+      <span class="btn-label">Headless</span>
     </button>
-    <button id="ctrl-performance" title="Performance Mode" data-tooltip="Performance Mode">
+    <button id="ctrl-performance" class="labeled-btn" title="Performance Mode">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.21-1.92 6-4.72 7.28L13 17v5h5l-1.22-1.22C19.91 19.07 22 15.76 22 12c0-5.18-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.81 2 12c0 3.76 2.09 7.07 5.16 8.78L6 22h5v-5l-2.28 2.28C6.08 18 4.5 15.21 4.5 12c0-4.08 3.05-7.44 7-7.93V2.05z"/></svg>
+      <span class="btn-label">Turbo</span>
     </button>
   </div>
 </div>
@@ -1968,17 +2016,10 @@ button.secondary:hover {
           while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
           if (Math.abs(angleDiff) > this.spreadAngle) continue;
 
-          const killed = agent.takeDamage(damage, this.owner, world);
+          agent.takeDamage(damage, this.owner, world);
           this.owner.damageDealt += damage;
           this.owner.lifeDamageDealt += damage;
           world.addEvent(this.owner.name + ' blasted ' + agent.name, 'damage');
-          if (killed) {
-            this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
-            this.owner.lifeKills++;
-            world.teamKills[this.owner.team]++;
-            this.owner.killScore += 50;
-            world.addEvent(this.owner.name + ' killed ' + agent.name + '!', 'kill');
-          }
         }
       }
     }
@@ -2134,23 +2175,11 @@ button.secondary:hover {
             const falloff = 1 - (dist / this.radius) * 0.5;
             const finalDamage = Math.floor(this.damage * falloff);
             
-            const killed = agent.takeDamage(finalDamage, this.owner, world);
+            agent.takeDamage(finalDamage, this.owner, world);
             if (this.owner) {
               this.owner.damageDealt += finalDamage;
               this.owner.lifeDamageDealt += finalDamage;
-              if (killed) {
-                this.owner.kills++; this.owner.totalKills = (this.owner.totalKills || 0) + 1;
-                this.owner.lifeKills++;
-                this.owner.weaponKills.rocket++;
-                this.owner.totalWeaponKills.rocket++;
-                world.weaponKills.rocket++;
-                world.totalWeaponKills.rocket++;
-                world.teamKills[this.owner.team]++;
-                this.owner.killScore += 50;
-                world.addEvent('💥 ' + this.owner.name + ' OBLITERATED ' + agent.name + '!', 'kill');
-              } else {
-                world.addEvent(this.owner.name + ' rocket hit ' + agent.name, 'damage');
-              }
+              world.addEvent(this.owner.name + ' rocket hit ' + agent.name, 'damage');
             }
           }
         }
@@ -2384,7 +2413,8 @@ button.secondary:hover {
         this.kills = 0;
         this.assists = 0;
         this.lastHitBy = null; // For assist tracking
-        
+        this.damageReceivedFrom = new Map(); // Track damage from each attacker for kill credit
+
         // Lifetime stats (persist across rounds)
         this.totalKills = 0;
         this.totalDeaths = 0;
@@ -2463,7 +2493,8 @@ button.secondary:hover {
         this.swordCharging = false;
         this.swordLunging = false;
         this.lastHitBy = null;
-        
+        this.damageReceivedFrom = new Map(); // Reset damage tracking
+
         // Reset round stats but not lifetime stats
         this.damageDealt = 0;
         this.damageTaken = 0;
@@ -2508,6 +2539,7 @@ button.secondary:hover {
         this.swordCharging = false;
         this.swordLunging = false;
         this.lastHitBy = null;
+        this.damageReceivedFrom = new Map(); // Reset damage tracking
 
         // Reset life stats for persistent mode
         this.lifeStartTime = world ? world.totalTime : 0;
@@ -2535,10 +2567,8 @@ button.secondary:hover {
       }
 
       get score() {
-        const killPoints = this.kills * 50;
-        const assistPoints = this.assists * 25;
-        const damagePoints = this.damageDealt;
-        return killPoints + assistPoints + damagePoints - this.damageTaken;
+        // Fitness is STRICTLY based on kills only
+        return this.kills;
       }
 
       // Handle combo hit (5x HP mode) - returns combo multiplier for damage score
@@ -3101,25 +3131,59 @@ button.secondary:hover {
           this.armor -= armorDamage;
           amount -= armorDamage;
         }
-        
+
         this.health -= amount;
         this.damageTaken += amount;
         this.lifeDamageTaken += amount;
 
-        // Track who hit us for assists
-        if (attacker && attacker !== this.lastHitBy) {
-          if (this.lastHitBy && this.health <= 0 && this.lastHitBy !== attacker) {
-            this.lastHitBy.assists++;
-          }
+        // Track damage from each attacker for kill credit (most damage = kill)
+        if (attacker) {
+          const currentDamage = this.damageReceivedFrom.get(attacker) || 0;
+          this.damageReceivedFrom.set(attacker, currentDamage + amount);
           this.lastHitBy = attacker;
         }
 
         if (this.health > 0) return false;
 
-        // Death
+        // Death - find who dealt the most damage (they get the kill)
         this.alive = false;
         this.deaths++;
         this.totalDeaths++;
+
+        // Credit kill to whoever dealt the MOST damage (not last hit)
+        let killer = null;
+        let maxDamage = 0;
+        for (const [agent, damage] of this.damageReceivedFrom) {
+          if (damage > maxDamage) {
+            maxDamage = damage;
+            killer = agent;
+          }
+        }
+
+        if (killer && world) {
+          killer.kills++;
+          killer.totalKills = (killer.totalKills || 0) + 1;
+          killer.lifeKills++;
+          world.teamKills[killer.team]++;
+          if (world.teamRawKills) {
+            world.teamRawKills[killer.team]++;
+          }
+          world.addEvent(killer.name + ' killed ' + this.name + '!', 'kill');
+
+          // Track weapon kills based on killer's current weapon
+          if (killer.weaponKills) {
+            killer.weaponKills[killer.weapon] = (killer.weaponKills[killer.weapon] || 0) + 1;
+          }
+          if (killer.totalWeaponKills) {
+            killer.totalWeaponKills[killer.weapon] = (killer.totalWeaponKills[killer.weapon] || 0) + 1;
+          }
+          if (world.weaponKills) {
+            world.weaponKills[killer.weapon] = (world.weaponKills[killer.weapon] || 0) + 1;
+          }
+          if (world.totalWeaponKills) {
+            world.totalWeaponKills[killer.weapon] = (world.totalWeaponKills[killer.weapon] || 0) + 1;
+          }
+        }
 
         // Drop special weapon on death (unless forceWeapon debug mode is active)
         if (world && !forceWeapon && (this.weapon === 'laser' || this.weapon === 'sword')) {
@@ -3128,10 +3192,8 @@ button.secondary:hover {
 
         // Persistent mode: evaluate this life and evolve
         if (persistentMode && world) {
-          const survivalTime = world.totalTime - this.lifeStartTime;
-          const missPenalty = (this.lifeMisses || 0) * 20; // 20 points per missed shot
-          const comboBonus = this.comboScore || 0; // Extra score from combos (5x HP mode)
-          const lifeScore = this.lifeKills * 100 + this.lifeDamageDealt - (this.lifeDamageTaken * 0.3) - missPenalty + comboBonus;
+          // Fitness is STRICTLY based on kills only
+          const lifeScore = this.lifeKills * 100;
 
           // Add to Hall of Fame
           const entry = {
@@ -3140,7 +3202,7 @@ button.secondary:hover {
             brain: this.brain.clone(),
             kills: this.lifeKills,
             damageDealt: this.lifeDamageDealt,
-            survivalTime: survivalTime,
+            survivalTime: world.totalTime - this.lifeStartTime,
             timestamp: Date.now()
           };
           addToHallOfFame(this.team, entry);
@@ -3262,7 +3324,7 @@ button.secondary:hover {
 
         // Edge camping danger zones
         this.dangerZones = [];
-        this.edgeCampThreshold = 3; // Seconds near edge before danger zone spawns
+        this.edgeCampThreshold = 6; // Seconds near edge before danger zone spawns
         this.edgeCampDistance = 100; // Distance from edge considered "camping"
         this.dangerZoneRadius = 120; // Size of danger zone
         this.dangerZoneDuration = 5; // How long zone lasts
@@ -3273,7 +3335,7 @@ button.secondary:hover {
 
         // Edge camping danger zones
         this.dangerZones = []; // {x, y, radius, lifetime, maxLifetime}
-        this.edgeCampThreshold = 3; // Seconds before danger zone spawns
+        this.edgeCampThreshold = 6; // Seconds before danger zone spawns
         this.edgeCampDistance = 100; // Distance from edge considered "camping"
         this.dangerZoneDamagePercent = 0.3; // 30% of max HP per second when in danger zone
         this.dangerZoneDuration = 5; // How long zones last
@@ -3461,18 +3523,6 @@ button.secondary:hover {
                   var killed = target.takeDamage(laserDmg, agent, this);
                   if (killed) {
                     this.spawnBloodPool(target.x, target.y, target.team);
-                    // Get combo kill bonus before it resets
-                    const comboKillBonus = agent.getComboKillBonus(target);
-                    agent.comboScore += comboKillBonus;
-                    agent.kills++;
-                    agent.totalKills++;
-                    agent.lifeKills++;
-                    agent.weaponKills.laser++;
-                    agent.totalWeaponKills.laser++;
-                    this.weaponKills.laser++;
-                    this.totalWeaponKills.laser++;
-                    this.teamKills[agent.team]++;
-                    this.teamRawKills[agent.team]++;
                     killCount++;
                   }
                 }
@@ -3544,20 +3594,8 @@ button.secondary:hover {
                 target.takeDamage(actualDmg, owner, this);
               }
             } else {
-              const killed = target.takeDamage(actualDmg, owner, this);
+              target.takeDamage(actualDmg, owner, this);
               owner.lifeDamageDealt += actualDmg;
-              if (killed) {
-                owner.kills++;
-                owner.totalKills++;
-                owner.lifeKills++;
-                owner.weaponKills.laser++;
-                owner.totalWeaponKills.laser++;
-                this.weaponKills.laser++;
-                this.totalWeaponKills.laser++;
-                this.teamKills[owner.team]++;
-                this.teamRawKills[owner.team]++;
-                this.addEvent('💥 ' + owner.name + ' LASER EXPLOSION KILL!', 'laser');
-              }
             }
           }
         }
@@ -3729,18 +3767,6 @@ button.secondary:hover {
             const killed = target.takeDamage(swordDamage, agent, this);
             if (killed) {
               this.spawnBloodPool(target.x, target.y, target.team);
-              // Get combo kill bonus before it resets
-              const comboKillBonus = agent.getComboKillBonus(target);
-              agent.comboScore += comboKillBonus;
-              agent.kills++;
-              agent.totalKills++;
-              agent.lifeKills++;
-              agent.weaponKills.sword++;
-              agent.totalWeaponKills.sword++;
-              this.weaponKills.sword++;
-              this.totalWeaponKills.sword++;
-              this.teamKills[agent.team]++;
-              this.teamRawKills[agent.team]++;
               killCount++;
             }
           }
@@ -4681,18 +4707,6 @@ button.secondary:hover {
                 const killed = hitAgent.takeDamage(damage, b.owner, this);
                 if (killed) {
                   this.spawnBloodPool(hitAgent.x, hitAgent.y, hitAgent.team);
-                  const comboKillBonus = b.owner.getComboKillBonus(hitAgent);
-                  b.owner.comboScore += comboKillBonus;
-                  b.owner.kills++;
-                  b.owner.totalKills = (b.owner.totalKills || 0) + 1;
-                  b.owner.lifeKills++;
-                  b.owner.weaponKills.rifle = (b.owner.weaponKills.rifle || 0) + 1;
-                  b.owner.totalWeaponKills.rifle = (b.owner.totalWeaponKills.rifle || 0) + 1;
-                  this.weaponKills.rifle = (this.weaponKills.rifle || 0) + 1;
-                  this.totalWeaponKills.rifle = (this.totalWeaponKills.rifle || 0) + 1;
-                  this.teamKills[b.owner.team]++;
-                  this.teamRawKills[b.owner.team]++;
-                  this.addEvent('🎯 ' + b.owner.name + ' SHOT ' + hitAgent.name + '!', 'kill');
                 }
               }
             } else if (!hitAgent && b.owner) {
@@ -4796,21 +4810,6 @@ button.secondary:hover {
                   const comboMultiplier = e.owner.registerComboHit(agent, dmg);
                   e.owner.damageDealt += dmg;
                   e.owner.lifeDamageDealt += dmg;
-                  if (killed) {
-                    // Get combo kill bonus before it resets
-                    const comboKillBonus = e.owner.getComboKillBonus(agent);
-                    e.owner.comboScore += comboKillBonus;
-                    e.owner.kills++;
-                    e.owner.totalKills = (e.owner.totalKills || 0) + 1;
-                    e.owner.lifeKills++;
-                    e.owner.weaponKills.rocket++;
-                    e.owner.totalWeaponKills.rocket++;
-                    this.weaponKills.rocket++;
-                    this.totalWeaponKills.rocket++;
-                    this.teamKills[e.owner.team]++;
-                    this.teamRawKills[e.owner.team]++;
-                    this.addEvent('🚀 ' + e.owner.name + ' FRAGGED ' + agent.name + '!', 'kill');
-                  }
                 }
               }
             }
@@ -4925,6 +4924,7 @@ button.secondary:hover {
         this.dodgeTrails = this.dodgeTrails.filter(t => t.timer < t.maxTime);
 
         // Edge camping detection and danger zone spawning (only if enabled)
+        // Focuses on CORNER CLUSTERING rather than just being near edges
         if (antiEdgeCamping) {
           for (const agent of this.agents) {
             if (!agent.alive) {
@@ -4932,18 +4932,40 @@ button.secondary:hover {
               continue;
             }
 
-            // Check distance to nearest edge
-            const distToEdge = Math.min(
-              agent.x,                    // left edge
-              this.width - agent.x,       // right edge
-              agent.y,                    // top edge
-              this.height - agent.y       // bottom edge
-            );
+            // Check distance to each edge
+            const distLeft = agent.x;
+            const distRight = this.width - agent.x;
+            const distTop = agent.y;
+            const distBottom = this.height - agent.y;
+            const distToEdge = Math.min(distLeft, distRight, distTop, distBottom);
 
-            if (distToEdge < this.edgeCampDistance) {
-              agent.edgeCampTime += dt;
+            // Check if in a corner (near TWO edges)
+            const edgeDist = this.edgeCampDistance;
+            const nearLeft = distLeft < edgeDist;
+            const nearRight = distRight < edgeDist;
+            const nearTop = distTop < edgeDist;
+            const nearBottom = distBottom < edgeDist;
+            const inCorner = (nearLeft || nearRight) && (nearTop || nearBottom);
 
-              // Spawn danger zone after threshold
+            // Count nearby teammates clustering at edge
+            let nearbyCluster = 0;
+            if (distToEdge < edgeDist) {
+              for (const other of this.agents) {
+                if (other === agent || !other.alive || other.team !== agent.team) continue;
+                const dist = Math.hypot(other.x - agent.x, other.y - agent.y);
+                if (dist < 80) nearbyCluster++; // Within 80px
+              }
+            }
+
+            // Trigger conditions: corner OR clustering (3+ teammates nearby at edge)
+            const shouldTrigger = distToEdge < edgeDist && (inCorner || nearbyCluster >= 2);
+
+            if (shouldTrigger) {
+              // Faster accumulation if clustering
+              const rate = nearbyCluster >= 2 ? 1.5 : 1.0;
+              agent.edgeCampTime += dt * rate;
+
+              // Spawn danger zone after threshold (6 seconds base)
               if (agent.edgeCampTime >= this.edgeCampThreshold) {
                 // Check if there's already a zone near this agent
                 const hasNearbyZone = this.dangerZones.some(z =>
@@ -4963,7 +4985,7 @@ button.secondary:hover {
                 }
               }
             } else {
-              // Decay camping time when away from edge
+              // Decay camping time when not in problematic position
               agent.edgeCampTime = Math.max(0, agent.edgeCampTime - dt * 2);
             }
           }
@@ -7415,12 +7437,15 @@ button.secondary:hover {
       awarenessAlly: document.getElementById('awareness-ally'),
 
       // Control bar
-      ctrlSave: document.getElementById('ctrl-save'),
-      ctrlLoad: document.getElementById('ctrl-load'),
+      ctrlSpeed: document.getElementById('ctrl-speed'),
+      speedLabel: document.getElementById('speed-label'),
       ctrlReset: document.getElementById('ctrl-reset'),
       ctrlPlay: document.getElementById('ctrl-play'),
       ctrlHeadless: document.getElementById('ctrl-headless'),
       ctrlPerformance: document.getElementById('ctrl-performance'),
+      // Sidebar save/load
+      ctrlSave: document.getElementById('ctrl-save'),
+      ctrlLoad: document.getElementById('ctrl-load'),
 
       // Stats panel elements
       statsUps: document.getElementById('stats-ups'),
@@ -7844,6 +7869,22 @@ button.secondary:hover {
       forceWeapon = null;
       updateDebugButtonStyles();
       world.spawnAgents(population);
+    });
+
+    // Speed cycle button: 1x -> 2x -> 4x -> 8x -> 12x -> 1x
+    const speedSteps = [1, 2, 4, 8, 12];
+    let speedIndex = 0;
+
+    function updateSpeedButton() {
+      simSpeed = speedSteps[speedIndex];
+      ui.speedLabel.textContent = simSpeed + 'x';
+      ui.speedValue.textContent = simSpeed + 'x';
+      ui.speed.value = simSpeed;
+    }
+
+    ui.ctrlSpeed.addEventListener('click', () => {
+      speedIndex = (speedIndex + 1) % speedSteps.length;
+      updateSpeedButton();
     });
 
     ui.ctrlSave.addEventListener('click', () => {
