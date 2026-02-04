@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artikkel - TechPuls</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Open Graph / Social sharing -->
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="TechPuls">
+    <meta name="twitter:card" content="summary_large_image">
+</head>
+<body class="article-page">
+    <header class="site-header">
+        <div class="header-container">
+            <a href="index.html" class="logo">
+                <span class="logo-tech">Tech</span><span class="logo-puls">Puls</span>
+            </a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="index.html" class="nav-link">Forsiden</a></li>
+                    <li><a href="index.html#mobil" class="nav-link">Mobil</a></li>
+                    <li><a href="index.html#pc" class="nav-link">PC & Gaming</a></li>
+                    <li><a href="index.html#software" class="nav-link">Software</a></li>
+                    <li><a href="index.html#ai" class="nav-link">AI & Maskinlæring</a></li>
+                    <li><a href="index.html#vitenskap" class="nav-link">Vitenskap</a></li>
+                </ul>
+            </nav>
+            <button class="mobile-menu-btn" aria-label="Meny">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <article id="article-container">
+            <!-- Article Header -->
+            <header class="article-header" id="article-header">
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                </div>
+            </header>
+
+            <!-- Featured Image -->
+            <div class="article-featured-image" id="article-image">
+            </div>
+
+            <!-- Article Body -->
+            <div class="article-body" id="article-body">
+            </div>
+        </article>
+
+        <!-- Related Articles -->
+        <section class="related-articles" id="related-articles">
+            <h2>Les også</h2>
+            <div class="related-grid" id="related-grid">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="logo-tech">Tech</span><span class="logo-puls">Puls</span>
+                <p>Norges ledende kilde for teknologinyheter</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h4>Kategorier</h4>
+                    <ul>
+                        <li><a href="index.html#mobil">Mobil</a></li>
+                        <li><a href="index.html#pc">PC & Gaming</a></li>
+                        <li><a href="index.html#software">Software</a></li>
+                        <li><a href="index.html#ai">AI & ML</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Om oss</h4>
+                    <ul>
+                        <li><a href="#">Redaksjonen</a></li>
+                        <li><a href="#">Kontakt</a></li>
+                        <li><a href="#">Personvern</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 TechPuls. Alle rettigheter reservert.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/articles.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // Load article based on URL parameter
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const articleId = urlParams.get('id');
+
+            if (articleId) {
+                loadArticle(articleId);
+            } else {
+                document.getElementById('article-header').innerHTML = `
+                    <h1>Artikkel ikke funnet</h1>
+                    <p><a href="index.html">Tilbake til forsiden</a></p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

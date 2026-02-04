@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechPuls - Norges ledende tech-nyheter</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-container">
+            <a href="index.html" class="logo">
+                <span class="logo-tech">Tech</span><span class="logo-puls">Puls</span>
+            </a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="#" class="nav-link active" data-category="alle">Forsiden</a></li>
+                    <li><a href="#" class="nav-link" data-category="mobil">Mobil</a></li>
+                    <li><a href="#" class="nav-link" data-category="pc">PC & Gaming</a></li>
+                    <li><a href="#" class="nav-link" data-category="software">Software</a></li>
+                    <li><a href="#" class="nav-link" data-category="ai">AI & Maskinlæring</a></li>
+                    <li><a href="#" class="nav-link" data-category="vitenskap">Vitenskap</a></li>
+                </ul>
+            </nav>
+            <button class="mobile-menu-btn" aria-label="Meny">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="content-wrapper">
+            <!-- Featured/Hero Article -->
+            <section class="hero-section" id="hero-section">
+                <!-- Populated by JavaScript -->
+            </section>
+
+            <div class="content-grid">
+                <!-- Main Article Grid -->
+                <section class="articles-section">
+                    <div class="section-header">
+                        <h2>Siste nytt</h2>
+                    </div>
+                    <div class="articles-grid" id="articles-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <button class="load-more-btn" id="load-more">Last flere artikler</button>
+                </section>
+
+                <!-- Sidebar -->
+                <aside class="sidebar">
+                    <div class="sidebar-section">
+                        <h3>Populært nå</h3>
+                        <div class="popular-list" id="popular-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="sidebar-section">
+                        <h3>Kategorier</h3>
+                        <div class="category-tags">
+                            <a href="#" class="tag" data-category="mobil">Mobil</a>
+                            <a href="#" class="tag" data-category="pc">PC</a>
+                            <a href="#" class="tag" data-category="gaming">Gaming</a>
+                            <a href="#" class="tag" data-category="software">Software</a>
+                            <a href="#" class="tag" data-category="ai">AI</a>
+                            <a href="#" class="tag" data-category="vitenskap">Vitenskap</a>
+                            <a href="#" class="tag" data-category="sikkerhet">Sikkerhet</a>
+                            <a href="#" class="tag" data-category="elbil">Elbil</a>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="logo-tech">Tech</span><span class="logo-puls">Puls</span>
+                <p>Norges ledende kilde for teknologinyheter</p>
+            </div>
+            <div class="footer-links">
+                <div class="footer-column">
+                    <h4>Kategorier</h4>
+                    <ul>
+                        <li><a href="#">Mobil</a></li>
+                        <li><a href="#">PC & Gaming</a></li>
+                        <li><a href="#">Software</a></li>
+                        <li><a href="#">AI & ML</a></li>
+                    </ul>
+                </div>
+                <div class="footer-column">
+                    <h4>Om oss</h4>
+                    <ul>
+                        <li><a href="#">Redaksjonen</a></li>
+                        <li><a href="#">Kontakt</a></li>
+                        <li><a href="#">Personvern</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 TechPuls. Alle rettigheter reservert.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/articles.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
